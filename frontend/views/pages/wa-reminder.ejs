@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    :root{--d-bg:#eef2f9;--d-card:#fff;--d-border:#e0e7f3;--d-text:#0d1b3e;--d-muted:#6b7fa8;--d-blue1:#1a6ef5;}
+    .rm-page{font-family:'DM Sans',sans-serif;}
+    /* ── STAT CARDS — single strip ── */
+    .fin-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      background: #fff; border-radius: 16px;
+      border: 1px solid #e8eaed; overflow: hidden; margin-bottom: 20px;
+    }
+    .fin-card {
+      padding: 20px 22px 18px; border-right: 1px solid #e8eaed;
+      cursor: default; display: flex; flex-direction: column; gap: 0;
+      position: relative; overflow: hidden; transition: background .15s;
+    }
+    .fin-card::before, .fin-card::after { display:none !important; content:none !important; }
+    .fin-card:last-child { border-right: none; }
+    .xc-lbl  { font-size:12px; font-weight:500; color:#64748b; margin-bottom:10px; letter-spacing:.1px; }
+    .xc-body { display:flex; align-items:flex-end; justify-content:space-between; gap:8px; }
+    .xc-left { display:flex; flex-direction:column; min-width:0; }
+    .xc-val  { font-size:30px; font-weight:800; color:#0f172a; letter-spacing:-1.2px; line-height:1; }
+    @media(max-width:1400px){ .xc-val { font-size:26px; } }
+    .xc-meta { display:flex; align-items:center; gap:5px; margin-top:6px; flex-wrap:wrap; }
+    .xc-pill { display:inline-flex; align-items:center; gap:2px; padding:1px 6px; border-radius:100px; font-size:10.5px; font-weight:700; white-space:nowrap; flex-shrink:0; }
+    .xc-blue   { background:#dbeafe; color:#1d4ed8; }
+    .xc-green  { background:#dcfce7; color:#16a34a; }
+    .xc-red    { background:#fee2e2; color:#dc2626; }
+    .xc-amber  { background:#fef3c7; color:#b45309; }
+    .xc-teal   { background:#cffafe; color:#0e7490; }
+    .xc-slate  { background:#f1f5f9; color:#475569; }
+    .xc-orange { background:#ffedd5; color:#c2410c; }
+    .xc-sub  { font-size:11px; color:#94a3b8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .xc-spark { flex-shrink:0; width:72px; height:36px; }
+    .xc-spark svg { width:72px; height:36px; }
+    .sp-fill { transition:fill .3s; }
+    .sp-line { stroke-width:1.8; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+    .sp-dot  { }
+    @media(max-width:700px) {
+      .fin-grid { grid-template-columns:repeat(2,1fr); }
+      .fin-card { border-right:none; border-bottom:1px solid #e8eaed; }
+      .fin-card:nth-child(odd)  { border-right:1px solid #e8eaed; }
+      .fin-card:nth-child(even) { border-right:none; }
+      .fin-card:nth-last-child(-n+2) { border-bottom:none; }
+    }
+    @media(max-width:400px) {
+      .fin-grid { grid-template-columns:1fr; }
+      .fin-card { border-right:none !important; border-bottom:1px solid #e8eaed; }
+      .fin-card:last-child { border-bottom:none; }
+    }
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    .a1{animation:fadeUp .4s ease both}.a2{animation:fadeUp .4s .07s ease both}.a3{animation:fadeUp .4s .14s ease both}
+    .a4{animation:fadeUp .4s .21s ease both}.a5{animation:fadeUp .4s .28s ease both}
+    /* Layout */
+    .rm-layout{display:grid;grid-template-columns:1fr 220px;gap:16px;align-items:start;}
+    @media(max-width:960px){.rm-layout{grid-template-columns:1fr;}}
+    .w-card{background:#fff;border:1px solid var(--d-border);border-radius:22px;padding:20px;}
+    .pf-label{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--d-muted);display:block;margin-bottom:6px;}
+    .pf-select,.pf-input{width:100%;padding:9px 12px;border-radius:9px;border:1.5px solid var(--d-border);font-size:13px;box-sizing:border-box;font-family:'DM Sans',sans-serif;outline:none;background:#fff;color:var(--d-text);transition:all .15s;}
+    .pf-select:focus,.pf-input:focus{border-color:var(--d-blue1);box-shadow:0 0 0 3px rgba(26,110,245,.1);}
+    /* Reminder row */
+    .rm-row{display:grid;grid-template-columns:90px 1fr 100px 90px;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid #f0f4ff;}
+    .rm-row:last-child{border-bottom:none;}
+    @media(max-width:640px){.rm-row{grid-template-columns:80px 1fr;}.rm-time-col,.rm-toggle-col{grid-column:1/-1;}}
+    .day-badge{display:inline-flex;align-items:center;justify-content:center;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:700;}
+    .grp-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--d-border);}
+    .grp-col-hdr{display:grid;grid-template-columns:90px 1fr 100px 90px;gap:10px;padding:6px 0 4px;margin-bottom:2px;}
+    @media(max-width:640px){.grp-col-hdr{display:none;}}
+    .save-btn{width:100%;padding:11px;border-radius:11px;font-size:13.5px;font-weight:700;background:linear-gradient(135deg,#1a6ef5,#0047cc);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:'DM Sans',sans-serif;transition:opacity .15s;}
+    .save-btn:hover{opacity:.9;}
+  </style>
+</head>
+<body>
+<div class="app-layout rm-page">
+  <%- include('../partials/sidebar') %>
+  <div class="main-content">
+    <%- include('../partials/topbar') %>
+    <main class="page-content">
+      <!-- Header -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;" class="a1">
+        <div>
+          <h1 style="font-size:22px;font-weight:800;color:#0d1b3e;margin:0 0 4px;">Automation Reminder</h1>
+          <p style="font-size:13px;color:var(--d-muted);margin:0;">Pengaturan reminder otomatis jatuh tempo pelanggan</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button onclick="openTestModal()" style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid #c7d8ff;background:#f4f8ff;color:#1a6ef5;" id="btnTestSend">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Test ke Nomor
+          </button>
+          <button onclick="runReminderNow()" style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:linear-gradient(135deg,#00c2f0,#0091b8);color:#fff;" id="btnRunNow">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Jalankan Sekarang
+          </button>
+        </div>
+      </div>
+
+      <!-- Test Send Modal -->
+      <div id="testModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(13,27,62,.55);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:#fff;border-radius:18px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 48px rgba(0,0,0,.18);">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px 14px;border-bottom:1px solid #e8eaed;">
+            <div>
+              <div style="font-size:15px;font-weight:800;color:#0d1b3e;">🧪 Test Kirim Reminder</div>
+              <div style="font-size:11.5px;color:#6b7fa8;margin-top:2px;">Uji render template ke nomor HP tertentu</div>
+            </div>
+            <button onclick="closeTestModal()" style="background:#f4f8ff;border:1.5px solid #e0e7f3;border-radius:8px;padding:5px 8px;cursor:pointer;color:#6b7fa8;line-height:1;">✕</button>
+          </div>
+          <div style="padding:18px 22px;">
+            <div style="margin-bottom:14px;">
+              <label style="font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7fa8;display:block;margin-bottom:6px;">Nomor HP Tujuan *</label>
+              <input id="testPhone" type="text" placeholder="628123456789" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #e0e7f3;font-size:13px;box-sizing:border-box;font-family:'DM Sans',sans-serif;outline:none;">
+              <div style="font-size:11px;color:#6b7fa8;margin-top:4px;">Format: 628xxx (tanpa +/spasi). Boleh nomor sendiri.</div>
+            </div>
+            <div style="margin-bottom:14px;">
+              <label style="font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7fa8;display:block;margin-bottom:6px;">Pilih Reminder *</label>
+              <select id="testReminder" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #e0e7f3;font-size:13px;box-sizing:border-box;font-family:'DM Sans',sans-serif;outline:none;background:#fff;">
+                <option value="">— Pilih reminder dengan template —</option>
+              </select>
+              <div style="font-size:11px;color:#6b7fa8;margin-top:4px;">Hanya reminder yang sudah ada template yang bisa dipilih.</div>
+            </div>
+            <div style="background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;font-size:11.5px;color:#92400e;line-height:1.6;margin-bottom:14px;">
+              💡 Sistem akan ambil <b>1 invoice unpaid real</b> sebagai sample data. Kalau tidak ada, pakai data dummy. Pesan akan dikirim dengan prefix <code style="background:#fff;padding:1px 4px;border-radius:3px;">[TEST]</code>.
+            </div>
+            <div id="testResult" style="display:none;margin-bottom:12px;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.6;"></div>
+            <div style="display:flex;gap:8px;">
+              <button onclick="closeTestModal()" style="flex:1;padding:11px;border-radius:11px;font-size:13px;font-weight:600;background:#f4f8ff;color:#6b7fa8;border:1.5px solid #e0e7f3;cursor:pointer;">Batal</button>
+              <button onclick="submitTestSend()" id="btnTestSubmit" style="flex:2;padding:11px;border-radius:11px;font-size:13px;font-weight:700;background:linear-gradient(135deg,#1a6ef5,#0047cc);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                Kirim Test
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Stats -->
+      <div class="fin-grid">
+        <div class="fin-card" id="xc-total">
+          <div class="xc-lbl">Total Reminder</div>
+          <div class="xc-body">
+            <div class="xc-left">
+              <span class="xc-val" id="fcTotal">0</span>
+              <div class="xc-meta">
+                <span class="xc-pill xc-blue" id="xp-total">—</span>
+                <span class="xc-sub" id="fcTotalSub">–</span>
+              </div>
+            </div>
+            <div class="xc-spark">
+              <svg id="sp-total" viewBox="0 0 72 36" preserveAspectRatio="none">
+                <path class="sp-fill" id="sp-total-fill" d="" fill="#2563eb" opacity=".12"/>
+                <path class="sp-line" id="sp-total-line" d="" stroke="#2563eb"/>
+                <circle class="sp-dot" id="sp-total-dot" r="2.5" fill="#2563eb"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="fin-card" id="xc-withtpl">
+          <div class="xc-lbl">Dengan Template</div>
+          <div class="xc-body">
+            <div class="xc-left">
+              <span class="xc-val" id="fcWithTpl">0</span>
+              <div class="xc-meta">
+                <span class="xc-pill xc-teal" id="xp-withtpl">—</span>
+                <span class="xc-sub">Reminder siap kirim</span>
+              </div>
+            </div>
+            <div class="xc-spark">
+              <svg id="sp-withtpl" viewBox="0 0 72 36" preserveAspectRatio="none">
+                <path class="sp-fill" id="sp-withtpl-fill" d="" fill="#0891b2" opacity=".12"/>
+                <path class="sp-line" id="sp-withtpl-line" d="" stroke="#0891b2"/>
+                <circle class="sp-dot" id="sp-withtpl-dot" r="2.5" fill="#0891b2"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="fin-card" id="xc-before">
+          <div class="xc-lbl">Sebelum JT</div>
+          <div class="xc-body">
+            <div class="xc-left">
+              <span class="xc-val" id="fcBefore">0</span>
+              <div class="xc-meta">
+                <span class="xc-pill xc-amber" id="xp-before">—</span>
+                <span class="xc-sub">H-1, H-3, dll</span>
+              </div>
+            </div>
+            <div class="xc-spark">
+              <svg id="sp-before" viewBox="0 0 72 36" preserveAspectRatio="none">
+                <path class="sp-fill" id="sp-before-fill" d="" fill="#d97706" opacity=".12"/>
+                <path class="sp-line" id="sp-before-line" d="" stroke="#d97706"/>
+                <circle class="sp-dot" id="sp-before-dot" r="2.5" fill="#d97706"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="fin-card" id="xc-cron">
+          <div class="xc-lbl">Interval Cron</div>
+          <div class="xc-body">
+            <div class="xc-left">
+              <span class="xc-val" id="fcCron">1m</span>
+              <div class="xc-meta">
+                <span class="xc-pill xc-green" id="xp-cron">—</span>
+                <span class="xc-sub">Scheduler tiap menit</span>
+              </div>
+            </div>
+            <div class="xc-spark">
+              <svg id="sp-cron" viewBox="0 0 72 36" preserveAspectRatio="none">
+                <path class="sp-fill" id="sp-cron-fill" d="" fill="#16a34a" opacity=".12"/>
+                <path class="sp-line" id="sp-cron-line" d="" stroke="#16a34a"/>
+                <circle class="sp-dot" id="sp-cron-dot" r="2.5" fill="#16a34a"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Main -->
+      <div class="rm-layout a5">
+        <!-- Left: settings -->
+        <div class="w-card" style="padding:0;overflow:hidden;">
+          <div style="padding:16px 20px;border-bottom:1px solid var(--d-border);display:flex;align-items:center;gap:12px;">
+            <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#1a6ef5,#0047cc);display:flex;align-items:center;justify-content:center;">
+              <svg width="16" height="16" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--d-muted);">Konfigurasi</div>
+              <div style="font-size:14px;font-weight:700;color:var(--d-text);">Pengaturan Reminder Otomatis</div>
+            </div>
+          </div>
+          <div style="padding:12px 20px 0;background:#f8faff;border-bottom:1px solid var(--d-border);">
+            <p style="font-size:12.5px;color:var(--d-muted);margin:0 0 12px;line-height:1.6;">Reminder dikirim otomatis sesuai kondisi jatuh tempo. Pilih template dan jam kirim untuk setiap reminder.</p>
+          </div>
+          <div id="reminderGrid" style="padding:0 20px 20px;">
+            <div style="text-align:center;padding:40px;color:#94a3b8;">Memuat...</div>
+          </div>
+          <div style="padding:16px 20px;border-top:1px solid var(--d-border);">
+            <button class="save-btn" onclick="saveReminders()" id="btnSave">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              Simpan Pengaturan
+            </button>
+          </div>
+        </div>
+        <!-- Right: hasil test -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="w-card">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--d-muted);margin-bottom:10px;">Hasil Test Terakhir</div>
+            <div id="runResult" style="font-size:13px;color:var(--d-muted);">–</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/wa-reminder.js"></script>
+
+<script>
+(function(){
+  const W=72,H=36,MAX=20,hist={},C={'total':'#2563eb','withtpl':'#0891b2','before':'#d97706','cron':'#16a34a'},IDS={'total':'fcTotal','withtpl':'fcWithTpl','before':'fcBefore','cron':'fcCron'};
+  Object.keys(C).forEach(k=>hist[k]=[]);
+  function sp(v){
+    if(!v||v.length<2)return null;
+    const mn=Math.min(...v),mx=Math.max(...v),r=mx-mn||1;
+    const p=v.map((n,i)=>[(i/(v.length-1))*W,H-((n-mn)/r)*(H-6)-3]);
+    const d=p.reduce((a,[x,y],i)=>{
+      if(!i)return'M'+x.toFixed(1)+','+y.toFixed(1);
+      const[px,py]=p[i-1],cx=(px+x)/2;
+      return a+' C'+cx.toFixed(1)+','+py.toFixed(1)+' '+cx.toFixed(1)+','+y.toFixed(1)+' '+x.toFixed(1)+','+y.toFixed(1);
+    },'');
+    const lp=p[p.length-1],fp=p[0];
+    return{d,fill:d+' L'+lp[0].toFixed(1)+','+H+' L'+fp[0].toFixed(1)+','+H+' Z',dot:lp};
+  }
+  function draw(id,v){
+    const s=sp(v);if(!s)return;
+    const f=document.getElementById(id+'-fill'),l=document.getElementById(id+'-line'),d=document.getElementById(id+'-dot');
+    if(f)f.setAttribute('d',s.fill);if(l)l.setAttribute('d',s.d);
+    if(d){d.setAttribute('cx',s.dot[0].toFixed(1));d.setAttribute('cy',s.dot[1].toFixed(1));}
+  }
+  function rn(id){const e=document.getElementById(id);return e?parseFloat(e.textContent.replace(/[^\d.]/g,''))||0:0;}
+  function upd(){
+    Object.keys(C).forEach(k=>{
+      const v=rn(IDS[k]);hist[k].push(v);if(hist[k].length>MAX)hist[k].shift();
+      draw('sp-'+k,hist[k]);
+      const p=document.getElementById('xp-'+k);if(p)p.textContent=v;
+    });
+  }
+  window._remUpd=upd;
+  Object.values(IDS).forEach(id=>{const e=document.getElementById(id);if(e)new MutationObserver(()=>setTimeout(upd,50)).observe(e,{childList:true,characterData:true,subtree:true});});
+  document.addEventListener('DOMContentLoaded',upd);
+})();
+</script>
+</body></html>

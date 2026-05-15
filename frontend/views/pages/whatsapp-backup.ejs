@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    /* ── Layout ── */
+    body, .app-layout, .main-content { height: 100vh; overflow: hidden; }
+    .page-content { padding: 0 !important; height: calc(100vh - 60px); overflow: hidden; }
+
+    .wa-shell {
+      display: grid;
+      grid-template-columns: 340px 1fr 300px;
+      height: 100%;
+      max-height: 100%;
+      overflow: hidden;
+      background: #f0f2f5;
+    }
+    @media (max-width: 1200px) { .wa-shell { grid-template-columns: 320px 1fr 280px; } }
+    @media (max-width: 1000px) { .wa-shell { grid-template-columns: 300px 1fr; } .wa-profile-panel { display: none !important; } }
+
+    /* ── MOBILE ≤768px: WA fullscreen seperti app WA asli ── */
+    @media (max-width: 768px) {
+      /* Sembunyikan sidebar NETOPS dan topbar agar WA fullscreen */
+      .sidebar { display: none !important; }
+      .topbar  { display: none !important; }
+      .main-content { margin-left: 0 !important; }
+      .page-content { height: 100vh !important; height: 100dvh !important; }
+
+      .wa-shell { grid-template-columns: 1fr; height: 100vh; height: 100dvh; }
+      .wa-profile-panel { display: none !important; }
+
+      /* Default: tampil sidebar WA (list kontak) */
+      .wa-sidebar {
+        display: flex !important;
+        position: relative;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+      /* Chat panel tersembunyi di mobile sampai kontak dipilih */
+      .wa-chat-panel {
+        display: none !important;
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 100 !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+      }
+      .wa-chat-panel.mobile-chat-open {
+        display: flex !important;
+      }
+      /* Sembunyikan sidebar saat chat terbuka */
+      .wa-sidebar.mobile-chat-open {
+        display: none !important;
+      }
+      /* Tombol back selalu tampil */
+      .wa-mobile-back { display: flex !important; }
+    }
+
+    .wa-mobile-back {
+      display: none;
+      align-items: center; justify-content: center;
+      background: none; border: none; cursor: pointer;
+      color: #111b21; padding: 6px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .wa-mobile-back:hover { background: rgba(0,0,0,.06); }
+
+    /* ── Sidebar ── */
+    .wa-sidebar {
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      border-right: 1px solid #e9edef;
+      height: 100%;
+      overflow: hidden;
+    }
+    .wa-sidebar-header {
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid #e9edef;
+      background: #fff;
+    }
+    .wa-sidebar-title {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .wa-sidebar-title h2 { font-size: 20px; font-weight: 700; margin: 0; }
+    .wa-add-btn {
+      background: #25d366; color: #fff; border: none;
+      border-radius: 50%; width: 36px; height: 36px;
+      font-size: 20px; cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(37,211,102,0.3);
+      transition: transform 0.15s;
+    }
+    .wa-add-btn:hover { transform: scale(1.08); }
+
+    /* Session selector */
+    .wa-session-bar {
+      display: flex; gap: 6px; flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .wa-session-chip {
+      display: flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 20px; font-size: 11px;
+      font-weight: 600; cursor: pointer; border: 1.5px solid #e9edef;
+      background: #f0f2f5; color: #667781; transition: all 0.15s;
+    }
+    .wa-session-chip.active { background: #25d366; color: #fff; border-color: #25d366; }
+    .wa-session-chip.connecting { background: #fef9c3; color: #92400e; border-color: #fde047; }
+    .wa-session-chip.disconnected { background: #f1f5f9; color: #94a3b8; }
+    .wa-chip-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .chip-connected { background: #fff; }
+    .chip-connecting { background: #f59e0b; animation: blink 1s infinite; }
+    .chip-disconnected { background: #94a3b8; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* Search */
+    .wa-search {
+      position: relative; margin: 8px 12px;
+    }
+    .wa-search input {
+      width: 100%; padding: 9px 12px 9px 38px;
+      border: none; border-radius: 20px;
+      background: #f0f2f5; font-size: 13px; color: #3b4a54;
+      outline: none; box-sizing: border-box;
+      transition: background 0.15s;
+    }
+    .wa-search input:focus { background: #fff; box-shadow: 0 0 0 2px #25d36622; }
+    .wa-search input::placeholder { color: #8696a0; }
+    .wa-search-icon {
+      position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+      color: #8696a0; display: flex; align-items: center; pointer-events: none;
+    }
+
+    /* Filter tabs */
+    .wa-filter-tabs {
+      display: flex; border-bottom: 1px solid #e9edef;
+      padding: 0 16px;
+    }
+    .wa-filter-tab {
+      padding: 10px 14px; font-size: 13px; font-weight: 500;
+      color: #667781; border: none; background: none; cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: all 0.15s;
+    }
+    .wa-filter-tab.active { color: #25d366; border-bottom-color: #25d366; }
+
+    /* Contact list */
+    .wa-contact-list { flex: 1; overflow-y: auto; }
+    .wa-contact-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 16px; cursor: pointer;
+      border-bottom: 1px solid #f0f2f5;
+      transition: background 0.1s;
+    }
+    .wa-contact-item:hover { background: #f5f6f6; }
+    .wa-contact-item.active { background: #f0f2f5; }
+    .wa-avatar {
+      width: 46px; height: 46px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 700; color: #fff; flex-shrink: 0;
+      overflow: hidden; position: relative;
+    }
+    .wa-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
+    .wa-contact-info { flex: 1; min-width: 0; }
+    .wa-contact-top {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 2px;
+    }
+    .wa-contact-name { font-size: 14px; font-weight: 500; color: #111b21; }
+    .wa-contact-time { font-size: 11px; color: #667781; flex-shrink: 0; }
+    .wa-contact-preview {
+      font-size: 13px; color: #667781;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .wa-unread-badge {
+      background: #25d366; color: #fff; border-radius: 50%;
+      min-width: 18px; height: 18px; font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; padding: 0 4px;
+    }
+    .wa-contact-tags { display: flex; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
+    .wa-tag {
+      font-size: 10px; padding: 1px 6px; border-radius: 10px;
+      font-weight: 600;
+    }
+
+    /* ── Chat Panel ── */
+    .wa-chat-panel {
+      display: flex; flex-direction: column;
+      height: 100%; overflow: hidden; background: #efeae2;
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d9d9d9' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      position: relative;
+    }
+
+    /* Empty state */
+    .wa-empty-state {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: #667781;
+    }
+    .wa-empty-icon { margin-bottom: 20px; display: flex; justify-content: center; }
+    .wa-empty-title { font-size: 28px; font-weight: 300; color: #41525d; margin-bottom: 8px; }
+    .wa-empty-sub { font-size: 14px; color: #667781; text-align: center; max-width: 320px; }
+
+    /* Chat header */
+    .wa-chat-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 16px; background: #f0f2f5;
+      border-bottom: 1px solid #e9edef; flex-shrink: 0;
+    }
+    .wa-chat-header-info { flex: 1; cursor: pointer; }
+    .wa-chat-header-name { font-size: 15px; font-weight: 600; color: #111b21; }
+    .wa-chat-header-status { font-size: 12px; color: #667781; }
+    .wa-chat-header-actions { display: flex; gap: 8px; }
+    .wa-icon-btn {
+      background: none; border: none; color: #54656f;
+      padding: 6px; border-radius: 50%; cursor: pointer;
+      font-size: 18px; transition: background 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .wa-icon-btn:hover { background: rgba(0,0,0,0.07); }
+    .wa-icon-btn-danger:hover { background: #fee2e2 !important; color: #dc2626; }
+    /* Context menu for contact list */
+    .wa-context-menu {
+      position: fixed; background: #fff; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      z-index: 9999; min-width: 160px; overflow: hidden; border: 1px solid #e9edef;
+    }
+    .wa-context-menu-item {
+      padding: 11px 16px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+      transition: background 0.1s; color: #111b21;
+    }
+    .wa-context-menu-item:hover { background: #f0f2f5; }
+    .wa-context-menu-item.danger { color: #dc2626; }
+    .wa-context-menu-item.danger:hover { background: #fee2e2; }
+    /* Delete confirm modal */
+    .wa-delete-modal {
+      position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center;
+      background: rgba(17, 27, 33, 0.5); backdrop-filter: blur(4px);
+    }
+    .wa-delete-modal-box {
+      background: #fff; border-radius: 20px; padding: 32px 28px 24px;
+      max-width: 360px; width: 90%; text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.08);
+      animation: modalPop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes modalPop {
+      from { opacity: 0; transform: scale(0.88) translateY(12px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .wa-delete-modal-icon {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: linear-gradient(135deg, #fee2e2, #fecaca);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 18px; color: #dc2626;
+    }
+    .wa-delete-modal-title { font-size: 17px; font-weight: 700; color: #111b21; margin-bottom: 8px; }
+    .wa-delete-modal-desc { font-size: 13px; color: #667781; margin-bottom: 24px; line-height: 1.6; }
+    .wa-delete-modal-actions { display: flex; gap: 10px; }
+    .wa-delete-modal-actions button { flex: 1; padding: 11px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+    .btn-del-cancel { background: #f0f2f5; color: #3b4a54; }
+    .btn-del-cancel:hover { background: #e9edef; }
+    .btn-del-confirm { background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; box-shadow: 0 4px 12px rgba(220,38,38,0.3); }
+    .btn-del-confirm:hover { background: linear-gradient(135deg, #dc2626, #b91c1c); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(220,38,38,0.35); }
+    .btn-del-confirm:active { transform: translateY(0); }
+
+    /* QR area */
+    .wa-qr-overlay {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.95);
+    }
+    .wa-qr-box {
+      background: #fff; border-radius: 16px;
+      padding: 32px; text-align: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+    }
+    .wa-qr-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    .wa-qr-sub { font-size: 13px; color: #667781; margin-bottom: 20px; }
+    .wa-qr-img-wrap {
+      width: 200px; height: 200px;
+      border: 2px dashed #e9edef; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 12px; background: #fafafa;
+    }
+    .wa-qr-img-wrap img { width: 190px; height: 190px; border-radius: 8px; }
+    .wa-qr-refresh { font-size: 12px; color: #25d366; font-weight: 500; }
+    .wa-connect-btn {
+      background: #25d366; color: #fff; border: none;
+      padding: 12px 32px; border-radius: 24px; font-size: 14px;
+      font-weight: 600; cursor: pointer; margin-top: 16px;
+      transition: background 0.15s;
+    }
+    .wa-connect-btn:hover { background: #20ba59; }
+
+    /* Messages */
+    .wa-messages-wrap { flex: 1; overflow-y: auto; padding: 16px 10%; }
+    .wa-date-divider {
+      text-align: center; margin: 16px 0 8px;
+      position: relative; display: flex; align-items: center; justify-content: center;
+    }
+    .wa-date-divider span {
+      background: #e9f5fe; color: #54656f;
+      padding: 5px 14px; border-radius: 8px;
+      font-size: 12px; font-weight: 500;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      white-space: nowrap;
+    }
+    .wa-msg-row { display: flex; margin-bottom: 2px; }
+    .wa-msg-row.out { justify-content: flex-end; }
+    .wa-msg-row.in  { justify-content: flex-start; }
+    .wa-bubble {
+      max-width: 65%; padding: 6px 10px 4px 10px;
+      border-radius: 7.5px; position: relative;
+      font-size: 13.5px; line-height: 1.5; word-break: break-word;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    .wa-bubble.in  { background: #fff; border-top-left-radius: 0; }
+    .wa-bubble.out { background: #d9fdd3; border-top-right-radius: 0; }
+    .wa-bubble-meta {
+      display: flex; align-items: center; justify-content: flex-end;
+      gap: 3px; margin-top: 1px; margin-bottom: -2px;
+      font-size: 11px; color: #667781; float: right;
+      margin-left: 8px; margin-top: 2px; position: relative; bottom: 0;
+    }
+    .wa-bubble.out .wa-bubble-meta { color: #6db885; }
+    .wa-bubble-time { font-size: 11px; white-space: nowrap; line-height: 15px; }
+    .wa-tick { font-size: 12px; line-height: 15px; }
+    /* Clear float setelah bubble content */
+    .wa-bubble::after { content: ''; display: table; clear: both; }
+
+    /* Media in bubbles */
+    .wa-media-wrap { display: flex; flex-direction: column; gap: 4px; max-width: 280px; }
+    .wa-media-img {
+      max-width: 280px; max-height: 300px; border-radius: 6px;
+      object-fit: cover; cursor: zoom-in; display: block;
+      width: 100%;
+    }
+    .wa-media-video { max-width: 280px; border-radius: 6px; display: block; width: 100%; }
+    .wa-media-audio { width: 220px; height: 36px; }
+    .wa-media-caption { font-size: 13px; margin-top: 2px; }
+    .wa-doc-wrap {
+      flex-direction: row; align-items: center; gap: 10px;
+      background: rgba(0,0,0,0.04); border-radius: 8px; padding: 8px 10px;
+      min-width: 180px;
+    }
+
+    /* Input bar */
+    .wa-input-bar {
+      display: flex; align-items: flex-end; gap: 8px;
+      padding: 8px 12px; background: #f0f2f5;
+      border-top: 1px solid #e9edef; flex-shrink: 0;
+    }
+    .wa-input-wrap {
+      flex: 1; background: #fff; border-radius: 24px;
+      padding: 9px 16px; min-height: 42px;
+      display: flex; align-items: flex-end;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .wa-input-wrap textarea {
+      flex: 1; border: none; outline: none; resize: none;
+      font-size: 14px; background: transparent; color: #3b4a54;
+      max-height: 120px; overflow-y: auto; line-height: 1.4;
+      font-family: inherit;
+    }
+    .wa-send-btn {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: #25d366; color: #fff; border: none;
+      cursor: pointer; font-size: 18px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s; box-shadow: 0 2px 8px rgba(37,211,102,0.3);
+    }
+    .wa-send-btn:hover { background: #20ba59; }
+
+    /* ── Profile Panel ── */
+    .wa-profile-panel {
+      background: #fff; border-left: 1px solid #e9edef;
+      display: flex; flex-direction: column;
+      height: 100%; overflow-y: auto; width: 300px; flex-shrink: 0;
+    }
+    .wa-profile-header {
+      background: linear-gradient(135deg, #1a6ef5, #0047cc);
+      padding: 14px 16px;
+      font-size: 11px; font-weight: 700; color: rgba(255,255,255,.85);
+      letter-spacing: 0.7px; text-transform: uppercase;
+    }
+    .wa-status-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600;
+      margin-top: 4px;
+    }
+    .wa-status-badge.active { background: #dcfce7; color: #16a34a; }
+    .wa-status-badge.isolir { background: #fee2e2; color: #dc2626; }
+    .wa-status-badge.inactive { background: #f1f5f9; color: #64748b; }
+    .wa-profile-avatar-wrap {
+      display: flex; flex-direction: column;
+      align-items: center; padding: 28px 16px 20px;
+      border-bottom: 1px solid #e9edef; background: #fafafa;
+    }
+    .wa-profile-avatar-lg {
+      width: 76px; height: 76px; border-radius: 50%;
+      font-size: 30px; font-weight: 700; color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      overflow: hidden; flex-shrink: 0;
+    }
+    .wa-profile-avatar-lg img { width: 76px; height: 76px; object-fit: cover; display: block; border-radius: 50%; }
+    .wa-profile-number { font-size: 17px; font-weight: 700; color: #111b21; }
+    .wa-profile-name { font-size: 12px; color: #667781; margin-top: 3px; }
+    .wa-profile-section { padding: 14px 16px; border-bottom: 1px solid #e9edef; }
+    .wa-profile-section-title {
+      font-size: 11px; color: #25d366; font-weight: 700;
+      margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.7px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .wa-profile-row {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 7px 0; font-size: 13px; border-bottom: 1px solid #f5f6f6;
+    }
+    .wa-profile-row:last-child { border-bottom: none; }
+    .wa-profile-row-icon { color: #adb5bd; flex-shrink: 0; margin-top: 1px; }
+    .wa-profile-row-content { flex: 1; min-width: 0; }
+    .wa-profile-row-label { font-size: 10px; color: #adb5bd; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+    .wa-profile-row-val { font-weight: 500; color: #111b21; font-size: 13px; margin-top: 1px; word-break: break-all; }
+    .wa-profile-tag { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; margin-top: 8px; }
+    .wa-quick-btn {
+      display: flex; align-items: center; gap: 10px;
+      width: 100%; padding: 10px 12px; border: none; border-radius: 10px;
+      background: #f8f9fa; color: #3b4a54; font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: background 0.15s, transform 0.1s; text-align: left;
+    }
+    .wa-quick-btn:hover { background: #e9edef; transform: translateX(2px); }
+    .wa-quick-btn.danger { background: #fff5f5; color: #dc2626; }
+    .wa-quick-btn.danger:hover { background: #fee2e2; }
+    .wa-quick-btn svg { flex-shrink: 0; opacity: 0.75; }
+
+    /* Auto-reply section in profile */
+    .wa-autorule {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: 8px 0; border-bottom: 1px solid #f0f2f5; gap: 8px;
+    }
+    .wa-autorule:last-child { border-bottom: none; }
+    .wa-autorule-keyword { font-size: 13px; font-weight: 600; color: #111b21; }
+    .wa-autorule-reply { font-size: 12px; color: #667781; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+    .wa-autorule-dot { width: 8px; height: 8px; border-radius: 50%; background: #25d366; flex-shrink: 0; margin-top: 4px; }
+
+    /* Toggle switch */
+    .wa-toggle { position: relative; display: inline-flex; align-items: center; cursor: pointer; width: 34px; height: 18px; flex-shrink: 0; }
+    .wa-toggle input { opacity: 0; width: 0; height: 0; }
+    .wa-toggle-slider {
+      position: absolute; inset: 0; background: #ccc; border-radius: 18px;
+      transition: background 0.2s;
+    }
+    .wa-toggle-slider:before {
+      content: ''; position: absolute; width: 14px; height: 14px;
+      left: 2px; bottom: 2px; background: #fff; border-radius: 50%;
+      transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .wa-toggle input:checked + .wa-toggle-slider { background: #25d366; }
+    .wa-toggle input:checked + .wa-toggle-slider:before { transform: translateX(16px); }
+
+    /* Stats bar top */
+    .wa-top-stats {
+      display: flex; gap: 10px; padding: 10px 16px;
+      border-bottom: 1px solid #e9edef; background: #fff;
+      flex-shrink: 0;
+    }
+    .wa-top-stat { text-align: center; flex: 1; }
+    .wa-top-stat-val { font-size: 18px; font-weight: 700; color: #25d366; }
+    .wa-top-stat-lbl { font-size: 10px; color: #667781; font-weight: 500; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+    /* Modals */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; display: none; align-items: center; justify-content: center; }
+    .modal-overlay.active { display: flex; }
+    .wa-modal { background: #fff; border-radius: 12px; width: 460px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+    .wa-modal-header { padding: 18px 20px; border-bottom: 1px solid #e9edef; display: flex; align-items: center; justify-content: space-between; }
+    .wa-modal-header h3 { font-size: 16px; font-weight: 600; margin: 0; }
+    .wa-modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #667781; }
+    .wa-modal-body { padding: 20px; }
+    .wa-modal-footer { padding: 14px 20px; border-top: 1px solid #e9edef; display: flex; justify-content: flex-end; gap: 10px; }
+    .form-group { margin-bottom: 14px; }
+    .form-label { display: block; font-size: 12px; font-weight: 600; color: #667781; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .form-control { width: 100%; padding: 9px 12px; border: 1px solid #e9edef; border-radius: 8px; font-size: 13px; color: #3b4a54; outline: none; box-sizing: border-box; transition: border-color 0.15s; }
+    .form-control:focus { border-color: #25d366; }
+    .btn-wa { padding: 10px 20px; border-radius: 24px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .btn-wa-primary { background: #25d366; color: #fff; }
+    .btn-wa-primary:hover { background: #20ba59; }
+    .btn-wa-secondary { background: #f0f2f5; color: #3b4a54; }
+    .btn-wa-secondary:hover { background: #e9edef; }
+    .btn-wa-danger { background: #fee2e2; color: #dc2626; }
+    .btn-wa-danger:hover { background: #fecaca; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <%- include('../partials/sidebar') %>
+  <div class="main-content">
+    <%- include('../partials/topbar') %>
+    <main class="page-content">
+      <div class="wa-shell">
+
+        <!-- ── SIDEBAR ── -->
+        <div class="wa-sidebar">
+          <!-- Header -->
+          <div class="wa-sidebar-header">
+            <div class="wa-sidebar-title">
+              <h2>Pesan Masuk</h2>
+              <button class="wa-add-btn" onclick="openAddSession()" title="Tambah Session">+</button>
+            </div>
+            <!-- Session chips -->
+            <div class="wa-session-bar" id="sessionChips">
+              <span style="font-size:12px;color:#667781;">Memuat...</span>
+            </div>
+            <!-- Stats mini -->
+            <div class="wa-top-stats" style="padding:0;border:none;margin-bottom:8px;">
+              <div class="wa-top-stat"><div class="wa-top-stat-val" id="statConnected">0</div><div class="wa-top-stat-lbl">Session</div></div>
+              <div class="wa-top-stat"><div class="wa-top-stat-val" id="statToday">0</div><div class="wa-top-stat-lbl">Hari Ini</div></div>
+              <div class="wa-top-stat"><div class="wa-top-stat-val" id="statSent">0</div><div class="wa-top-stat-lbl">Terkirim</div></div>
+              <div class="wa-top-stat"><div class="wa-top-stat-val" id="statReceived">0</div><div class="wa-top-stat-lbl">Masuk</div></div>
+            </div>
+            <!-- Search -->
+            <div class="wa-search">
+              <span class="wa-search-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
+                </svg>
+              </span>
+              <input type="text" id="contactSearch" placeholder="Cari nama atau nomor..." oninput="filterContacts()">
+            </div>
+          </div>
+          <!-- Filter tabs -->
+          <div class="wa-filter-tabs">
+            <button id="tabAll" class="wa-filter-tab active" onclick="setFilter('all', this)">Semua</button>
+            <button id="tabUnread" class="wa-filter-tab" onclick="setFilter('unread', this)">Belum Baca</button>
+            <button id="tabUnanswered" class="wa-filter-tab" onclick="setFilter('unanswered', this)">Belum Balas</button>
+          </div>
+          <!-- Contact list -->
+          <div class="wa-contact-list" id="contactList">
+            <div style="text-align:center;padding:40px;color:#667781;font-size:13px;">Memuat pesan...</div>
+          </div>
+        </div>
+
+        <!-- ── CHAT PANEL ── -->
+        <div class="wa-chat-panel" id="chatPanel">
+          <!-- Empty state -->
+          <div class="wa-empty-state" id="chatEmpty">
+            <div class="wa-empty-icon">
+              <div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#25d366,#128c7e);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 32px rgba(37,211,102,0.25);margin-bottom:4px;">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                  <path d="M8 10h8M8 14h5" stroke-width="1.5"/>
+                </svg>
+              </div>
+            </div>
+            <div class="wa-empty-title">WA Gateway</div>
+            <div class="wa-empty-sub">Pilih percakapan dari daftar kiri, atau hubungkan session WA baru</div>
+          </div>
+
+          <!-- QR / Connect area -->
+          <div class="wa-qr-overlay" id="chatQR" style="display:none;">
+            <div class="wa-qr-box">
+              <div style="font-size:32px;margin-bottom:8px;">📱</div>
+              <div class="wa-qr-title" id="qrSessionName">Session WA</div>
+              <div class="wa-qr-sub">Scan QR dengan WhatsApp di HP kamu</div>
+              <div class="wa-qr-img-wrap" id="qrWrapper">
+                <div style="font-size:12px;color:#667781;">Menunggu QR...</div>
+              </div>
+              <div class="wa-qr-refresh" id="qrCountdown">QR refresh otomatis</div>
+              <button class="wa-connect-btn" id="btnConnectQR" onclick="connectCurrentSession()">Hubungkan</button>
+            </div>
+          </div>
+
+          <!-- Active chat -->
+          <div id="chatActive" style="display:none;flex-direction:column;height:100%;overflow:hidden;min-height:0;">
+            <!-- Chat header -->
+            <div class="wa-chat-header">
+              <button class="wa-mobile-back" onclick="mobileShowSidebar()" title="Kembali"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
+              <div class="wa-avatar" id="chatHeaderAvatar" style="width:38px;height:38px;font-size:15px;">?</div>
+              <div class="wa-chat-header-info" onclick="showProfile()">
+                <div class="wa-chat-header-name" id="chatHeaderName">—</div>
+                <div class="wa-chat-header-status" id="chatHeaderStatus">—</div>
+              </div>
+              <div class="wa-chat-header-actions">
+                <button class="wa-icon-btn" title="Cari" onclick="toggleChatSearch()">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/></svg>
+                </button>
+                <button class="wa-icon-btn" title="Broadcast" onclick="openBroadcast()">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+                </button>
+                <button class="wa-icon-btn wa-icon-btn-danger" title="Hapus Chat" onclick="deleteCurrentChat()">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+                <button class="wa-icon-btn" title="Putus Session" id="btnDisconnectHeader" onclick="disconnectSession()" style="display:none;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                </button>
+              </div>
+            </div>
+            <!-- Chat search bar (hidden by default) -->
+            <div id="chatSearchBar" style="display:none;padding:8px 16px;background:#f0f2f5;border-bottom:1px solid #e9edef;">
+              <input type="text" id="chatSearchInput" placeholder="Cari pesan..." style="width:100%;padding:8px 12px;border:1px solid #e9edef;border-radius:20px;font-size:13px;outline:none;box-sizing:border-box;" oninput="searchInChat()">
+            </div>
+            <!-- Messages -->
+            <div class="wa-messages-wrap" id="messagesWrap" style="flex:1;overflow-y:auto;"></div>
+            <!-- Input bar -->
+            <div class="wa-input-bar" id="chatInputBar" style="flex-shrink:0;">
+              <div class="wa-input-wrap">
+                <textarea id="chatInput" placeholder="Ketik pesan..." rows="1"
+                  oninput="autoResize(this)"
+                  onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
+              </div>
+              <button class="wa-send-btn" onclick="sendMessage()" title="Kirim">➤</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── PROFILE PANEL ── -->
+        <div class="wa-profile-panel" id="profilePanel">
+          <div class="wa-profile-header">PROFIL KONTAK</div>
+          <div id="profileContent">
+            <div style="text-align:center;padding:40px;color:#667781;font-size:13px;">Pilih percakapan</div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ── MODALS ── -->
+
+<!-- Tambah Session -->
+<div class="modal-overlay" id="addSessionModal">
+  <div class="wa-modal">
+    <div class="wa-modal-header">
+      <h3>Tambah Session WA</h3>
+      <button class="wa-modal-close" onclick="closeModal('addSessionModal')">✕</button>
+    </div>
+    <div class="wa-modal-body">
+      <div class="form-group"><label class="form-label">Nama Session</label><input type="text" class="form-control" id="newSessionName" placeholder="Contoh: CS Utama, Billing"></div>
+      <div class="form-group"><label class="form-label">Catatan (opsional)</label><input type="text" class="form-control" id="newSessionNotes" placeholder="Nomor yang dipakai, dll"></div>
+    </div>
+    <div class="wa-modal-footer">
+      <button class="btn-wa btn-wa-secondary" onclick="closeModal('addSessionModal')">Batal</button>
+      <button class="btn-wa btn-wa-primary" onclick="saveNewSession()">Buat Session</button>
+    </div>
+  </div>
+</div>
+
+<!-- Auto Reply Rule -->
+<div class="modal-overlay" id="ruleModal">
+  <div class="wa-modal">
+    <div class="wa-modal-header">
+      <h3 id="ruleModalTitle">Tambah Auto Reply</h3>
+      <button class="wa-modal-close" onclick="closeModal('ruleModal')">✕</button>
+    </div>
+    <div class="wa-modal-body">
+      <div class="form-group"><label class="form-label">Keyword</label><input type="text" class="form-control" id="ruleKeyword" placeholder="info tagihan"></div>
+      <div class="form-group"><label class="form-label">Tipe Match</label>
+        <select class="form-control" id="ruleMatchType">
+          <option value="contains">Contains (mengandung kata)</option>
+          <option value="exact">Exact (persis sama)</option>
+          <option value="startswith">Starts with (diawali)</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Balasan</label><textarea class="form-control" id="ruleReply" rows="4" placeholder="Ketik balasan otomatis..."></textarea></div>
+    </div>
+    <div class="wa-modal-footer">
+      <button class="btn-wa btn-wa-secondary" onclick="closeModal('ruleModal')">Batal</button>
+      <button class="btn-wa btn-wa-primary" onclick="saveRule()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Template -->
+<div class="modal-overlay" id="templateModal">
+  <div class="wa-modal">
+    <div class="wa-modal-header">
+      <h3 id="tmplModalTitle">Tambah Template</h3>
+      <button class="wa-modal-close" onclick="closeModal('templateModal')">✕</button>
+    </div>
+    <div class="wa-modal-body">
+      <div class="form-group"><label class="form-label">Nama Template</label><input type="text" class="form-control" id="tmplName" placeholder="Reminder Tagihan"></div>
+      <div class="form-group"><label class="form-label">Kategori</label>
+        <select class="form-control" id="tmplCategory">
+          <option value="invoice_reminder">Invoice Reminder</option>
+          <option value="payment_confirm">Konfirmasi Pembayaran</option>
+          <option value="isolir_warning">Peringatan Isolir</option>
+          <option value="welcome">Selamat Datang</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Pesan</label>
+        <textarea class="form-control" id="tmplMessage" rows="6" placeholder="Gunakan: {nama} {invoice} {jumlah} {jatuh_tempo} {status}"></textarea>
+        <div style="font-size:11px;color:#667781;margin-top:4px;">Variabel: {nama} {invoice} {jumlah} {jatuh_tempo} {status}</div>
+      </div>
+    </div>
+    <div class="wa-modal-footer">
+      <button class="btn-wa btn-wa-secondary" onclick="closeModal('templateModal')">Batal</button>
+      <button class="btn-wa btn-wa-primary" onclick="saveTemplate()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Broadcast -->
+<div class="modal-overlay" id="broadcastModal">
+  <div class="wa-modal" style="width:520px;">
+    <div class="wa-modal-header">
+      <h3>📢 Broadcast Pesan</h3>
+      <button class="wa-modal-close" onclick="closeModal('broadcastModal')">✕</button>
+    </div>
+    <div class="wa-modal-body">
+      <div class="form-group">
+        <label class="form-label">Penerima</label>
+        <div style="display:flex;gap:6px;margin-bottom:8px;">
+          <input type="text" class="form-control" id="bcNumberInput" placeholder="08123456789" style="flex:1;">
+          <button class="btn-wa btn-wa-secondary" onclick="addBcNumber()">+</button>
+          <button class="btn-wa btn-wa-secondary" onclick="loadCustomerNumbers()">Import</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;min-height:36px;padding:6px;border:1px solid #e9edef;border-radius:8px;margin-bottom:4px;" id="bcTags"></div>
+        <div style="font-size:11px;color:#667781;" id="bcCount">0 nomor</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Template</label>
+        <select class="form-control" id="bcTemplate" onchange="fillBcFromTemplate()"><option value="">-- Tulis manual --</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Pesan</label><textarea class="form-control" id="bcMsg" rows="5" placeholder="Pesan broadcast..."></textarea></div>
+      <div style="font-size:11px;color:#667781;">⏱ Delay 1-3 detik antar pesan untuk menghindari ban</div>
+    </div>
+    <div class="wa-modal-footer">
+      <button class="btn-wa btn-wa-secondary" onclick="closeModal('broadcastModal')">Batal</button>
+      <button class="btn-wa btn-wa-primary" onclick="sendBroadcast()">Kirim Broadcast</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reminder -->
+<div class="modal-overlay" id="reminderModal">
+  <div class="wa-modal">
+    <div class="wa-modal-header">
+      <h3>⏰ Kirim Reminder Invoice</h3>
+      <button class="wa-modal-close" onclick="closeModal('reminderModal')">✕</button>
+    </div>
+    <div class="wa-modal-body">
+      <div style="background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;">
+        Reminder dikirim otomatis tiap hari jam 08.00. Kamu bisa kirim manual di sini.
+      </div>
+      <div class="form-group">
+        <label class="form-label">Jatuh tempo dalam berapa hari ke depan</label>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="number" class="form-control" id="reminderDays" value="3" min="1" max="30" style="width:80px;">
+          <span style="font-size:13px;color:#667781;">hari ke depan + yang sudah overdue</span>
+        </div>
+      </div>
+      <div id="reminderResult"></div>
+    </div>
+    <div class="wa-modal-footer">
+      <button class="btn-wa btn-wa-secondary" onclick="closeModal('reminderModal')">Tutup</button>
+      <button class="btn-wa" style="background:#f59e0b;color:#fff;" onclick="sendReminders()">Kirim Sekarang</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/whatsapp.js"></script>
+
+<!-- Delete Chat Confirmation Modal -->
+<!-- Delete Session Modal -->
+<div id="deleteSessionModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#fff;border-radius:16px;padding:28px;max-width:380px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <div style="width:42px;height:42px;border-radius:12px;background:#fee2e2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="20" height="20" fill="none" stroke="#dc2626" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+      </div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#0d1b3e;">Hapus Session WA</div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px;">Tindakan ini tidak dapat dibatalkan</div>
+      </div>
+    </div>
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 14px;margin-bottom:18px;font-size:13px;color:#991b1b;line-height:1.6;">
+      Session <strong id="deleteSessionName">–</strong> akan dihapus permanen.<br>
+      Semua data auth dan log percakapan session ini akan hilang.
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="document.getElementById('deleteSessionModal').style.display='none'" style="flex:1;padding:11px;border-radius:10px;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:13.5px;font-weight:600;cursor:pointer;">Batal</button>
+      <button onclick="document.getElementById('deleteSessionModal').style.display='none';doDeleteSession()" style="flex:1;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:13.5px;font-weight:700;cursor:pointer;">Hapus Session</button>
+    </div>
+  </div>
+</div>
+
+<div id="deleteChatModal" class="wa-delete-modal" style="display:none;" onclick="if(event.target===this)closeDeleteModal()">
+  <div class="wa-delete-modal-box">
+    <div class="wa-delete-modal-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+      </svg>
+    </div>
+    <div class="wa-delete-modal-title">Hapus Percakapan?</div>
+    <div class="wa-delete-modal-desc" id="deleteChatDesc">Semua pesan dengan kontak ini akan dihapus permanen dan tidak bisa dikembalikan.</div>
+    <div class="wa-delete-modal-actions">
+      <button class="btn-del-cancel" onclick="closeDeleteModal()">Batal</button>
+      <button class="btn-del-confirm" onclick="confirmDeleteChat()">Hapus</button>
+    </div>
+  </div>
+</div>
+
+<!-- Context Menu (right-click on contact) -->
+<div id="waContextMenu" class="wa-context-menu" style="display:none;">
+  <div class="wa-context-menu-item" onclick="contextOpenChat()">💬 Buka Chat</div>
+  <div class="wa-context-menu-item danger" onclick="contextDeleteChat()">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+    Hapus Percakapan
+  </div>
+</div>
+</body>
+</html>

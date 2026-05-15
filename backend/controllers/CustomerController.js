@@ -1,0 +1,723 @@
+const { Customer, Package, Invoice, OntDevice } = require('../models');
+const { Op } = require('sequelize');
+const bcrypt = require('bcryptjs');
+const { generateUniqueCustomerId, paginateResponse } = require('../utils/helpers');
+
+class CustomerController {
+  async index(req, res) {
+    try {
+      const { page = 1, limit = 20, search, status, package_id } = req.query;
+      const where = {};
+      
+      if (search) {
+        where[Op.or] = [
+          { name: { [Op.like]: `%${search}%` } },
+          { customer_id: { [Op.like]: `%${search}%` } },
+          { phone: { [Op.like]: `%${search}%` } },
+          { address: { [Op.like]: `%${search}%` } }
+        ];
+      }
+      // overdue & due_soon adalah filter virtual — tidak set where.status
+      if (status && status !== 'overdue' && status !== 'due_soon') {
+        where.status = status
+      }
+      if (package_id) where.package_id = package_id;
+
+      const offset = (page - 1) * limit;
+      const { Invoice } = require('../models');
+      const { count, rows } = await Customer.findAndCountAll({
+        where,
+        include: [
+          { model: Package, as: 'package' },
+          {
+            model: Invoice, as: 'invoices',
+            attributes: ['id','due_date','status','paid_date','period_month','period_year'],
+            required: false,
+            order: [['due_date', 'DESC']],
+            separate: true,
+            limit: 1
+          }
+        ],
+        offset,
+        limit: (status === 'overdue' || status === 'due_soon') ? 999 : parseInt(limit),
+        order: [['created_at', 'DESC']]
+      });
+
+      // Logic PHP: due_date dari kolom customers.due_date
+      // latest_invoice_status dari invoice AKTUAL (unpaid/paid/overdue)
+      const todayDate = new Date(); todayDate.setHours(0,0,0,0);
+      const data = rows.map(c => {
+        const json     = c.toJSON();
+        const invoices = json.invoices || [];
+
+        // Cari invoice yang relevan
+        const unpaidInv = invoices.find(i => ['unpaid','overdue'].includes(i.status));
+        const latestInv = invoices[0] || null;
+
+        // due_date: dari kolom customers.due_date (diset manual/otomatis)
+        const dueDate = json.due_date || null;
+
+        // latest_invoice_status: cerminkan status invoice aktual
+        // Ini dipakai di frontend untuk menentukan badge overdue/due_soon/paid
+        let dueStatus = null;
+        if (unpaidInv) {
+          // Ada invoice belum lunas → status berdasarkan due_date customer
+          const dd = dueDate ? new Date(dueDate + 'T00:00:00') : null;
+          if (dd && dd < todayDate)  dueStatus = 'overdue';
+          else                        dueStatus = 'unpaid';
+        } else if (latestInv && latestInv.status === 'paid') {
+          dueStatus = 'paid';
+        } else if (!latestInv && dueDate) {
+          // Belum ada invoice — cek due_date langsung
+          const dd = new Date(dueDate + 'T00:00:00');
+          if (dd < todayDate) dueStatus = 'overdue';
+          else                dueStatus = 'active';
+        }
+
+        json.latest_invoice        = unpaidInv || latestInv;
+        json.latest_due_date       = dueDate;
+        json.latest_invoice_status = dueStatus;
+        return json;
+      });
+
+      // Post-process filter overdue / due_soon berdasarkan latest_due_date
+      let filtered = data;
+      const todayStr = new Date().toISOString().split('T')[0];
+      const in3days  = new Date(Date.now() + 3*86400000).toISOString().split('T')[0];
+
+      if (status === 'overdue') {
+        // Sama dengan stats: due_date < today + status active + ada invoice unpaid/overdue
+        filtered = data.filter(c =>
+          c.latest_invoice_status === 'overdue' &&
+          ['active','isolated'].includes(c.status)
+        );
+      } else if (status === 'due_soon') {
+        filtered = data.filter(c =>
+          c.latest_invoice_status === 'unpaid' &&
+          c.status === 'active' &&
+          c.latest_due_date &&
+          c.latest_due_date >= todayStr &&
+          c.latest_due_date <= in3days
+        );
+      }
+
+      // Hitung total yang benar untuk pagination
+      const filteredCount = (status === 'overdue' || status === 'due_soon') ? filtered.length : count;
+      res.json({ success: true, ...paginateResponse(filtered, filteredCount, page, limit) });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async create(req, res) {
+    try {
+      const data = req.body;
+      // Pisahkan flag send_wa_welcome dari data customer (bukan kolom DB)
+      const sendWA = !!data.send_wa_welcome;
+      delete data.send_wa_welcome;
+
+      if (!data.name) return res.status(400).json({ success: false, message: 'Nama customer wajib diisi' });
+
+      // Jika customer_id dikirim manual, validasi uniqueness
+      if (data.customer_id) {
+        data.customer_id = data.customer_id.trim().toUpperCase();
+        const exists = await Customer.findOne({ where: { customer_id: data.customer_id } });
+        if (exists) return res.status(400).json({ success: false, message: 'ID ' + data.customer_id + ' sudah digunakan' });
+      } else {
+        data.customer_id = await generateUniqueCustomerId(Customer);
+      }
+
+      // Validasi billing_date
+      if (data.billing_date !== undefined) {
+        const bd = parseInt(data.billing_date);
+        if (isNaN(bd) || bd < 1 || bd > 28) {
+          return res.status(400).json({ success: false, message: 'Tanggal tagihan harus antara 1-28' });
+        }
+      }
+
+      const customer = await Customer.create(data);
+      const full = await Customer.findByPk(customer.id, {
+        include: [{ model: Package, as: 'package' }]
+      });
+
+      // Kirim WA welcome (best-effort, tidak block response)
+      let waStatus = 'skipped';
+      if (sendWA && full.phone) {
+        try {
+          const result = await sendWelcomeWA(full);
+          waStatus = result?.sent ? 'sent' : (result?.reason || 'failed');
+        } catch (e) {
+          console.error('[Customer] sendWelcomeWA error:', e.message);
+          waStatus = 'failed';
+        }
+      } else if (sendWA && !full.phone) {
+        waStatus = 'no_phone';
+      }
+
+      res.status(201).json({ success: true, data: full, wa_status: waStatus });
+    } catch (error) {
+      const msg = error.name === 'SequelizeValidationError'
+        ? error.errors.map(e => e.message).join(', ')
+        : error.message;
+      res.status(400).json({ success: false, message: msg });
+    }
+  }
+
+  async update(req, res) {
+    try {
+      const customer = await Customer.findByPk(req.params.id);
+      if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+
+      if (req.body.billing_date !== undefined) {
+        const bd = parseInt(req.body.billing_date);
+        if (isNaN(bd) || bd < 1 || bd > 28) {
+          return res.status(400).json({ success: false, message: 'Tanggal tagihan harus antara 1-28' });
+        }
+      }
+
+      // SECURITY: Field portal credentials TIDAK BOLEH diupdate via endpoint umum
+      // karena password akan ter-bypass bcrypt dan disimpan plaintext.
+      // Gunakan POST /customers/:id/portal-credentials sebagai gantinya.
+      const sanitized = { ...req.body };
+      delete sanitized.portal_password;       // hanya boleh diset via updatePortalCredentials (di-bcrypt)
+      delete sanitized.customer_id;           // hanya boleh diubah via updatePortalCredentials (validasi unique)
+      delete sanitized.last_portal_login;     // diset otomatis oleh sistem saat login
+
+      await customer.update(sanitized);
+      const full = await Customer.findByPk(customer.id, {
+        include: [{ model: Package, as: 'package' }]
+      });
+      res.json({ success: true, data: full });
+    } catch (error) {
+      const msg = error.name === 'SequelizeValidationError'
+        ? error.errors.map(e => e.message).join(', ')
+        : error.message;
+      res.status(400).json({ success: false, message: msg });
+    }
+  }
+
+  // ── PORTAL CREDENTIALS (admin-only) ──────────────────────────────────
+  //
+  // Admin bisa:
+  //   - Mengubah customer_id (login ID portal pelanggan)
+  //   - Mengatur password baru (di-bcrypt sebelum simpan)
+  //   - Mengaktifkan/menonaktifkan akses portal
+  //
+  // Endpoint terpisah dari update() umum supaya:
+  //   1. Password DIPASTIKAN di-bcrypt (tidak bisa di-bypass via PUT generic)
+  //   2. Perubahan customer_id punya validasi unique yang jelas
+  //   3. Mudah di-permission/audit secara independen
+
+  async getPortalCredentials(req, res) {
+    try {
+      const customer = await Customer.findByPk(req.params.id, {
+        attributes: ['id', 'customer_id', 'name', 'phone', 'portal_enabled', 'last_portal_login']
+      });
+      if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+
+      // Tidak pernah kirim hash password ke frontend.
+      // Cuma kirim status: apakah password sudah diset, atau masih fallback ke nomor HP.
+      const raw = await Customer.findByPk(req.params.id, { attributes: ['portal_password'] });
+      const hasCustomPassword = !!(raw && raw.portal_password);
+
+      res.json({
+        success: true,
+        data: {
+          id:                 customer.id,
+          customer_id:        customer.customer_id,
+          name:               customer.name,
+          phone:              customer.phone,
+          portal_enabled:     customer.portal_enabled,
+          last_portal_login:  customer.last_portal_login,
+          has_custom_password: hasCustomPassword,
+          // Hint: kalau belum punya password custom, pelanggan login pakai nomor HP.
+          fallback_login_hint: hasCustomPassword
+            ? null
+            : (customer.phone || null)
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async updatePortalCredentials(req, res) {
+    try {
+      const customer = await Customer.findByPk(req.params.id);
+      if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+
+      const { customer_id, new_password, portal_enabled } = req.body;
+      const updates = {};
+
+      // 1) Ubah customer_id (login ID portal)
+      if (customer_id !== undefined && customer_id !== null) {
+        const newCid = String(customer_id).trim();
+        if (!newCid) {
+          return res.status(400).json({ success: false, message: 'Customer ID tidak boleh kosong' });
+        }
+        if (newCid.length > 20) {
+          return res.status(400).json({ success: false, message: 'Customer ID maksimal 20 karakter' });
+        }
+        // Hanya alphanumeric + dash/underscore — hindari karakter aneh untuk login ID
+        if (!/^[a-zA-Z0-9_-]+$/.test(newCid)) {
+          return res.status(400).json({ success: false, message: 'Customer ID hanya boleh huruf, angka, "-", dan "_"' });
+        }
+        if (newCid !== customer.customer_id) {
+          // Cek uniqueness (kecuali dirinya sendiri)
+          const existing = await Customer.findOne({
+            where: { customer_id: newCid, id: { [Op.ne]: customer.id } }
+          });
+          if (existing) {
+            return res.status(409).json({ success: false, message: `Customer ID "${newCid}" sudah dipakai pelanggan lain` });
+          }
+          updates.customer_id = newCid;
+        }
+      }
+
+      // 2) Set password baru (di-bcrypt)
+      let plainPasswordReturned = null; // hanya untuk response, supaya admin bisa share ke pelanggan
+      if (new_password !== undefined && new_password !== null && new_password !== '') {
+        const pw = String(new_password);
+        if (pw.length < 6) {
+          return res.status(400).json({ success: false, message: 'Password minimal 6 karakter' });
+        }
+        if (pw.length > 100) {
+          return res.status(400).json({ success: false, message: 'Password maksimal 100 karakter' });
+        }
+        updates.portal_password = await bcrypt.hash(pw, 10);
+        plainPasswordReturned   = pw; // dikirim kembali sekali untuk ditampilkan admin
+      }
+
+      // 3) Toggle portal_enabled
+      if (portal_enabled !== undefined) {
+        updates.portal_enabled = !!portal_enabled;
+      }
+
+      if (!Object.keys(updates).length) {
+        return res.status(400).json({ success: false, message: 'Tidak ada perubahan' });
+      }
+
+      await customer.update(updates);
+
+      res.json({
+        success: true,
+        message: 'Kredensial portal berhasil diperbarui',
+        data: {
+          customer_id:    customer.customer_id,
+          portal_enabled: customer.portal_enabled,
+          // password plaintext HANYA dikirim balik sekali, di response ini saja, tidak disimpan log.
+          // Frontend menampilkan ke admin supaya bisa share ke pelanggan (mis. via WA).
+          new_password:   plainPasswordReturned
+        }
+      });
+    } catch (error) {
+      const msg = error.name === 'SequelizeValidationError'
+        ? error.errors.map(e => e.message).join(', ')
+        : error.message;
+      res.status(400).json({ success: false, message: msg });
+    }
+  }
+
+  // Reset password ke default = nomor HP pelanggan (atau kosongkan password custom)
+  async resetPortalPassword(req, res) {
+    try {
+      const customer = await Customer.findByPk(req.params.id);
+      if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+
+      // Set portal_password = null → CustomerPortalController.login akan fallback ke phone match
+      await customer.update({ portal_password: null });
+
+      res.json({
+        success: true,
+        message: 'Password direset. Pelanggan dapat login menggunakan nomor HP-nya.',
+        data: {
+          fallback_login_hint: customer.phone || null
+        }
+      });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  async show(req, res) {
+    try {
+      const customer = await Customer.findByPk(req.params.id, {
+        include: [
+          { model: Package, as: 'package' },
+          { model: OntDevice, as: 'ont_device' }
+        ]
+      });
+      if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+
+      // Ambil invoice terpisah dengan order & limit yang valid
+      const invoices = await Invoice.findAll({
+        where: { customer_id: req.params.id },
+        order: [['created_at', 'DESC']],
+        limit: 12
+      });
+
+      const result = customer.toJSON();
+      result.invoices = invoices;
+
+      // Logic PHP: due_date dari kolom customers, status dari invoice aktual
+      const unpaidInv2 = invoices.find(i => ['unpaid','overdue'].includes(i.status));
+      const dueDate    = result.due_date || null;
+      const todayNow   = new Date(); todayNow.setHours(0,0,0,0);
+      let dueStatus2 = null;
+      if (unpaidInv2) {
+        const dd = dueDate ? new Date(dueDate + 'T00:00:00') : null;
+        dueStatus2 = (dd && dd < todayNow) ? 'overdue' : 'unpaid';
+      } else if (invoices.length > 0 && invoices[0].status === 'paid') {
+        dueStatus2 = 'paid';
+      } else if (!invoices.length && dueDate) {
+        const dd = new Date(dueDate + 'T00:00:00');
+        dueStatus2 = dd < todayNow ? 'overdue' : 'active';
+      }
+      result.latest_due_date         = dueDate;
+      result.latest_invoice_status   = dueStatus2;
+
+      res.json({ success: true, data: result });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async destroy(req, res) {
+    try {
+      const customer = await Customer.findByPk(req.params.id);
+      if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+      await customer.destroy();
+      res.json({ success: true, message: 'Customer deleted' });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  // Get stats
+  async stats(req, res) {
+    try {
+      const { Invoice } = require('../models');
+      const today = new Date().toISOString().slice(0, 10);
+      const in3days = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+
+      const total    = await Customer.count();
+      const active   = await Customer.count({ where: { status: 'active' } });
+      const isolated = await Customer.count({ where: { status: 'isolated' } });
+      const inactive = await Customer.count({ where: { status: 'inactive' } });
+      const suspended= await Customer.count({ where: { status: 'suspended' } });
+
+      // Overdue & due_soon: gunakan logika IDENTIK dengan filter di index()
+      // Fetch semua customer aktif beserta invoice terbaru → kalkulasi status → count
+      const allForStats = await Customer.findAll({
+        where: { status: { [Op.in]: ['active','isolated','suspended'] } },
+        attributes: ['id','status','due_date'],
+        include: [{
+          model: Invoice, as: 'invoices',
+          attributes: ['id','status','due_date'],
+          required: false,
+          separate: true,
+          order: [['created_at','DESC']],
+          limit: 3
+        }]
+      });
+
+      const todayDt = new Date(today + 'T00:00:00');
+      const in3Dt   = new Date(in3days + 'T00:00:00');
+      let overdue = 0, due_soon = 0;
+
+      for (const cust of allForStats) {
+        const invs      = cust.invoices || [];
+        const dueDate   = cust.due_date;
+        if (!dueDate) continue;
+
+        const dueDt     = new Date(dueDate + 'T00:00:00');
+        const unpaidInv = invs.find(i => ['unpaid','overdue'].includes(i.status));
+
+        // Kalkulasi latest_invoice_status — identik dengan index()
+        let dueStatus = null;
+        if (unpaidInv) {
+          dueStatus = dueDt < todayDt ? 'overdue' : 'unpaid';
+        } else if (invs.length > 0 && invs[0].status === 'paid') {
+          dueStatus = 'paid';
+        } else if (invs.length === 0) {
+          dueStatus = dueDt < todayDt ? 'overdue' : 'active';
+        }
+
+        // Count — sama persis dengan filter di index()
+        if (dueStatus === 'overdue' && ['active','isolated'].includes(cust.status)) overdue++;
+        if (dueStatus === 'unpaid'  && cust.status === 'active' && dueDt >= todayDt && dueDt <= in3Dt) due_soon++;
+      }
+
+      // Revenue = ESTIMASI pendapatan bulanan dari customer aktif.
+      // Dihitung: SUM(packages.price) untuk semua customer dengan status='active'
+      // yang punya paket. Customer tanpa paket tidak ikut dihitung.
+      // Catatan: ini bukan revenue real (belum tentu lunas) — hanya estimasi
+      // recurring monthly income kalau semua customer aktif bayar tepat waktu.
+      const { sequelize } = require('../models');
+
+      let monthly_revenue = 0;
+      try {
+        const revRows = await sequelize.query(`
+          SELECT COALESCE(SUM(p.price), 0) AS total
+          FROM customers c
+          INNER JOIN packages p ON p.id = c.package_id
+          WHERE c.status = 'active'
+            AND c.package_id IS NOT NULL
+        `, {
+          type: sequelize.QueryTypes.SELECT
+        });
+        monthly_revenue = parseFloat((revRows && revRows[0]?.total) || 0);
+      } catch (e) {
+        // Fallback ke 0 kalau query gagal (misal tabel belum ada)
+        monthly_revenue = 0;
+      }
+
+      res.json({
+        success: true,
+        data: { total, active, isolated, inactive, suspended, overdue, due_soon, monthly_revenue }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  // Get all for map
+  async mapData(req, res) {
+    try {
+      const customers = await Customer.findAll({
+        where: {
+          latitude: { [Op.not]: null },
+          longitude: { [Op.not]: null }
+        },
+        attributes: ['id', 'customer_id', 'name', 'address', 'phone', 'status', 'latitude', 'longitude', 'pppoe_username', 'static_ip'],
+        include: [{ model: Package, as: 'package', attributes: ['id', 'name', 'price'] }]
+      });
+      res.json({ success: true, data: customers });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  // Cek apakah customer_id sudah dipakai
+  async checkCustomerId(req, res) {
+    try {
+      const { customer_id, exclude_id } = req.query;
+      if (!customer_id) return res.status(400).json({ success: false, message: 'customer_id wajib' });
+      const where = { customer_id };
+      if (exclude_id) where.id = { [Op.ne]: exclude_id };
+      const exists = await Customer.findOne({ where });
+      res.json({ success: true, available: !exists });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  // Ambil next auto-generated customer_id
+  async nextCustomerId(req, res) {
+    try {
+      const nextId = await generateUniqueCustomerId(Customer, 'CID');
+      res.json({ success: true, customer_id: nextId });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// HELPER: Kirim WA welcome ke pelanggan baru
+// Load template kategori 'welcome' yang aktif (latest), render placeholder,
+// kirim via WAService. Best-effort — kegagalan tidak throw.
+// ════════════════════════════════════════════════════════════════
+function _renderWelcomeTemplate(content, ctx) {
+  if (!content) return '';
+  let out = String(content);
+  Object.keys(ctx || {}).forEach(k => {
+    const val = ctx[k] == null ? '' : String(ctx[k]);
+    out = out.split(`{${k}}`).join(val);
+  });
+  return out;
+}
+
+const DEFAULT_WELCOME_TPL = `🎉 *Selamat Datang di {perusahaan}!*
+
+Yth. *{nama}*,
+
+Akun layanan internet Anda telah berhasil dibuat. Berikut detail akun Anda:
+
+📋 ID Pelanggan: *{cid}*
+📦 Paket: {paket}
+📅 Tanggal Pemasangan: {tgl_install}
+📞 Hubungi kami: {phone_cs}
+
+Tim kami akan segera menghubungi Anda untuk konfirmasi pemasangan.
+
+Terima kasih telah memilih layanan kami 🙏
+_${`{perusahaan}`}_`;
+
+async function sendWelcomeWA(customer) {
+  const { sequelize, WaSession } = require('../models');
+
+  // Cek toggle setting (default: ON)
+  try {
+    const sett = await sequelize.query(
+      "SELECT value FROM app_settings WHERE `key`='welcome_wa_enable'",
+      { type: sequelize.QueryTypes.SELECT }
+    );
+    if (sett[0] && sett[0].value === '0') return { sent: false, reason: 'disabled' };
+  } catch(_) { /* abaikan, default-nya kirim */ }
+
+  // Cek WA session aktif
+  const session = await WaSession.findOne({ where: { status: 'connected' } });
+  if (!session) return { sent: false, reason: 'no_wa_session' };
+
+  // Format helpers
+  const fmtDate = (d) => {
+    if (!d) return '-';
+    try {
+      const dt = new Date(d);
+      const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+      return `${dt.getDate()} ${months[dt.getMonth()]} ${dt.getFullYear()}`;
+    } catch(_) { return String(d); }
+  };
+  const fmtIDR = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
+
+  // Build context
+  const pkg = customer.package || {};
+
+  // Hitung jatuh tempo invoice pertama
+  // Prioritas: customer.due_date → installation_date + 30 hari → today + 30 hari
+  let jatuhTempoDate;
+  if (customer.due_date) {
+    jatuhTempoDate = new Date(customer.due_date);
+  } else if (customer.installation_date) {
+    jatuhTempoDate = new Date(customer.installation_date);
+    jatuhTempoDate.setDate(jatuhTempoDate.getDate() + 30);
+  } else {
+    jatuhTempoDate = new Date();
+    jatuhTempoDate.setDate(jatuhTempoDate.getDate() + 30);
+  }
+
+  const ctx = {
+    nama:           customer.name || '',
+    cid:            customer.customer_id || '',
+    phone:          customer.phone || '',
+    nohp:           customer.phone || '',
+    email:          customer.email || '-',
+    alamat:         customer.address || '-',
+    paket:          pkg.name || '-',
+    harga_paket:    fmtIDR(pkg.price),
+    tgl_install:    fmtDate(customer.installation_date) === '-' ? fmtDate(new Date()) : fmtDate(customer.installation_date),
+    jatuh_tempo:    fmtDate(jatuhTempoDate),
+    tgl_jatuh_tempo:fmtDate(jatuhTempoDate),  // alias
+    // Tetap dukung placeholder lama (kalau user pakai di template)
+    pppoe_user:     customer.pppoe_username || '-',
+    static_ip:      customer.static_ip || '-',
+    phone_cs:       process.env.COMPANY_PHONE || process.env.SUPPORT_PHONE || '-',
+    perusahaan:     process.env.COMPANY_NAME || process.env.APP_NAME || 'ISP Provider'
+  };
+
+  // Load template welcome aktif
+  let tplContent = null;
+  try {
+    const rows = await sequelize.query(
+      `SELECT content, message FROM wa_templates
+        WHERE category = 'welcome' AND is_active = 1
+        ORDER BY updated_at DESC LIMIT 1`,
+      { type: sequelize.QueryTypes.SELECT }
+    );
+    tplContent = rows[0]?.content || rows[0]?.message || null;
+  } catch(_) {}
+
+  if (!tplContent) tplContent = DEFAULT_WELCOME_TPL;
+  const msg = _renderWelcomeTemplate(tplContent, ctx);
+
+  // Send via WAService
+  try {
+    const WAService = require('../services/WAService');
+    await WAService.sendMessage(session.session_id, customer.phone, msg, null);
+
+    // Update usage counter (best-effort)
+    try {
+      await sequelize.query(
+        `UPDATE wa_templates SET usage_count = usage_count + 1
+          WHERE category = 'welcome' AND is_active = 1
+          ORDER BY updated_at DESC LIMIT 1`
+      );
+    } catch(_) {}
+
+    return { sent: true };
+  } catch (e) {
+    console.error('[Customer] WAService.sendMessage error:', e.message);
+    return { sent: false, reason: 'send_failed' };
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// AUTO-MIGRATION: tambah 'welcome' ke ENUM wa_templates.category +
+// auto-seed default template welcome. Idempotent.
+// ════════════════════════════════════════════════════════════════
+async function ensureWelcomeTemplate() {
+  try {
+    const { sequelize } = require('../models');
+
+    // 1. Expand ENUM kalau belum ada 'welcome'
+    try {
+      const [enumRow] = await sequelize.query(
+        `SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'wa_templates' AND COLUMN_NAME = 'category'`,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+      if (enumRow && !String(enumRow.COLUMN_TYPE || '').includes("'welcome'")) {
+        await sequelize.query(
+          `ALTER TABLE wa_templates MODIFY COLUMN category
+           ENUM('reminder_before','reminder_due','reminder_overdue',
+                'broadcast','custom','payment_confirm','isolir','restore','welcome')
+           NOT NULL DEFAULT 'custom'`
+        );
+        console.log('[CustomerController] wa_templates.category ENUM expanded with welcome');
+      }
+    } catch(e) {
+      console.error('[CustomerController] expand ENUM error:', e.message);
+    }
+
+    // 2. Auto-seed default template welcome kalau belum ada
+    try {
+      const existing = await sequelize.query(
+        `SELECT id FROM wa_templates WHERE category='welcome' LIMIT 1`,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+      if (existing.length === 0) {
+        const variables = ['nama','cid','phone','email','alamat','paket','harga_paket','tgl_install','pppoe_user','static_ip','perusahaan','phone_cs'];
+        await sequelize.query(
+          `INSERT INTO wa_templates (name, category, content, message, variables, is_active, created_at, updated_at)
+           VALUES (?, 'welcome', ?, ?, ?, 1, NOW(), NOW())`,
+          { replacements: ['Notifikasi Pelanggan Baru', DEFAULT_WELCOME_TPL, DEFAULT_WELCOME_TPL, JSON.stringify(variables)] }
+        );
+        console.log('[CustomerController] seeded default welcome template');
+      }
+    } catch(e) {
+      console.error('[CustomerController] seed welcome template error:', e.message);
+    }
+
+    // 3. Auto-seed setting toggle welcome_wa_enable (default ON)
+    try {
+      const sett = await sequelize.query(
+        `SELECT value FROM app_settings WHERE \`key\`='welcome_wa_enable'`,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+      if (sett.length === 0) {
+        await sequelize.query(
+          `INSERT INTO app_settings (\`key\`, value, created_at, updated_at)
+           VALUES ('welcome_wa_enable', '1', NOW(), NOW())`
+        ).catch(() => {});
+      }
+    } catch(_) {}
+  } catch(e) {
+    console.error('[CustomerController] ensureWelcomeTemplate error:', e.message);
+  }
+}
+
+// Jalankan migration di module load
+ensureWelcomeTemplate();
+
+module.exports = new CustomerController();

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    :root{--d-bg:#eef2f9;--d-card:#fff;--d-border:#e0e7f3;--d-text:#0d1b3e;--d-muted:#6b7fa8;--d-blue1:#1a6ef5;}
+    .tpl-page{font-family:'DM Sans',sans-serif;}
+    /* ── STAT CARDS — single strip ── */
+    .fin-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      background: #fff; border-radius: 16px;
+      border: 1px solid #e8eaed; overflow: hidden; margin-bottom: 20px;
+    }
+    .fin-card {
+      padding: 20px 22px 18px; border-right: 1px solid #e8eaed;
+      cursor: pointer; display: flex; flex-direction: column; gap: 0;
+      position: relative; overflow: hidden; transition: background .15s;
+    }
+    .fin-card::before, .fin-card::after { display:none !important; content:none !important; }
+    .fin-card:last-child { border-right: none; }
+    .fin-card:hover { background: #fafbff; }
+    .fin-card.fc-active { background: #2563eb; border-color: #2563eb; }
+    .fin-card.fc-active:hover { background: #1d4ed8; }
+    .fin-card.fc-active .xc-lbl  { color: rgba(255,255,255,.70); }
+    .fin-card.fc-active .xc-val  { color: #fff; }
+    .fin-card.fc-active .xc-sub  { color: rgba(255,255,255,.60); }
+    .fin-card.fc-active .xc-pill { background: rgba(255,255,255,.20) !important; color: rgba(255,255,255,.90) !important; }
+    .fin-card.fc-active .sp-line { stroke: rgba(255,255,255,.70) !important; }
+    .fin-card.fc-active .sp-fill { fill: rgba(255,255,255,.12) !important; }
+    .fin-card.fc-active .sp-dot  { fill: #fff !important; }
+    .xc-lbl  { font-size:12px; font-weight:500; color:#64748b; margin-bottom:10px; letter-spacing:.1px; transition:color .15s; }
+    .xc-body { display:flex; align-items:flex-end; justify-content:space-between; gap:8px; }
+    .xc-left { display:flex; flex-direction:column; min-width:0; }
+    .xc-val  { font-size:30px; font-weight:800; color:#0f172a; letter-spacing:-1.2px; line-height:1; transition:color .15s; }
+    @media(max-width:1400px){ .xc-val { font-size:26px; } }
+    .xc-meta { display:flex; align-items:center; gap:5px; margin-top:6px; flex-wrap:wrap; }
+    .xc-pill { display:inline-flex; align-items:center; gap:2px; padding:1px 6px; border-radius:100px; font-size:10.5px; font-weight:700; white-space:nowrap; flex-shrink:0; transition:all .15s; }
+    .xc-blue   { background:#dbeafe; color:#1d4ed8; }
+    .xc-green  { background:#dcfce7; color:#16a34a; }
+    .xc-amber  { background:#fef3c7; color:#b45309; }
+    .xc-teal   { background:#cffafe; color:#0e7490; }
+    .xc-sub  { font-size:11px; color:#94a3b8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:color .15s; }
+    .xc-spark { flex-shrink:0; width:72px; height:36px; }
+    .xc-spark svg { width:72px; height:36px; }
+    .sp-fill { transition:fill .3s; }
+    .sp-line { stroke-width:1.8; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+    .sp-dot  { }
+    @media(max-width:700px) {
+      .fin-grid { grid-template-columns:repeat(2,1fr); }
+      .fin-card { border-right:none; border-bottom:1px solid #e8eaed; }
+      .fin-card:nth-child(odd)  { border-right:1px solid #e8eaed; }
+      .fin-card:nth-child(even) { border-right:none; }
+      .fin-card:nth-last-child(-n+2) { border-bottom:none; }
+    }
+    @media(max-width:400px) {
+      .fin-grid { grid-template-columns:1fr; }
+      .fin-card { border-right:none !important; border-bottom:1px solid #e8eaed; }
+      .fin-card:last-child { border-bottom:none; }
+    }
+        .form-card{background:#fff;border:1px solid var(--d-border);border-radius:22px;padding:22px;position:sticky;top:78px;}
+    .pf-label{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--d-muted);display:block;margin-bottom:6px;}
+    .pf-input,.pf-select{width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--d-border);font-size:13px;box-sizing:border-box;font-family:'DM Sans',sans-serif;outline:none;transition:all .15s;}
+    .pf-input:focus,.pf-select:focus{border-color:var(--d-blue1);box-shadow:0 0 0 3px rgba(26,110,245,.1);}
+    .pf-textarea{width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--d-border);font-size:12.5px;box-sizing:border-box;font-family:'DM Mono',monospace;resize:vertical;min-height:160px;line-height:1.7;outline:none;transition:all .15s;}
+    .pf-textarea:focus{border-color:var(--d-blue1);box-shadow:0 0 0 3px rgba(26,110,245,.1);}
+    .pf-field{margin-bottom:14px;}
+    /* Template list */
+    .tpl-card{background:#fff;border:1.5px solid var(--d-border);border-radius:14px;margin-bottom:10px;overflow:hidden;transition:all .2s;}
+    .tpl-card:hover{box-shadow:0 4px 20px rgba(26,110,245,.08);border-color:#c7d8ff;}
+    .tpl-card.inactive{opacity:.6;}
+    .tpl-preview{margin:0 14px 14px;padding:12px 14px;background:#f8faff;border-radius:10px;border:1px solid var(--d-border);cursor:pointer;}
+    .tpl-preview-text{font-size:12px;color:var(--d-text);font-family:'DM Mono',monospace;line-height:1.7;white-space:pre-wrap;max-height:80px;overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,black 50%,transparent 100%);}
+    .tpl-preview-text.expanded{max-height:400px;-webkit-mask-image:none;}
+    .cat-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--d-border);}
+    .var-chip{display:inline-flex;padding:3px 8px;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:11.5px;font-weight:600;color:var(--d-blue1);cursor:pointer;transition:background .1s;font-family:'DM Mono',monospace;}
+    .var-chip:hover{background:#dde9ff;}
+    .act-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;border:1.5px solid;transition:all .12s;}
+    .act-edit{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8;} .act-edit:hover{background:#dbeafe;}
+    .act-tog{background:#f8faff;border-color:var(--d-border);color:var(--d-muted);} .act-tog:hover{background:#f0f4ff;}
+    .act-del{background:#fff0f2;border-color:#fecaca;color:#dc2626;} .act-del:hover{background:#fee2e2;}
+    /* ── WA Chat Preview (mirip halaman wa/report) ── */
+    .wa-screen {
+      background: #efeae2;
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h60v60H0z' fill='%23e8ddd0' fill-opacity='.3'/%3E%3C/svg%3E");
+      border-radius: 0 0 12px 12px;
+      padding: 12px 10px 16px;
+      min-height: 180px;
+      max-height: 460px;
+      overflow-y: auto;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .wa-screen::-webkit-scrollbar { width: 4px; }
+    .wa-screen::-webkit-scrollbar-track { background: transparent; }
+    .wa-screen::-webkit-scrollbar-thumb { background: rgba(0,0,0,.2); border-radius: 4px; }
+
+    .wa-topbar {
+      background: #075e54;
+      border-radius: 12px 12px 0 0;
+      padding: 10px 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .wa-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: #128c7e;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .wa-avatar svg { width: 20px; height: 20px; stroke: rgba(255,255,255,.9); fill: none; stroke-width: 1.8; }
+    .wa-contact-name { font-size: 13.5px; font-weight: 700; color: #fff; line-height: 1; }
+    .wa-contact-status { font-size: 11px; color: rgba(255,255,255,.65); margin-top: 2px; }
+    .wa-topbar-dots { margin-left: auto; display: flex; gap: 3px; }
+    .wa-topbar-dots span { width: 4px; height: 4px; background: rgba(255,255,255,.7); border-radius: 50%; display: block; }
+
+    .wa-date-pill {
+      align-self: center;
+      background: rgba(255,255,255,.85);
+      padding: 3px 10px; border-radius: 10px;
+      font-size: 10px; font-weight: 600; color: #64748b;
+      margin: 4px 0 8px;
+    }
+
+    .wa-bubble-wrap { display: flex; justify-content: flex-end; padding: 0 2px; }
+    .wa-bubble {
+      background: #d9fdd3;
+      border-radius: 12px 2px 12px 12px;
+      padding: 8px 10px 6px 12px;
+      max-width: 88%;
+      box-shadow: 0 1px 2px rgba(0,0,0,.12);
+      position: relative;
+      font-family: -apple-system, 'Segoe UI', sans-serif;   /* override DM Mono */
+    }
+    .wa-bubble::before {
+      content: '';
+      position: absolute;
+      top: 0; right: -8px;
+      border-width: 0 0 10px 10px;
+      border-style: solid;
+      border-color: transparent transparent transparent #d9fdd3;
+    }
+    .wa-bubble-text {
+      font-size: 13px;
+      white-space: pre-wrap;
+      line-height: 1.6;
+      color: #111b21;
+      word-break: break-word;
+    }
+    .wa-bold   { font-weight: 700; }
+    .wa-italic { font-style: italic; }
+    .wa-strike { text-decoration: line-through; }
+    .wa-mono   { font-family: ui-monospace, 'JetBrains Mono', 'DM Mono', monospace; background: rgba(0,0,0,.06); padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+    .wa-bubble-footer {
+      display: flex; align-items: center; justify-content: flex-end;
+      gap: 4px; margin-top: 4px;
+    }
+    .wa-bubble-time { font-size: 10.5px; color: #667781; }
+    .wa-tick { display: inline-flex; align-items: center; }
+    .wa-tick svg { width: 16px; height: 11px; fill: #53bdeb; }
+    .wa-preview-footer {
+      padding: 7px 14px; background: #f0f2f5; border-top: 1px solid #e9edef;
+      display: flex; align-items: center; justify-content: space-between;
+      border-radius: 0 0 0 0;
+    }
+    .wa-preview-footer span:first-child { font-size: 10.5px; color: #667781; font-style: italic; }
+    .pay-btn{width:100%;padding:11px;border-radius:11px;font-size:13.5px;font-weight:700;background:linear-gradient(135deg,#1a6ef5,#0047cc);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:'DM Sans',sans-serif;transition:opacity .15s;}
+    .pay-btn:hover{opacity:.9;}
+    .pay-btn.ghost{background:#f4f8ff;color:var(--d-blue1);border:1.5px solid var(--d-border);}
+    .empty-state{padding:50px 20px;text-align:center;color:#94a3b8;}
+    .empty-state svg{width:44px;height:44px;margin-bottom:10px;opacity:.35;}
+  </style>
+</head>
+<body>
+<div class="app-layout tpl-page">
+  <%- include('../partials/sidebar') %>
+  <div class="main-content">
+    <%- include('../partials/topbar') %>
+    <main class="page-content">
+      <!-- Header -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;" class="a1">
+        <div>
+          <h1 style="font-size:22px;font-weight:800;color:#0d1b3e;margin:0 0 4px;">Template Pesan</h1>
+          <p style="font-size:13px;color:var(--d-muted);margin:0;" id="tplHeaderSub">Kelola template pesan WhatsApp</p>
+        </div>
+      </div>
+      <!-- Stats -->
+      <div class="fin-grid">
+        <div class="fin-card fc-active" id="fcc-total" data-filter="total" onclick="wtCardClick(this)">
+          <div class="xc-lbl">Total</div>
+          <div class="xc-body">
+            <div class="xc-left">
+              <span class="xc-val" id="fcTotal">0</span>
+              <div class="xc-meta">
+                <span class="xc-pill xc-blue" id="fcp-total">—</span>
+                <span class="xc-sub">Semua template</span>
+              </div>
+            </div>
+            <div class="xc-spark">
+              <svg id="sp-total" viewBox="0 0 72 36" preserveAspectRatio="none">
+                <path class="sp-fill" id="sp-total-fill" d="" fill="#2563eb" opacity=".12"/>
+                <path class="sp-line" id="sp-total-line" d="" stroke="#2563eb"/>
+                <circle class="sp-dot" id="sp-total-dot" r="2.5" fill="#2563eb"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="fin-card" id="fcc-reminder" data-filter="reminder" onclick="wtCardClick(this)">
+          <div class="xc-lbl">Reminder</div>
+          <div class="xc-body">
+            <div class="xc-left">
+              <span class="xc-val" id="fcReminder">0</span>
+              <div class="xc-meta">
+                <span class="xc-pill xc-teal" id="fcp-reminder">—</span>
+                <span class="xc-sub">Template pengingat</span>
+              </div>
+            </div>
+            <div class="xc-spark">
+              <svg id="sp-reminder" viewBox="0 0 72 36" preserveAspectRatio="none">
+                <path class="sp-fill" id="sp-reminder-fill" d="" fill="#0891b2" opacity=".12"/>
+                <path class="sp-line" id="sp-reminder-line" d="" stroke="#0891b2"/>
+                <circle class="sp-dot" id="sp-reminder-dot" r="2.5" fill="#0891b2"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="fin-card" id="fcc-broadcast" data-filter="broadcast" onclick="wtCardClick(this)">
+          <div class="xc-lbl">Broadcast</div>
+          <div class="xc-body">
+            <div class="xc-left">
+              <span class="xc-val" id="fcBroadcast">0</span>
+              <div class="xc-meta">
+                <span class="xc-pill xc-amber" id="fcp-broadcast">—</span>
+                <span class="xc-sub">Template broadcast</span>
+              </div>
+            </div>
+            <div class="xc-spark">
+              <svg id="sp-broadcast" viewBox="0 0 72 36" preserveAspectRatio="none">
+                <path class="sp-fill" id="sp-broadcast-fill" d="" fill="#d97706" opacity=".12"/>
+                <path class="sp-line" id="sp-broadcast-line" d="" stroke="#d97706"/>
+                <circle class="sp-dot" id="sp-broadcast-dot" r="2.5" fill="#d97706"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="fin-card" id="fcc-custom" data-filter="custom" onclick="wtCardClick(this)">
+          <div class="xc-lbl">Custom / Payment</div>
+          <div class="xc-body">
+            <div class="xc-left">
+              <span class="xc-val" id="fcPayment">0</span>
+              <div class="xc-meta">
+                <span class="xc-pill xc-green" id="fcp-custom">—</span>
+                <span class="xc-sub">Custom & pembayaran</span>
+              </div>
+            </div>
+            <div class="xc-spark">
+              <svg id="sp-custom" viewBox="0 0 72 36" preserveAspectRatio="none">
+                <path class="sp-fill" id="sp-custom-fill" d="" fill="#16a34a" opacity=".12"/>
+                <path class="sp-line" id="sp-custom-line" d="" stroke="#16a34a"/>
+                <circle class="sp-dot" id="sp-custom-dot" r="2.5" fill="#16a34a"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Main layout -->
+      <div class="tpl-layout a5">
+        <!-- Left: template list -->
+        <div id="tplList"><div class="empty-state"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><p>Memuat template...</p></div></div>
+        <!-- Right: form -->
+        <div class="form-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--d-border);">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#1a6ef5,#0047cc);display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              </div>
+              <div style="font-size:14px;font-weight:700;color:var(--d-text);" id="formTitle">Buat Template</div>
+            </div>
+            <button onclick="resetForm()" style="background:#f4f8ff;border:1.5px solid var(--d-border);border-radius:8px;padding:5px 8px;cursor:pointer;color:var(--d-muted);">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+          </div>
+          <div class="pf-field">
+            <label class="pf-label">Nama Template *</label>
+            <input type="text" class="pf-input" id="fName" placeholder="Contoh: Reminder H-3">
+          </div>
+          <div class="pf-field">
+            <label class="pf-label">Kategori</label>
+            <select class="pf-select" id="fCat" onchange="onCatChange(this.value)">
+              <option value="reminder_before">Reminder Sebelum Jatuh Tempo</option>
+              <option value="reminder_due">Reminder Tepat Jatuh Tempo</option>
+              <option value="reminder_overdue">Reminder Overdue</option>
+              <option value="broadcast">Broadcast</option>
+              <option value="payment_confirm">Konfirmasi Pembayaran</option>
+              <option value="welcome">Selamat Datang Pelanggan Baru</option>
+              <option value="isolir">Notifikasi Isolir</option>
+              <option value="restore">Notifikasi Restore Layanan</option>
+              <option value="custom">Custom</option>
+            </select>
+            <div style="font-size:11px;color:var(--d-muted);margin-top:6px;line-height:1.5;">
+              <b>Reminder Tepat Jatuh Tempo</b> dipakai untuk invoice <i>unpaid</i>,
+              <b>Reminder Overdue</b> untuk invoice yang sudah lewat tempo. Sistem otomatis
+              memilih sesuai status saat tombol kirim reminder ditekan di halaman Billing.
+            </div>
+          </div>
+          <div class="pf-field">
+            <label class="pf-label">Isi Pesan *</label>
+            <textarea class="pf-textarea" id="fContent" placeholder="*Tagihan Internet {perusahaan}*&#10;&#10;Halo *{nama}*, tagihan internet Anda:&#10;&#10;No Invoice : *{invoice}*&#10;Paket      : {paket}&#10;Periode    : {periode}&#10;Tagihan    : *{jumlah}*&#10;Jatuh Tempo: *{jatuh_tempo}*&#10;&#10;Mohon segera lakukan pembayaran. Terima kasih 🙏" oninput="updatePreview()"></textarea>
+          </div>
+          <div style="margin-bottom:14px;">
+            <div class="pf-label" style="margin-bottom:6px;">Klik untuk sisipkan variabel</div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;" id="varChips">
+              <span class="var-chip" onclick="insertVar('{nama}')" title="Nama pelanggan">{nama}</span>
+              <span class="var-chip" onclick="insertVar('{nohp}')" title="Nomor HP pelanggan, contoh: 628123456789">{nohp}</span>
+              <span class="var-chip" onclick="insertVar('{invoice}')" title="No invoice (INV-XXXX-XXXXX)">{invoice}</span>
+              <span class="var-chip" onclick="insertVar('{paket}')" title="Nama paket layanan">{paket}</span>
+              <span class="var-chip" onclick="insertVar('{periode}')" title="Periode tagihan, contoh: April 2026">{periode}</span>
+              <span class="var-chip" onclick="insertVar('{jumlah}')" title="Total tagihan, contoh: Rp 100.000">{jumlah}</span>
+              <span class="var-chip" onclick="insertVar('{jatuh_tempo}')" title="Tanggal jatuh tempo, contoh: 17 April 2026">{jatuh_tempo}</span>
+              <span class="var-chip" onclick="insertVar('{status}')" title="⚠️ JATUH TEMPO / segera jatuh tempo">{status}</span>
+              <span class="var-chip" onclick="insertVar('{perusahaan}')" title="Nama perusahaan dari env COMPANY_NAME">{perusahaan}</span>
+            </div>
+          </div>
+          <!-- Preview -->
+          <div id="previewBox" style="display:none;margin-bottom:14px;">
+            <div class="pf-label" style="margin-bottom:6px;">Preview</div>
+            <div style="border-radius:12px;overflow:hidden;border:1px solid var(--d-border);box-shadow:0 1px 3px rgba(0,0,0,.06);">
+              <!-- Topbar WA -->
+              <div class="wa-topbar">
+                <div class="wa-avatar">
+                  <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+                </div>
+                <div>
+                  <div class="wa-contact-name" id="waContactName">Pelanggan</div>
+                  <div class="wa-contact-status" id="waContactStatus">online</div>
+                </div>
+                <div class="wa-topbar-dots"><span></span><span></span><span></span></div>
+              </div>
+              <!-- Chat screen -->
+              <div class="wa-screen">
+                <div class="wa-date-pill">Hari ini</div>
+                <div class="wa-bubble-wrap">
+                  <div class="wa-bubble">
+                    <div class="wa-bubble-text" id="previewText"></div>
+                    <div class="wa-bubble-footer">
+                      <span class="wa-bubble-time" id="waPreviewTime">–</span>
+                      <span class="wa-tick">
+                        <svg viewBox="0 0 16 11" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M11.071.653L4.42 7.304 1.929 4.813 1 5.742l3.42 3.42L12 1.582z"/>
+                          <path d="M15.071.653L8.42 7.304 7.5 6.384l-.929.929 1.849 1.849L16 1.582z"/>
+                        </svg>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Footer -->
+              <div class="wa-preview-footer">
+                <span>Preview otomatis · tidak nyata</span>
+                <span style="font-size:10.5px;color:#667781;" id="waPreviewLabel"></span>
+              </div>
+            </div>
+          </div>
+          <button class="pay-btn" onclick="saveTemplate()" id="saveBtn">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            <span id="saveBtnLabel">Simpan Template</span>
+          </button>
+          <button class="pay-btn ghost" onclick="resetForm()" style="margin-top:8px;">Reset Form</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/wa-templates.js"></script>
+
+<script>
+(function(){
+  const W=72,H=36,MAX=20;
+  const hist={total:[],reminder:[],broadcast:[],custom:[]};
+  const C={total:'#2563eb',reminder:'#0891b2',broadcast:'#d97706',custom:'#16a34a'};
+  const IDS={total:'fcTotal',reminder:'fcReminder',broadcast:'fcBroadcast',custom:'fcPayment'};
+  function sp(v){
+    if(!v||v.length<2)return null;
+    const mn=Math.min(...v),mx=Math.max(...v),r=mx-mn||1;
+    const p=v.map((n,i)=>[(i/(v.length-1))*W,H-((n-mn)/r)*(H-6)-3]);
+    const d=p.reduce((a,[x,y],i)=>{
+      if(!i)return'M'+x.toFixed(1)+','+y.toFixed(1);
+      const[px,py]=p[i-1],cx=(px+x)/2;
+      return a+' C'+cx.toFixed(1)+','+py.toFixed(1)+' '+cx.toFixed(1)+','+y.toFixed(1)+' '+x.toFixed(1)+','+y.toFixed(1);
+    },'');
+    const lp=p[p.length-1],fp=p[0];
+    return{d,fill:d+' L'+lp[0].toFixed(1)+','+H+' L'+fp[0].toFixed(1)+','+H+' Z',dot:lp};
+  }
+  function draw(id,v){
+    const s=sp(v);if(!s)return;
+    const f=document.getElementById(id+'-fill'),l=document.getElementById(id+'-line'),d=document.getElementById(id+'-dot');
+    if(f)f.setAttribute('d',s.fill);if(l)l.setAttribute('d',s.d);
+    if(d){d.setAttribute('cx',s.dot[0].toFixed(1));d.setAttribute('cy',s.dot[1].toFixed(1));}
+  }
+  function rn(id){const e=document.getElementById(id);return e?parseFloat(e.textContent.replace(/[^\d.]/g,''))||0:0;}
+  function upd(){
+    Object.keys(C).forEach(k=>{
+      const v=rn(IDS[k]);hist[k].push(v);if(hist[k].length>MAX)hist[k].shift();
+      draw('sp-'+k,hist[k]);
+      const p=document.getElementById('fcp-'+k);if(p)p.textContent=v;
+    });
+  }
+  window._wtUpd=upd;
+  Object.values(IDS).forEach(id=>{const e=document.getElementById(id);if(e)new MutationObserver(()=>setTimeout(upd,50)).observe(e,{childList:true,characterData:true,subtree:true});});
+  document.addEventListener('DOMContentLoaded',upd);
+})();
+
+function wtCardClick(el){
+  const all=document.querySelectorAll('.fin-card[data-filter]');
+  const C={total:'#2563eb',reminder:'#0891b2',broadcast:'#d97706',custom:'#16a34a'};
+  const wasActive=el.classList.contains('fc-active');
+  all.forEach(c=>{
+    c.classList.remove('fc-active');
+    const col=C[c.dataset.filter]||'#64748b';
+    const l=c.querySelector('.sp-line'),f=c.querySelector('.sp-fill'),d=c.querySelector('.sp-dot');
+    if(l)l.style.stroke=col;if(f)f.style.fill=col;if(d)d.style.fill=col;
+  });
+  if(!wasActive){
+    el.classList.add('fc-active');
+    const l=el.querySelector('.sp-line'),f=el.querySelector('.sp-fill'),d=el.querySelector('.sp-dot');
+    if(l)l.style.stroke='rgba(255,255,255,.70)';
+    if(f)f.style.fill='rgba(255,255,255,.12)';
+    if(d)d.style.fill='#fff';
+    // Highlight category in list (scroll to section)
+    const filter=el.dataset.filter;
+    const catMap={total:null,reminder:'reminder',broadcast:'broadcast',custom:'custom'};
+    const cat=catMap[filter];
+    if(cat){
+      const sec=document.querySelector('[data-cat="'+cat+'"]')||document.querySelector('.tpl-section');
+      if(sec)sec.scrollIntoView({behavior:'smooth',block:'start'});
+    } else {
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+  } else {
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+}
+</script>
+</body></html>

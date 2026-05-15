@@ -1,0 +1,3540 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/mikrotik-selector.js"></script>
+  <style>
+    /* ══ RESET & BASE ══════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --f: 'Geist', 'Plus Jakarta Sans', system-ui, sans-serif;
+      --fm: 'Geist Mono', monospace;
+      --bg: #f5f5f7;
+      --surface: #ffffff;
+      --surface2: #fafafa;
+      --border: #e8e8ed;
+      --border2: #f0f0f5;
+      --text: #1d1d1f;
+      --text2: #6e6e73;
+      --text3: #aeaeb2;
+      --blue: #0071e3;
+      --blue-l: #e8f1fd;
+      --green: #1a7f37;
+      --green-l: #e6f4ea;
+      --red: #d93025;
+      --red-l: #fce8e6;
+      --amber: #b45309;
+      --amber-l: #fef3c7;
+      --purple: #6d28d9;
+      --purple-l: #ede9fe;
+      --teal: #0e7490;
+      --teal-l: #e0f2fe;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.04), 0 0 0 1px rgba(0,0,0,.03);
+      --shadow: 0 4px 16px rgba(0,0,0,.06), 0 0 0 1px rgba(0,0,0,.03);
+      --shadow-lg: 0 16px 48px rgba(0,0,0,.12), 0 0 0 1px rgba(0,0,0,.04);
+      --rc: 16px;
+      --rc-sm: 10px;
+      --rc-lg: 20px;
+    }
+    body { font-family: var(--f); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+
+    /* ══ LAYOUT ════════════════════════════════════════════════ */
+    .hs-page { padding: 24px; max-width: none; }
+    @media (max-width: 768px) { .hs-page { padding: 16px; } }
+
+    /* ══ HEADER ════════════════════════════════════════════════ */
+    .page-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 28px;
+    }
+    .page-hdr-l { display: flex; align-items: center; gap: 14px; }
+    .page-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: linear-gradient(135deg, #0071e3, #34aadc);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(0,113,227,.25);
+    }
+    .page-icon svg { width: 22px; height: 22px; stroke: #fff; fill: none; }
+    .page-hdr-l h1 { font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -.3px; }
+    .page-hdr-l p { font-size: 13px; color: var(--text2); margin-top: 1px; }
+    .page-hdr-r { display: flex; gap: 8px; align-items: center; }
+
+    /* ══ LIVE BADGE ════════════════════════════════════════════ */
+    .live-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px; border-radius: 100px;
+      background: var(--green-l); color: var(--green);
+      font-size: 12px; font-weight: 600; letter-spacing: .1px;
+    }
+    .live-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green); animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ══ BUTTONS ═══════════════════════════════════════════════ */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: var(--rc-sm);
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: 1px solid transparent; transition: all .15s ease;
+      font-family: var(--f); white-space: nowrap; outline: none;
+    }
+    .btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-ghost { background: var(--surface); border-color: var(--border); color: var(--text2); }
+    .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+    .btn-primary { background: var(--blue); color: #fff; }
+    .btn-primary:hover { background: #0077ed; }
+    .btn-danger { background: var(--red-l); color: var(--red); border-color: #f5c6c3; }
+    .btn-danger:hover { background: #f9d7d5; }
+    .btn-success { background: var(--green-l); color: var(--green); border-color: #b7dfbe; }
+    .btn-success:hover { background: #d0ebd5; }
+    .btn-sm { padding: 5px 11px; font-size: 12px; border-radius: 8px; }
+    .btn-xs { padding: 3px 9px; font-size: 11px; border-radius: 7px; }
+    .btn-icon { padding: 7px; }
+
+    /* ══ STAT CARDS — single strip with dividers ══════════════ */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      background: #fff;
+      border-radius: 16px;
+      border: 1px solid #e8eaed;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    @media(max-width:1200px) { .stats-grid { grid-template-columns:repeat(3,1fr); } }
+    @media(max-width:900px)  { .stats-grid { grid-template-columns:repeat(3,1fr); } }
+    @media(max-width:700px) {
+      .stats-grid { grid-template-columns:repeat(2,1fr); }
+      .stat-card { border-right: none; border-bottom: 1px solid #e8eaed; }
+      .stat-card:nth-child(odd) { border-right: 1px solid #e8eaed; }
+      .stat-card:nth-child(even) { border-right: none; }
+      .stat-card:nth-last-child(-n+2) { border-bottom: none; }
+    }
+    @media(max-width:400px) {
+      .stats-grid { grid-template-columns:1fr; }
+      .stat-card { border-right: none !important; border-bottom: 1px solid #e8eaed; }
+      .stat-card:last-child { border-bottom: none; }
+    }
+    .stat-card.sc-active { border-color: #2563eb; }
+
+    /* ── Base card ── */
+    .stat-card {
+      padding: 20px 22px 18px;
+      min-height: 130px;
+      border-right: 1px solid #e8eaed;
+      cursor: pointer; position: relative;
+      transition: background .15s;
+      display: flex; flex-direction: column; gap: 0;
+    }
+    .stat-card:last-child { border-right: none; }
+    .stat-card:hover { background: #fafbff; }
+
+    /* ── Active state — biru solid ── */
+    .stat-card.sc-active { background: #2563eb; border-color: #2563eb; }
+    .stat-card.sc-active:hover { background: #1d4ed8; }
+    .stat-card.sc-active .sc-label     { color: rgba(255,255,255,.70); }
+    .stat-card.sc-active .sc-num       { color: #fff; }
+    .stat-card.sc-active .sc-sub       { color: rgba(255,255,255,.60); }
+    .stat-card.sc-active .sc-pill-up   { background: rgba(255,255,255,.20); color: #bbf7d0; }
+    .stat-card.sc-active .sc-pill-down { background: rgba(255,255,255,.20); color: #fecaca; }
+    .stat-card.sc-active .sc-pill-neu  { background: rgba(255,255,255,.18); color: rgba(255,255,255,.85); }
+    .stat-card.sc-active .sc-spark-line { stroke: rgba(255,255,255,.70) !important; }
+    .stat-card.sc-active .sc-spark-fill { fill: rgba(255,255,255,.12) !important; }
+    .stat-card.sc-active .sc-spark-dot  { fill: #fff !important; }
+
+    /* ── Label ── */
+    .sc-label {
+      font-size: 12px; font-weight: 500; color: #64748b;
+      margin-bottom: 10px; letter-spacing: .1px; transition: color .15s;
+    }
+
+    /* ── Body: angka kiri + sparkline kanan ── */
+    .sc-body {
+      display: flex; align-items: flex-end;
+      justify-content: space-between; gap: 8px;
+    }
+    .sc-left { display: flex; flex-direction: column; min-width: 0; }
+
+    /* ── Angka ── */
+    .sc-num {
+      font-size: 30px; font-weight: 800; color: #0f172a;
+      letter-spacing: -1.2px; line-height: 1; transition: color .15s;
+    }
+    @media (max-width: 1400px) { .sc-num { font-size: 26px; } }
+
+    /* ── Meta: trend pill + sub-text ── */
+    .sc-meta {
+      display: flex; flex-direction: column; gap: 3px; margin-top: 6px;
+    }
+    .sc-pill {
+      display: inline-flex; align-items: center; gap: 2px;
+      padding: 1px 6px; border-radius: 100px;
+      font-size: 10.5px; font-weight: 700;
+      white-space: nowrap; flex-shrink: 0; transition: all .15s;
+    }
+    .sc-pill svg { width: 7px; height: 7px; flex-shrink: 0; }
+    .sc-pill-up   { background: #dcfce7; color: #16a34a; }
+    .sc-pill-down { background: #fee2e2; color: #dc2626; }
+    .sc-pill-neu  { background: #f1f5f9; color: #64748b; }
+    .sc-sub {
+      font-size: 11px; color: #94a3b8;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      transition: color .15s;
+    }
+
+    /* ── Sparkline (kanan, sejajar angka) ── */
+    .sc-spark {
+      flex-shrink: 0; width: 72px; height: 36px;
+    }
+    .sc-spark svg { width: 72px; height: 36px; }
+    .sc-spark-fill { transition: fill .2s; }
+    .sc-spark-line { stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; transition: stroke .2s; }
+    .sc-spark-dot  { transition: fill .2s; }
+
+    @keyframes tcPulse {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%      { opacity:.4; transform:scale(1.4); }
+    }
+    #traffic-chart-panel select:focus { outline:none; border-color:#1e78ff; }
+        #tc-iface-select:focus { border-color:#2563eb !important; box-shadow:0 0 0 3px rgba(37,99,235,.12) !important; }
+    @media(max-width:640px){
+      #traffic-chart-panel .gf-panel-header { flex-wrap:wrap; gap:6px; }
+      #traffic-chart-panel .gf-panel-stats  { flex-wrap:wrap; gap:6px; }
+    }
+
+    /* Grafana-style panels (borrowed from device-monitor) */
+    .gf-toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    .gf-toolbar-title { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.07em; }
+    .gf-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:14px; }
+    @media(max-width:1100px){ .gf-grid { grid-template-columns:repeat(2,1fr); } }
+    @media(max-width:650px) { .gf-grid { grid-template-columns:1fr; } }
+    .gf-panel { background:#fff; border:1px solid #e8eaed; border-radius:4px; overflow:hidden; transition:border-color .15s; }
+    .gf-panel:hover { border-color:#1e78ff; }
+    .gf-panel-header { display:flex; align-items:center; justify-content:space-between; padding:7px 12px 5px; border-bottom:1px solid #f0f4f8; }
+    .gf-panel-title { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.06em; }
+    .gf-panel-stats { display:flex; gap:10px; }
+    .gf-stat { display:flex; align-items:baseline; gap:3px; }
+    .gf-stat-lbl { font-size:9px; font-weight:700; color:#94a3b8; text-transform:uppercase; }
+    .gf-stat-val { font-size:11px; font-weight:700; font-family:'Geist Mono',monospace; color:#0f172a; }
+    .gf-chart-area { height:140px; }
+
+    /* Legacy compat */
+    .stat-card-top, .stat-icon, .stat-sparkline { all: unset; display: none; }
+    .spark-bar-wrap, .spark-bar, .sc-bars, .sc-bar { display: none; }
+    .sc-icon-wrap, .sc-divider, .sc-sep, .sc-top  { display: none; }
+    .sc-r1, .sc-r2, .sc-r3, .sc-icon-box          { display: none; }
+    .sc-mid { display: contents; }
+    .sc-mid-left { display: contents; }
+
+
+
+            /* ══ GENERATE PANEL ════════════════════════════════════════ */
+    .gen-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--rc-lg);
+      padding: 24px;
+      margin-bottom: 24px;
+      position: relative; overflow: hidden;
+    }
+    .gen-panel::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(0,113,227,.04) 0%, rgba(52,170,220,.04) 100%);
+      pointer-events: none;
+    }
+    .gen-panel-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px; flex-wrap: wrap; gap: 10px;
+    }
+    .gen-panel-hdr-l { display: flex; align-items: center; gap: 12px; }
+    .gen-title-ico {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, #0071e3, #34aadc);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .gen-title-ico svg { width: 20px; height: 20px; stroke: #fff; fill: none; }
+    .gen-panel-hdr-l h2 { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -.2px; }
+    .gen-panel-hdr-l p { font-size: 12.5px; color: var(--text2); margin-top: 1px; }
+    .gen-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px; align-items: end; margin-bottom: 12px;
+    }
+    @media (max-width: 1000px) { .gen-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 650px)  { .gen-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 420px)  { .gen-grid { grid-template-columns: 1fr; } }
+    .gen-field label {
+      display: block; font-size: 11.5px; font-weight: 600;
+      color: var(--text2); margin-bottom: 6px; letter-spacing: .1px;
+    }
+    .gen-field input, .gen-field select {
+      width: 100%; padding: 9px 12px;
+      border: 1px solid var(--border); border-radius: var(--rc-sm);
+      font-size: 13px; color: var(--text); font-family: var(--f);
+      background: var(--surface2); outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .gen-field input:focus, .gen-field select:focus {
+      border-color: var(--blue); background: #fff;
+      box-shadow: 0 0 0 3px rgba(0,113,227,.1);
+    }
+    .gen-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .btn-generate {
+      background: var(--blue); color: #fff; border: none;
+      padding: 10px 24px; border-radius: var(--rc-sm); font-size: 13px;
+      font-weight: 600; cursor: pointer; font-family: var(--f);
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: background .15s, transform .1s; white-space: nowrap;
+    }
+    .btn-generate:hover { background: #0077ed; }
+    .btn-generate:active { transform: scale(.98); }
+    .btn-generate:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-print-last {
+      background: transparent; color: var(--text2); border: 1px solid var(--border);
+      padding: 9px 14px; border-radius: var(--rc-sm); font-size: 12px;
+      font-weight: 500; cursor: pointer; font-family: var(--f);
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: all .15s; white-space: nowrap;
+    }
+    .btn-print-last:hover { background: var(--surface2); color: var(--text); border-color: var(--blue); }
+    .btn-generate svg, .btn-print-last svg { width: 14px; height: 14px; flex-shrink: 0; stroke: currentColor; fill: none; }
+
+    /* ── Print dropdown ── */
+    .print-dropdown { position: relative; display: inline-flex; }
+    .print-menu {
+      position: fixed;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--rc); box-shadow: 0 8px 32px rgba(0,0,0,.14);
+      z-index: 9998; width: 260px; overflow: hidden;
+      animation: fadeIn .12s ease;
+    }
+    .print-menu-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .6px; color: var(--text3);
+      padding: 8px 12px 4px;
+    }
+    .print-menu-item {
+      display: flex; align-items: center; gap: 8px;
+      width: 100%; padding: 8px 12px;
+      font-size: 13px; font-weight: 500; color: var(--text);
+      background: transparent; border: none; cursor: pointer;
+      font-family: var(--f); text-align: left; transition: background .1s;
+    }
+    .print-menu-item:hover { background: var(--surface2); }
+    .print-menu-item svg { width: 14px; height: 14px; stroke: currentColor; fill: none; flex-shrink: 0; color: var(--text2); }
+    .print-menu-sep { height: 1px; background: var(--border2); margin: 4px 0; }
+    .pm-badge {
+      margin-left: auto; font-size: 11px; font-weight: 700;
+      background: var(--border2); color: var(--text2);
+      padding: 1px 7px; border-radius: 20px; flex-shrink: 0;
+    }
+    .pm-badge-green { background: var(--green-l); color: var(--green); }
+    .pm-badge-red   { background: var(--red-l);   color: var(--red);   }
+    .pm-badge-amber { background: var(--amber-l);  color: var(--amber); }
+    .pm-badge-blue  { background: var(--blue-l);   color: var(--blue);  }
+
+    /* ══ TABS ══════════════════════════════════════════════════ */
+    .tab-wrap { margin-bottom: 16px; }
+    .tab-list {
+      display: flex; gap: 2px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--rc);
+      padding: 4px; width: fit-content; overflow-x: auto; max-width: 100%;
+    }
+    .tab-list::-webkit-scrollbar { display: none; }
+    .tab-item {
+      padding: 7px 16px; border-radius: var(--rc-sm);
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: none; background: transparent; color: var(--text2);
+      transition: all .15s; white-space: nowrap; font-family: var(--f);
+      display: flex; align-items: center; gap: 7px;
+    }
+    .tab-item .tab-badge {
+      min-width: 18px; height: 18px; border-radius: 9px; padding: 0 5px;
+      font-size: 10px; font-weight: 700; background: var(--border);
+      color: var(--text2); display: flex; align-items: center; justify-content: center;
+    }
+    .tab-item.active {
+      background: var(--blue); color: #fff;
+      box-shadow: 0 1px 4px rgba(0,113,227,.3);
+    }
+    .tab-item.active .tab-badge { background: rgba(255,255,255,.25); color: #fff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeIn .15s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ══ CARD CONTAINER ════════════════════════════════════════ */
+    .card {
+      background: var(--surface); border-radius: var(--rc);
+      border: 1px solid var(--border); overflow: hidden;
+    }
+    .card-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border2);
+      gap: 10px; flex-wrap: wrap;
+    }
+    .card-hdr-l { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+    .card-title { font-size: 14px; font-weight: 600; color: var(--text); }
+    .card-hdr-r { display: flex; gap: 8px; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
+
+    /* ══ SEARCH ════════════════════════════════════════════════ */
+    .search-box {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--rc-sm); padding: 7px 12px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .search-box:focus-within {
+      border-color: var(--blue); background: #fff;
+      box-shadow: 0 0 0 3px rgba(0,113,227,.08);
+    }
+    .search-box svg { width: 13px; height: 13px; stroke: var(--text3); flex-shrink: 0; fill: none; }
+    .search-box input {
+      border: none; background: transparent; outline: none;
+      font-size: 13px; color: var(--text); font-family: var(--f);
+      min-width: 140px; width: 180px;
+    }
+    @media (max-width: 600px) { .search-box input { width: 120px; min-width: 100px; } }
+
+    /* ══ TABLE ═════════════════════════════════════════════════ */
+    .tbl-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .6px; color: var(--text2);
+      padding: 10px 20px; background: var(--surface2);
+      border-bottom: 1px solid var(--border2); text-align: left;
+      white-space: nowrap;
+    }
+    tbody td {
+      font-size: 13px; color: var(--text);
+      padding: 12px 20px; border-bottom: 1px solid var(--border2);
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr { transition: background .1s; }
+    tbody tr:hover td { background: #fafbff; }
+    .td-mono { font-family: var(--fm); font-size: 12px; color: var(--text2); }
+    input[type=checkbox].chk {
+      width: 15px; height: 15px; cursor: pointer;
+      accent-color: var(--blue); border-radius: 4px;
+    }
+
+    /* ══ BADGES ════════════════════════════════════════════════ */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 100px;
+      font-size: 11px; font-weight: 600; white-space: nowrap;
+    }
+    .b-green  { background: var(--green-l);  color: var(--green);  }
+    .b-red    { background: var(--red-l);    color: var(--red);    }
+    .b-amber  { background: var(--amber-l);  color: var(--amber);  }
+    .b-blue   { background: var(--blue-l);   color: var(--blue);   }
+    .b-purple { background: var(--purple-l); color: var(--purple); }
+    .b-teal   { background: var(--teal-l);   color: var(--teal);   }
+    .b-gray   { background: #f0f0f5; color: var(--text2); }
+    .bdot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+    /* ══ PAGINATION ════════════════════════════════════════════ */
+    .pagination {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 20px; border-top: 1px solid var(--border2);
+      font-size: 12px; color: var(--text2); flex-wrap: wrap; gap: 8px;
+    }
+    .page-btns { display: flex; gap: 4px; }
+    .page-btn {
+      width: 30px; height: 28px; border-radius: 7px;
+      border: 1px solid var(--border); background: var(--surface);
+      cursor: pointer; font-size: 12px; color: var(--text2);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--f); transition: all .12s;
+    }
+    .page-btn:hover { background: var(--blue-l); border-color: var(--blue); color: var(--blue); }
+    .page-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .page-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+    /* ══ EMPTY STATE ═══════════════════════════════════════════ */
+    .empty {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 56px 20px; gap: 10px; color: var(--text2);
+    }
+    .empty-icon {
+      width: 48px; height: 48px; border-radius: 14px;
+      background: var(--surface2); display: flex; align-items: center; justify-content: center;
+      margin-bottom: 4px;
+    }
+    .empty-icon svg { width: 22px; height: 22px; stroke: var(--text3); fill: none; }
+    .empty h3 { font-size: 14px; font-weight: 600; color: var(--text); }
+    .empty p  { font-size: 13px; color: var(--text2); text-align: center; }
+
+    /* ══ LOADING ═══════════════════════════════════════════════ */
+    .loader {
+      display: flex; align-items: center; justify-content: center;
+      padding: 48px; gap: 10px; color: var(--text2); font-size: 13px;
+    }
+    .spin { animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ══ MODALS ════════════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45); backdrop-filter: blur(6px);
+      z-index: 9999; display: flex; align-items: flex-end; justify-content: center;
+      padding: 0; animation: overlayIn .2s ease;
+    }
+    @keyframes overlayIn { from{opacity:0} to{opacity:1} }
+    @media (min-width: 600px) {
+      .modal-overlay { align-items: center; padding: 16px; }
+    }
+    .modal-sheet {
+      background: var(--surface); width: 100%; max-width: 520px;
+      border-radius: var(--rc-lg) var(--rc-lg) 0 0;
+      max-height: 92vh; overflow-y: auto;
+      animation: sheetUp .25s cubic-bezier(.32,1.24,.5,1);
+    }
+    @media (min-width: 600px) {
+      .modal-sheet {
+        border-radius: var(--rc-lg);
+        max-height: 88vh;
+        animation: sheetScale .2s cubic-bezier(.32,1.24,.5,1);
+      }
+    }
+    @keyframes sheetUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    @keyframes sheetScale { from{transform:scale(.95);opacity:0} to{transform:scale(1);opacity:1} }
+    .modal-sheet.wide { max-width: 700px; }
+    .modal-handle {
+      width: 36px; height: 4px; border-radius: 2px;
+      background: var(--border); margin: 12px auto 0;
+    }
+    @media (min-width: 600px) { .modal-handle { display: none; } }
+    .modal-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px 0;
+    }
+    .modal-hdr h3 { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -.2px; }
+    .modal-close {
+      width: 28px; height: 28px; border-radius: 8px; border: none;
+      background: var(--surface2); cursor: pointer; color: var(--text2);
+      display: flex; align-items: center; justify-content: center; transition: all .12s;
+    }
+    .modal-close:hover { background: var(--border); color: var(--text); }
+    .modal-close svg { width: 14px; height: 14px; stroke: currentColor; fill: none; }
+    .modal-body { padding: 20px 24px; }
+    .modal-foot {
+      padding: 16px 24px; border-top: 1px solid var(--border2);
+      display: flex; gap: 8px; justify-content: flex-end;
+    }
+
+    /* ══ FORM ══════════════════════════════════════════════════ */
+    .form-row { margin-bottom: 14px; }
+    .form-row label {
+      display: block; font-size: 12px; font-weight: 600;
+      color: var(--text2); margin-bottom: 6px;
+    }
+    .form-ctrl {
+      width: 100%; padding: 9px 13px;
+      border: 1px solid var(--border); border-radius: var(--rc-sm);
+      font-size: 13px; color: var(--text); font-family: var(--f);
+      background: var(--surface2); outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .form-ctrl:focus {
+      border-color: var(--blue); background: #fff;
+      box-shadow: 0 0 0 3px rgba(0,113,227,.1);
+    }
+    .form-hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
+    .form-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 480px) { .form-2 { grid-template-columns: 1fr; } }
+    .form-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    @media (max-width: 600px) { .form-3 { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 380px) { .form-3 { grid-template-columns: 1fr; } }
+
+    /* ══ VOUCHER RESULT ════════════════════════════════════════ */
+    .voucher-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 12px; max-height: 460px; overflow-y: auto; padding: 4px;
+    }
+    /* Card wrapper */
+    .voucher-card {
+      background: #fff; border-radius: 14px;
+      border: 1px solid #dce8f8;
+      box-shadow: 0 2px 8px rgba(21,101,192,.08);
+      overflow: hidden; transition: transform .15s, box-shadow .15s;
+    }
+    .voucher-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(21,101,192,.15); }
+    /* Blue header */
+    .vc-hdr {
+      background: #1565C0; padding: 11px 13px 10px;
+      position: relative; overflow: hidden;
+    }
+    .vc-hdr::before { content: ''; position: absolute; top: -12px; right: 18px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.07); }
+    .vc-hdr::after  { content: ''; position: absolute; bottom: -16px; right: -16px; width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,.06); }
+    .vc-hdr-top { display: flex; align-items: center; gap: 9px; position: relative; z-index: 1; }
+    .vc-avatar { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; background: rgba(255,255,255,.2); border: 1.5px solid rgba(255,255,255,.45); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #fff; font-family: var(--fm); }
+    .vc-hdr-info { flex: 1; min-width: 0; }
+    .vc-isp { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,.6); margin-bottom: 2px; }
+    .vc-user { font-size: 11.5px; font-weight: 800; color: #fff; font-family: var(--fm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .vc-wifi-ico { position: absolute; top: 9px; right: 11px; z-index: 1; opacity: .28; }
+    .vc-wifi-ico svg { width: 14px; height: 14px; stroke: #fff; fill: none; stroke-width: 2; }
+    /* Body rows */
+    .vc-body { padding: 0; }
+    .vc-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 13px; border-bottom: 1px solid #f3f4f6; }
+    .vc-row:last-child { border-bottom: none; }
+    .vc-row-lbl { font-size: 7.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #9ca3af; }
+    .vc-row-val { font-weight: 700; color: #111; font-size: 10px; text-align: right; }
+    .vc-row-val.pw { font-family: var(--fm); color: #0D47A1; font-size: 16px; font-weight: 900; letter-spacing: 2px; }
+    .vc-row-val.price { color: #2E7D32; font-size: 11px; }
+
+    /* ══ TOAST ═════════════════════════════════════════════════ */
+    #toasts {
+      position: fixed; bottom: 24px; right: 24px; z-index: 999;
+      display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+    }
+    @media (max-width: 600px) {
+      #toasts { left: 12px; right: 12px; bottom: 12px; }
+    }
+    .toast {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; border-radius: 12px;
+      font-size: 13px; font-weight: 500; pointer-events: all;
+      box-shadow: var(--shadow-lg); max-width: 340px; width: 100%;
+      animation: toastIn .25s cubic-bezier(.32,1.24,.5,1);
+    }
+    @keyframes toastIn { from{opacity:0;transform:translateY(8px) scale(.97)} }
+    .toast svg { width: 16px; height: 16px; flex-shrink: 0; fill: none; stroke: currentColor; }
+    .toast-success { background: #14532d; color: #dcfce7; }
+    .toast-error   { background: #7f1d1d; color: #fee2e2; }
+    .toast-info    { background: #1e3a5f; color: #dbeafe; }
+
+    /* ══ INLINE SELECT ═════════════════════════════════════════ */
+    .filter-select {
+      padding: 7px 10px; border-radius: var(--rc-sm);
+      border: 1px solid var(--border); font-size: 12px;
+      font-family: var(--f); color: var(--text2);
+      background: var(--surface2); outline: none; cursor: pointer;
+    }
+    .filter-select:focus { border-color: var(--blue); }
+
+    /* ══ MOBILE RESPONSIVE TWEAKS ══════════════════════════════ */
+    @media (max-width: 600px) {
+      .card-hdr { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .card-hdr-r { width: 100%; }
+      .search-box { flex: 1; }
+      .search-box input { width: 100%; }
+    }
+    @media print {
+      body *{ visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area { position: fixed; inset: 0; background: #fff; }
+    }
+  
+    /* ── Standardize card height (match queue.ejs) ── */
+    .fin-card  { min-height: 108px; }
+    .ip-card, .fw-card, .ac-card, .olt-card, .ot-card, .pm-card, .pp-card, .stat-card {
+      min-height: 108px;
+    }
+    @media(max-width:1400px){
+      .card-val { font-size:30px !important; }
+      .xc-val   { font-size:30px !important; }
+    }
+  </style>
+</head>
+<body>
+<%- include('../partials/sidebar') %>
+
+<div class="main-content">
+  <%- include('../partials/topbar') %>
+
+  <div class="hs-page">
+
+    <!-- ── PAGE HEADER ── -->
+    <div class="page-hdr">
+      <div class="page-hdr-l">
+        
+        <div>
+          <h1>Hotspot Management</h1>
+          <p>Kelola user, voucher, dan sesi aktif MikroTik Hotspot</p>
+        </div>
+      </div>
+      <div class="page-hdr-r">
+        <div id="mtSelectorMount"></div>
+        <button class="btn btn-ghost" onclick="refreshAll()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
+          Refresh
+        </button>
+        <button class="btn btn-primary" onclick="openModal('m-add-user')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Tambah User
+        </button>
+      </div>
+    </div>
+
+    <!-- ── STAT CARDS ── -->
+    <div class="stats-grid" id="stats-grid">
+
+      <!-- Total User -->
+      <div class="stat-card sc-active" id="sc-users" onclick="scClick('users')">
+        <div class="sc-label">Total User</div>
+        <div class="sc-body">
+          <div class="sc-left">
+            <span class="sc-num" id="s-total">—</span>
+            <div class="sc-meta">
+              <span class="sc-pill sc-pill-neu" id="sc-pill-users">—</span>
+              <span class="sc-sub" id="sc-sub-users">Semua user hotspot</span>
+            </div>
+          </div>
+          <div class="sc-spark">
+            <svg id="sp-users" viewBox="0 0 72 36" preserveAspectRatio="none">
+              <path class="sc-spark-fill" id="sp-users-fill" d="" fill="#2563eb" opacity=".12"/>
+              <path class="sc-spark-line" id="sp-users-line" d="" stroke="#2563eb"/>
+              <circle class="sc-spark-dot" id="sp-users-dot" r="2.5" fill="#2563eb"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sesi Aktif -->
+      <div class="stat-card" id="sc-active-card" onclick="scClick('active')">
+        <div class="sc-label">Sesi Aktif</div>
+        <div class="sc-body">
+          <div class="sc-left">
+            <span class="sc-num" id="s-active">—</span>
+            <div class="sc-meta">
+              <span class="sc-pill sc-pill-neu" id="sc-pill-active">—</span>
+              <span class="sc-sub" id="sc-sub-active">Sedang online</span>
+            </div>
+          </div>
+          <div class="sc-spark">
+            <svg id="sp-active" viewBox="0 0 72 36" preserveAspectRatio="none">
+              <path class="sc-spark-fill" id="sp-active-fill" d="" fill="#16a34a" opacity=".12"/>
+              <path class="sc-spark-line" id="sp-active-line" d="" stroke="#16a34a"/>
+              <circle class="sc-spark-dot" id="sp-active-dot" r="2.5" fill="#16a34a"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nonaktif -->
+      <div class="stat-card" id="sc-disabled-card" onclick="scClick('disabled')">
+        <div class="sc-label">Nonaktif</div>
+        <div class="sc-body">
+          <div class="sc-left">
+            <span class="sc-num" id="s-disabled">—</span>
+            <div class="sc-meta">
+              <span class="sc-pill sc-pill-neu" id="sc-pill-disabled">—</span>
+              <span class="sc-sub" id="sc-sub-disabled">User dinonaktifkan</span>
+            </div>
+          </div>
+          <div class="sc-spark">
+            <svg id="sp-disabled" viewBox="0 0 72 36" preserveAspectRatio="none">
+              <path class="sc-spark-fill" id="sp-disabled-fill" d="" fill="#dc2626" opacity=".12"/>
+              <path class="sc-spark-line" id="sp-disabled-line" d="" stroke="#dc2626"/>
+              <circle class="sc-spark-dot" id="sp-disabled-dot" r="2.5" fill="#dc2626"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Host Terdaftar -->
+      <div class="stat-card" id="sc-hosts-card" onclick="scClick('hosts')">
+        <div class="sc-label">Host Terdaftar</div>
+        <div class="sc-body">
+          <div class="sc-left">
+            <span class="sc-num" id="s-hosts">—</span>
+            <div class="sc-meta">
+              <span class="sc-pill sc-pill-neu" id="sc-pill-hosts">—</span>
+              <span class="sc-sub" id="sc-sub-hosts">Device pernah login</span>
+            </div>
+          </div>
+          <div class="sc-spark">
+            <svg id="sp-hosts" viewBox="0 0 72 36" preserveAspectRatio="none">
+              <path class="sc-spark-fill" id="sp-hosts-fill" d="" fill="#0e7490" opacity=".12"/>
+              <path class="sc-spark-line" id="sp-hosts-line" d="" stroke="#0e7490"/>
+              <circle class="sc-spark-dot" id="sp-hosts-dot" r="2.5" fill="#0e7490"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Server Aktif -->
+      <div class="stat-card" id="sc-servers-card" onclick="scClick('servers')">
+        <div class="sc-label">Server Aktif</div>
+        <div class="sc-body">
+          <div class="sc-left">
+            <span class="sc-num" id="s-servers">—</span>
+            <div class="sc-meta">
+              <span class="sc-pill sc-pill-neu" id="sc-pill-servers">—</span>
+              <span class="sc-sub" id="sc-sub-servers">Hotspot server</span>
+            </div>
+          </div>
+          <div class="sc-spark">
+            <svg id="sp-servers" viewBox="0 0 72 36" preserveAspectRatio="none">
+              <path class="sc-spark-fill" id="sp-servers-fill" d="" fill="#b45309" opacity=".12"/>
+              <path class="sc-spark-line" id="sp-servers-line" d="" stroke="#b45309"/>
+              <circle class="sc-spark-dot" id="sp-servers-dot" r="2.5" fill="#b45309"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+
+
+        
+    <!-- ── TRAFFIC INTERFACE CHART (Grafana-style) ── -->
+    <div id="traffic-chart-panel" style="margin-bottom:16px;">
+
+      <!-- Toolbar — mobile-friendly -->
+      <div style="margin-bottom:10px;">
+        <!-- Label row -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;">Interface</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <!-- Time range buttons -->
+            <div id="tc-time-btns" style="display:flex;gap:3px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:3px;">
+              <button class="tc-time-btn active" data-min="1"  style="padding:4px 10px;border:none;background:#2563eb;color:#fff;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;">1m</button>
+              <button class="tc-time-btn"        data-min="5"  style="padding:4px 10px;border:none;background:transparent;color:#64748b;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;">5m</button>
+              <button class="tc-time-btn"        data-min="10" style="padding:4px 10px;border:none;background:transparent;color:#64748b;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;">10m</button>
+              <button class="tc-time-btn"        data-min="30" style="padding:4px 10px;border:none;background:transparent;color:#64748b;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;">30m</button>
+            </div>
+           
+          </div>
+        </div>
+        <!-- Select full width -->
+        <div style="position:relative;">
+          <select id="tc-iface-select" style="
+            width:100%;
+            font-size:13px;
+            font-weight:600;
+            padding:10px 36px 10px 14px;
+            border:1.5px solid #e2e8f0;
+            border-radius:10px;
+            background:#fff;
+            color:#0f172a;
+            font-family:inherit;
+            cursor:pointer;
+            appearance:none;
+            -webkit-appearance:none;
+            outline:none;
+            box-shadow:0 1px 3px rgba(0,0,0,.06);
+            transition:border-color .15s, box-shadow .15s;
+          ">
+            <option value="">-- Memuat interface... --</option>
+          </select>
+          <!-- Chevron icon -->
+          <svg style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;" width="16" height="16" fill="none" stroke="#64748b" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Single combined panel: RX + TX -->
+      <div class="gf-panel">
+        <div class="gf-panel-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="gf-panel-title">Traffic Overview (RX + TX)</span>
+            <div style="display:flex;align-items:center;gap:4px;font-size:9px;font-weight:700;color:#4dd0e1;">
+              <span style="width:20px;height:2px;background:#4dd0e1;display:inline-block;border-radius:2px;"></span>RX
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;font-size:9px;font-weight:700;color:#ff8a65;">
+              <span style="width:20px;height:2px;background:#ff8a65;display:inline-block;border-radius:2px;"></span>TX
+            </div>
+          </div>
+          <div class="gf-panel-stats">
+            <span class="gf-stat"><span class="gf-stat-lbl" style="color:#4dd0e1;">↓ RX</span><span class="gf-stat-val" id="tc-rx-cur" style="color:#4dd0e1;">0</span></span>
+            <span class="gf-stat"><span class="gf-stat-lbl" style="color:#ff8a65;">↑ TX</span><span class="gf-stat-val" id="tc-tx-cur" style="color:#ff8a65;">0</span></span>
+            <span class="gf-stat"><span class="gf-stat-lbl">avg↓</span><span class="gf-stat-val" id="tc-rx-avg">0</span></span>
+            <span class="gf-stat"><span class="gf-stat-lbl">avg↑</span><span class="gf-stat-val" id="tc-tx-avg">0</span></span>
+            <span class="gf-stat"><span class="gf-stat-lbl">max↓</span><span class="gf-stat-val" id="tc-rx-max">0</span></span>
+            <span class="gf-stat"><span class="gf-stat-lbl">max↑</span><span class="gf-stat-val" id="tc-tx-max">0</span></span>
+          </div>
+        </div>
+        <div id="tc-combined-chart" class="gf-chart-area" style="height:180px;"></div>
+      </div>
+    </div>
+
+    <!-- ── GENERATE PANEL ── -->
+    <div class="gen-panel">
+      <div class="gen-panel-hdr">
+        <div class="gen-panel-hdr-l">
+          
+          <div>
+            <h2>Generate Voucher</h2>
+            <p>Buat banyak voucher sekaligus, lalu print atau download CSV</p>
+          </div>
+        </div>
+      </div>
+      <div class="gen-grid">
+        <div class="gen-field">
+          <label>Jumlah</label>
+          <input type="number" id="g-count" value="10" min="1" max="500" placeholder="10">
+        </div>
+        <div class="gen-field">
+          <label>Profile / Paket</label>
+          <select id="g-profile"></select>
+        </div>
+        <div class="gen-field">
+          <label>Server</label>
+          <select id="g-server"><option value="all">all</option></select>
+        </div>
+        <div class="gen-field">
+          <label>Prefix — Limit Waktu</label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="g-prefix" value="vc" placeholder="vc" style="width:70px;flex-shrink:0">
+            <input type="text" id="g-uptime" placeholder="1d / 8h / blank" style="flex:1">
+          </div>
+        </div>
+        <div class="gen-field">
+          <label>Harga Voucher (opsional)</label>
+          <input type="text" id="g-price" placeholder="Rp 5.000">
+        </div>
+      </div>
+      <div class="gen-actions">
+        <button class="btn-generate" id="btn-gen" onclick="generateVouchers()">
+          <svg viewBox="0 0 24 24"><polyline points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/></svg>
+          Generate
+        </button>
+        <div class="print-dropdown" id="print-dropdown">
+          <button class="btn-print-last" onclick="togglePrintMenu(event)">
+            <svg viewBox="0 0 24 24"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Print Voucher
+            <svg class="print-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;margin-left:4px;transition:transform .15s"><polyline points="6,9 12,15 18,9"/></svg>
+          </button>
+          <div class="print-menu" id="print-menu" style="display:none">
+            <div class="print-menu-label">Print dari data user</div>
+            <button class="print-menu-item" onclick="printVoucherFilter('all')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+              Semua User
+              <span class="pm-badge" id="pm-badge-all">—</span>
+            </button>
+            <button class="print-menu-item" onclick="printVoucherFilter('active')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12h3m14 0h3M12 2v3m0 14v3"/></svg>
+              Aktif (On)
+              <span class="pm-badge pm-badge-green" id="pm-badge-active">—</span>
+            </button>
+            <button class="print-menu-item" onclick="printVoucherFilter('unused')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Belum Dipakai
+              <span class="pm-badge pm-badge-amber" id="pm-badge-unused">—</span>
+            </button>
+            <div class="print-menu-sep"></div>
+            <div class="print-menu-label">Print per profile / paket</div>
+            <div id="pm-profile-list">
+              <div style="font-size:11px;color:var(--text3);padding:6px 12px">Memuat profile...</div>
+            </div>
+            <div class="print-menu-sep"></div>
+            <button class="print-menu-item" onclick="openLastVouchers()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+              Voucher Generate Terakhir
+              <span class="pm-badge" id="pm-badge-last">—</span>
+            </button>
+            <button class="print-menu-item" onclick="openPrintSelector()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+              Pilih Manual (Custom)
+              <span class="pm-badge pm-badge-blue" id="pm-badge-custom">—</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TABS ── -->
+    <div class="tab-wrap">
+      <div class="tab-list" id="tab-list">
+        <button class="tab-item active" onclick="switchTab('users')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          Daftar User
+          <span class="tab-badge" id="tb-users">0</span>
+        </button>
+        <button class="tab-item" onclick="switchTab('active')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12h3m14 0h3"/></svg>
+          Sesi Aktif
+          <span class="tab-badge" id="tb-active">0</span>
+        </button>
+        <button class="tab-item" onclick="switchTab('profiles')">
+          User Profile
+        </button>
+        <button class="tab-item" onclick="switchTab('disabled')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+          User Nonaktif
+          <span class="tab-badge" id="tb-disabled">0</span>
+        </button>
+        <button class="tab-item" onclick="switchTab('servers')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+          Server
+          <span class="tab-badge" id="tb-servers">0</span>
+        </button>
+        <button class="tab-item" onclick="switchTab('hosts')">Hosts</button>
+        <button class="tab-item" onclick="switchTab('cookies')">Cookies</button>
+        <button class="tab-item" onclick="switchTab('binding')">IP Binding</button>
+      </div>
+    </div>
+
+    <!-- ── TAB: USERS ── -->
+    <div class="tab-panel active" id="tp-users">
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-hdr-l">
+            <span class="card-title">Daftar User Hotspot</span>
+          </div>
+          <div class="card-hdr-r">
+            <div class="search-box">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="q-users" placeholder="Cari username..." oninput="filterUsers()">
+            </div>
+            <select class="filter-select" id="fp-users" onchange="filterUsers()">
+              <option value="">Semua Profile</option>
+            </select>
+            <button class="btn btn-danger btn-sm" id="btn-del-sel" style="display:none" onclick="deleteSelected()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+              Hapus Terpilih
+            </button>
+          </div>
+        </div>
+        <div class="tbl-scroll" id="tbl-users"><div class="loader"><svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>Memuat...</div></div>
+        <div class="pagination" id="pg-users" style="display:none">
+          <span id="pg-info">—</span>
+          <div class="page-btns" id="pg-btns"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: ACTIVE ── -->
+    <div class="tab-panel" id="tp-active">
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-hdr-l"><span class="card-title">Sesi Aktif</span></div>
+          <div class="card-hdr-r">
+            <div class="search-box">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="q-active" placeholder="Cari user / IP..." oninput="filterActive()">
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="printActiveSessions()" title="Print daftar sesi aktif">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Print
+            </button>
+            <button class="btn btn-danger btn-sm" id="btn-disc-sel" style="display:none" onclick="disconnectSelected()">
+              Putus Terpilih
+            </button>
+          </div>
+        </div>
+        <div class="tbl-scroll" id="tbl-active"><div class="loader"><svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>Memuat...</div></div>
+      </div>
+    </div>
+
+    <!-- ── TAB: PROFILES ── -->
+    <div class="tab-panel" id="tp-profiles">
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-hdr-l"><span class="card-title">User Profile (Paket)</span></div>
+          <div class="card-hdr-r">
+            <button class="btn btn-primary btn-sm" onclick="openModal('m-add-profile')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Tambah Profile
+            </button>
+          </div>
+        </div>
+        <div class="tbl-scroll" id="tbl-profiles"><div class="loader"><svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>Memuat...</div></div>
+      </div>
+    </div>
+
+    <!-- ── TAB: HOSTS ── -->
+    <div class="tab-panel" id="tp-hosts">
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-hdr-l"><span class="card-title">Host List</span></div>
+          <div class="card-hdr-r">
+            <div class="search-box">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="q-hosts" placeholder="MAC / IP..." oninput="filterHosts()">
+            </div>
+          </div>
+        </div>
+        <div class="tbl-scroll" id="tbl-hosts"><div class="loader"><svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>Memuat...</div></div>
+      </div>
+    </div>
+
+    <!-- ── TAB: COOKIES ── -->
+    <div class="tab-panel" id="tp-cookies">
+      <div class="card">
+        <div class="card-hdr"><div class="card-hdr-l"><span class="card-title">Cookie / Auth List</span></div></div>
+        <div class="tbl-scroll" id="tbl-cookies"><div class="loader"><svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>Memuat...</div></div>
+      </div>
+    </div>
+
+    <!-- ── TAB: IP BINDING ── -->
+    <div class="tab-panel" id="tp-binding">
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-hdr-l"><span class="card-title">IP Binding</span></div>
+          <div class="card-hdr-r">
+            <button class="btn btn-primary btn-sm" onclick="openModal('m-add-binding')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Tambah Binding
+            </button>
+          </div>
+        </div>
+        <div class="tbl-scroll" id="tbl-binding"><div class="loader"><svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>Memuat...</div></div>
+      </div>
+    </div>
+
+    <!-- ── TAB: USER NONAKTIF ── -->
+    <div class="tab-panel" id="tp-disabled">
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-hdr-l">
+            <span class="card-title">User Nonaktif</span>
+          </div>
+          <div class="card-hdr-r">
+            <div class="search-box">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="q-disabled" placeholder="Cari username..." oninput="filterDisabled()">
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="printNeverUsed()" title="Print user yang belum pernah digunakan (uptime 0)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Belum Dipakai
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="printDisabledUsers()" title="Print semua user nonaktif">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Print Semua
+            </button>
+            <button class="btn btn-danger btn-sm" id="btn-del-dis" style="display:none" onclick="deleteSelectedDisabled()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+              Hapus Terpilih
+            </button>
+          </div>
+        </div>
+        <div class="tbl-scroll" id="tbl-disabled"><div class="loader"><svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>Memuat...</div></div>
+        <div class="pagination" id="pg-disabled" style="display:none">
+          <span id="pg-dis-info">—</span>
+          <div class="page-btns" id="pg-dis-btns"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: SERVERS ── -->
+    <div class="tab-panel" id="tp-servers">
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-hdr-l"><span class="card-title">Daftar Hotspot Server</span></div>
+        </div>
+        <div class="tbl-scroll" id="tbl-servers-tab"><div class="loader"><svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>Memuat...</div></div>
+      </div>
+    </div>
+
+  </div><!-- /hs-page -->
+</div><!-- /main-content -->
+
+<!-- ═════════════ MODAL: ADD/EDIT USER ═════════════ -->
+<div class="modal-overlay" id="m-add-user" style="display:none" onclick="bgClose(event,'m-add-user')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-hdr">
+      <h3 id="m-user-title">Tambah User Hotspot</h3>
+      <button class="modal-close" onclick="closeModal('m-add-user')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="u-id">
+      <div class="form-2">
+        <div class="form-row"><label>Username *</label><input class="form-ctrl" type="text" id="u-name" placeholder="user001"></div>
+        <div class="form-row"><label>Password</label><input class="form-ctrl" type="text" id="u-pass" placeholder="password"></div>
+      </div>
+      <div class="form-2">
+        <div class="form-row"><label>Profile</label><select class="form-ctrl" id="u-profile"></select></div>
+        <div class="form-row"><label>Server</label><select class="form-ctrl" id="u-server"><option value="all">all</option></select></div>
+      </div>
+      <div class="form-2">
+        <div class="form-row">
+          <label>Limit Waktu</label>
+          <input class="form-ctrl" type="text" id="u-uptime" placeholder="1d / 8h / 30m">
+          <p class="form-hint">Kosong = unlimited</p>
+        </div>
+        <div class="form-row">
+          <label>Limit Bytes Total</label>
+          <input class="form-ctrl" type="number" id="u-bytes" placeholder="0 = unlimited" min="0">
+        </div>
+      </div>
+      <div class="form-row"><label>MAC Address</label><input class="form-ctrl" type="text" id="u-mac" placeholder="AA:BB:CC:DD:EE:FF"></div>
+      <div class="form-row"><label>Komentar</label><input class="form-ctrl" type="text" id="u-comment" placeholder="Catatan opsional..."></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('m-add-user')">Batal</button>
+      <button class="btn btn-primary" onclick="saveUser()" id="btn-save-user">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════ MODAL: ADD/EDIT PROFILE ═════════════ -->
+<div class="modal-overlay" id="m-add-profile" style="display:none" onclick="bgClose(event,'m-add-profile')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-hdr">
+      <h3 id="m-profile-title">Tambah User Profile</h3>
+      <button class="modal-close" onclick="closeModal('m-add-profile')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="p-id">
+      <div class="form-row"><label>Nama Profile *</label><input class="form-ctrl" type="text" id="p-name" placeholder="1Mbps-1Hari"></div>
+      <div class="form-2">
+        <div class="form-row">
+          <label>Rate Limit</label>
+          <input class="form-ctrl" type="text" id="p-rate" placeholder="2M/5M">
+          <p class="form-hint">Upload/Download. Cth: 2M/5M</p>
+        </div>
+        <div class="form-row"><label>Shared Users</label><input class="form-ctrl" type="number" id="p-shared" value="1" min="1"></div>
+      </div>
+      <div class="form-2">
+        <div class="form-row"><label>Session Timeout</label><input class="form-ctrl" type="text" id="p-session" placeholder="1d / 8h"></div>
+        <div class="form-row"><label>Idle Timeout</label><input class="form-ctrl" type="text" id="p-idle" placeholder="5m"></div>
+      </div>
+      <div class="form-row"><label>Address List</label><input class="form-ctrl" type="text" id="p-alist" placeholder="nama-address-list"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('m-add-profile')">Batal</button>
+      <button class="btn btn-primary" onclick="saveProfile()" id="btn-save-profile">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════ MODAL: IP BINDING ═════════════ -->
+<div class="modal-overlay" id="m-add-binding" style="display:none" onclick="bgClose(event,'m-add-binding')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-hdr">
+      <h3>Tambah IP Binding</h3>
+      <button class="modal-close" onclick="closeModal('m-add-binding')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-2">
+        <div class="form-row"><label>MAC Address *</label><input class="form-ctrl" type="text" id="b-mac" placeholder="AA:BB:CC:DD:EE:FF"></div>
+        <div class="form-row"><label>Type</label>
+          <select class="form-ctrl" id="b-type">
+            <option value="regular">Regular</option>
+            <option value="bypassed">Bypassed (skip auth)</option>
+            <option value="blocked">Blocked</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-2">
+        <div class="form-row"><label>IP Address</label><input class="form-ctrl" type="text" id="b-addr" placeholder="192.168.88.10"></div>
+        <div class="form-row"><label>To Address</label><input class="form-ctrl" type="text" id="b-to" placeholder="10.0.0.10"></div>
+      </div>
+      <div class="form-2">
+        <div class="form-row"><label>Server</label><select class="form-ctrl" id="b-server"><option value="all">all</option></select></div>
+        <div class="form-row"><label>Komentar</label><input class="form-ctrl" type="text" id="b-comment" placeholder="Catatan..."></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('m-add-binding')">Batal</button>
+      <button class="btn btn-primary" onclick="saveBinding()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════ MODAL: VOUCHER RESULT ═════════════ -->
+<div class="modal-overlay" id="m-vouchers" style="display:none" onclick="bgClose(event,'m-vouchers')">
+  <div class="modal-sheet wide">
+    <div class="modal-handle"></div>
+    <div class="modal-hdr" style="border-bottom:1px solid var(--border2);padding-bottom:16px;">
+      <div>
+        <h3 style="font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.2px;margin:0;">Voucher Berhasil Dibuat</h3>
+        <p id="vc-summary" style="font-size:12px;color:var(--text2);margin:3px 0 0;"></p>
+      </div>
+      <button class="modal-close" onclick="closeModal('m-vouchers')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body" style="padding-top:16px;">
+      <div class="voucher-grid" id="vc-grid"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="dlCSV()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download CSV
+      </button>
+      <button class="btn btn-ghost" onclick="printVouchers()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print
+      </button>
+      <button class="btn btn-primary" onclick="closeModal('m-vouchers');loadUsers()">Selesai</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Print Selector — pilih voucher untuk diprint dengan filter & checkbox -->
+<div class="modal-overlay" id="m-print-selector" style="display:none" onclick="bgClose(event,'m-print-selector')">
+  <div class="modal-sheet wide">
+    <div class="modal-handle"></div>
+    <div class="modal-hdr" style="border-bottom:1px solid var(--border2);padding-bottom:16px;">
+      <div>
+        <h3 style="font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.2px;margin:0;">Pilih Voucher untuk Print</h3>
+        <p style="font-size:12px;color:var(--text2);margin:3px 0 0;">
+          <span id="ps-count-info">Pilih voucher yang ingin di-print</span>
+        </p>
+      </div>
+      <button class="modal-close" onclick="closeModal('m-print-selector')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body" style="padding-top:16px;">
+      <!-- Quick filters & search -->
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px">
+        <input type="text" id="ps-search" placeholder="Cari username / password / profile..." oninput="psApplyFilter()"
+          style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px">
+        <select id="ps-profile" onchange="psApplyFilter()" style="padding:8px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px">
+          <option value="">Semua profile</option>
+        </select>
+        <select id="ps-status" onchange="psApplyFilter()" style="padding:8px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px">
+          <option value="">Semua status</option>
+          <option value="active">Aktif</option>
+          <option value="disabled">Nonaktif</option>
+          <option value="unused">Belum dipakai</option>
+        </select>
+      </div>
+
+      <!-- Range selector (start–end) -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px 12px;background:var(--bg-secondary,#f8faff);border-radius:8px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:600;color:var(--text2)">Range:</span>
+        <input type="number" id="ps-range-start" placeholder="Dari" min="1" style="width:80px;padding:6px 10px;border:1px solid var(--border2);border-radius:6px;font-size:12px">
+        <span style="font-size:12px;color:var(--text3)">s/d</span>
+        <input type="number" id="ps-range-end" placeholder="Sampai" min="1" style="width:80px;padding:6px 10px;border:1px solid var(--border2);border-radius:6px;font-size:12px">
+        <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px" onclick="psSelectRange()">Pilih Range</button>
+        <span style="flex:1"></span>
+        <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px" onclick="psSelectAll(true)">✓ Semua di view</button>
+        <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px" onclick="psSelectAll(false)">✗ Reset</button>
+      </div>
+
+      <!-- Voucher list -->
+      <div id="ps-list" style="max-height:50vh;overflow-y:auto;border:1px solid var(--border2);border-radius:8px;background:#fff"></div>
+    </div>
+    <div class="modal-foot">
+      <div style="flex:1;font-size:12px;color:var(--text2)">
+        Terpilih: <strong id="ps-selected-count" style="color:var(--text)">0</strong> voucher
+      </div>
+      <button class="btn btn-ghost" onclick="closeModal('m-print-selector')">Batal</button>
+      <button class="btn btn-primary" onclick="psPrintSelected()" id="ps-btn-print" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print Voucher Terpilih
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- TOASTS & PRINT AREA -->
+<div id="toasts"></div>
+<div id="print-area" style="display:none"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════════ */
+let allUsers=[], filtUsers=[], pgNum=1, pgSize=25;
+let allActive=[], filtActive=[];
+let allHosts=[],  filtHosts=[];
+let allProfiles=[], allServers=[];
+let lastVouchers=[];
+let activeTab='users';
+
+/* ═══════════════════════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  // Init MikroTik selector — TUNGGU selesai sebelum load data agar
+  // pertama kali fetch sudah pakai device_id yang benar.
+  // onReady dipanggil setelah list device ter-fetch & activeId di localStorage di-set.
+  if (window.MikrotikSelector) {
+    window.MikrotikSelector.init({
+      selectId: 'mikrotikSelector',
+      onChange: () => refreshAll(),
+      onReady:  () => {
+        // Initial load — sekarang withDevice() akan inject device_id benar
+        loadSummary();
+        loadUsers();
+        loadUserProfiles();
+        loadServers();
+      }
+    });
+  } else {
+    // Fallback kalau modul selector tidak ter-load
+    loadSummary();
+    loadUsers();
+    loadUserProfiles();
+    loadServers();
+  }
+  // Preload voucher template settings agar print pakai customization user
+  loadVoucherTemplate();
+});
+
+// Load template voucher dari AppSetting (vtpl_*) — cache di window._voucherTpl
+// agar printVoucherCards() bisa baca tanpa fetch ulang setiap print.
+async function loadVoucherTemplate() {
+  try {
+    const r = await api('GET', '/api/app-settings');
+    if (!r?.success || !r.data) return;
+    const s = r.data;
+    window._voucherTpl = {
+      primary_color:  s.vtpl_primary_color  || '#1565C0',
+      primary_dark:   s.vtpl_primary_dark   || '#0D47A1',
+      accent_color:   s.vtpl_accent_color   || '#2E7D32',
+      company_name:   s.vtpl_company_name   || 'FLAYNET',
+      tagline:        s.vtpl_tagline        || 'Voucher Hotspot',
+      logo_url:       s.vtpl_logo_url       || '',
+      label_username: s.vtpl_label_username || 'USERNAME',
+      label_password: s.vtpl_label_password || 'PASSWORD',
+      label_profile:  s.vtpl_label_profile  || 'PAKET',
+      label_duration: s.vtpl_label_duration || 'DURASI',
+      label_price:    s.vtpl_label_price    || 'HARGA',
+      show_wifi:      s.vtpl_show_wifi      ?? '1',
+      show_price:     s.vtpl_show_price     ?? '1',
+      show_duration:  s.vtpl_show_duration  ?? '1',
+      show_profile:   s.vtpl_show_profile   ?? '1',
+      show_footer:    s.vtpl_show_footer    ?? '1',
+      columns:        s.vtpl_columns        || '5',
+      footer_text:    s.vtpl_footer_text    || ''
+    };
+  } catch(e) { /* default fallback dipakai */ }
+}
+
+function refreshAll() {
+  // Reload semua data state — penting saat ganti MikroTik supaya semua
+  // dropdown (server, profile) dan list ter-update ke device yang baru dipilih.
+  loadSummary();
+  loadServers();       // populate dropdown #g-server, #u-server, #b-server
+  loadUserProfiles();  // populate dropdown profile di modal add user
+  loadTabData(activeTab);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════════════════════════ */
+// ── Stat card helpers (DealDeck style) ─────────────────────────
+let _prevSummary = null;
+const SC_CARDS = ['sc-users','sc-active-card','sc-disabled-card','sc-hosts-card','sc-servers-card'];
+const SC_MAP   = {
+  users:    'sc-users',
+  active:   'sc-active-card',
+  disabled: 'sc-disabled-card',
+  servers:  'sc-servers-card',
+  hosts:    'sc-hosts-card',
+  profiles: 'sc-users',
+  cookies:  'sc-users',
+  binding:  'sc-users',
+};
+
+
+function switchTab(name) {
+  // ── 1. Update tab buttons ──────────────────────────────────
+  // Cari tab button yang punya onclick matching name
+  document.querySelectorAll('.tab-item').forEach(b => {
+    b.classList.remove('active');
+    const fn = b.getAttribute('onclick') || '';
+    if (fn.includes("'" + name + "'") || fn.includes('"' + name + '"')) {
+      b.classList.add('active');
+    }
+  });
+
+  // ── 2. Show matching panel ─────────────────────────────────
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('tp-' + name);
+  if (panel) panel.classList.add('active');
+
+  // ── 3. Sync active stat card ───────────────────────────────
+  SC_CARDS.forEach(id => {
+    const c = document.getElementById(id);
+    if (c) c.classList.remove('sc-active');
+  });
+  const targetCard = SC_MAP[name];
+  if (targetCard) {
+    const c = document.getElementById(targetCard);
+    if (c) c.classList.add('sc-active');
+  }
+
+  activeTab = name;
+  loadTabData(name);
+}
+
+function loadTabData(n) {
+  if (n==='users')    loadUsers();
+  if (n==='active')   loadActive();
+  if (n==='profiles') loadUserProfiles();
+  if (n==='hosts')    loadHosts();
+  if (n==='cookies')  loadCookies();
+  if (n==='binding')  loadBindings();
+  if (n==='disabled') loadDisabledUsers();
+  if (n==='servers')  loadServersTab();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   API
+═══════════════════════════════════════════════════════════════ */
+async function api(method, url, body) {
+  // Auto-append ?device_id=N untuk endpoint /api/mikrotik/... agar selector
+  // di topbar berfungsi (multi-MikroTik support).
+  if (url.startsWith('/api/mikrotik/') && window.MikrotikSelector && window.MikrotikSelector.withDevice) {
+    url = window.MikrotikSelector.withDevice(url);
+  }
+  const opts = { method, headers:{'Content-Type':'application/json'}, credentials:'include' };
+  // Sertakan JWT token kalau ada (konsisten dengan helper App.api di app.js)
+  const tok = localStorage.getItem('token');
+  if (tok && tok !== 'null') opts.headers['Authorization'] = 'Bearer ' + tok;
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(url, opts);
+  return r.json();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SPARKLINES
+═══════════════════════════════════════════════════════════════ */
+function scClick(tabName) {
+  // switchTab sudah handle sync card dan tab button sekaligus
+  switchTab(tabName);
+}
+
+/* Render pill badge — DealDeck: +2.08% green / -2.08% red */
+function renderPill(elId, curr, prev) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (curr == null || curr === '—') { el.className='sc-pill sc-pill-neu'; el.textContent='—'; return; }
+  if (prev == null) {
+    el.className = 'sc-pill sc-pill-neu';
+    el.textContent = curr + ' total';
+    return;
+  }
+  const diff = curr - prev;
+  const base = prev || 1;
+  const pct  = ((Math.abs(diff) / base) * 100).toFixed(1);
+  if (diff > 0) {
+    el.className = 'sc-pill sc-pill-up';
+    el.innerHTML = `<svg viewBox="0 0 10 10" fill="currentColor"><path d="M5 1l4 8H1z"/></svg>+${pct}%`;
+  } else if (diff < 0) {
+    el.className = 'sc-pill sc-pill-down';
+    el.innerHTML = `<svg viewBox="0 0 10 10" fill="currentColor"><path d="M5 9L1 1h8z"/></svg>-${pct}%`;
+  } else {
+    el.className = 'sc-pill sc-pill-neu';
+    el.textContent = '0%';
+  }
+}
+
+/* Render Createvis-style SVG sparkline line chart */
+function renderSparkLine(baseId, vals) {
+  if (!vals || vals.length < 2) return;
+  const W = 72, H = 36;
+  const max = Math.max(...vals, 1);
+  const min = Math.min(...vals, 0);
+  const range = max - min || 1;
+
+  const pts = vals.map((v, i) => {
+    const x = (i / (vals.length - 1)) * W;
+    const y = H - ((v - min) / range) * (H - 6) - 3;
+    return [x, y];
+  });
+
+  // Smooth path using cardinal spline
+  const pathD = pts.reduce((acc, [x, y], i) => {
+    if (i === 0) return `M${x.toFixed(1)},${y.toFixed(1)}`;
+    const [px, py] = pts[i - 1];
+    const cpx = (px + x) / 2;
+    return acc + ` C${cpx.toFixed(1)},${py.toFixed(1)} ${cpx.toFixed(1)},${y.toFixed(1)} ${x.toFixed(1)},${y.toFixed(1)}`;
+  }, '');
+
+  // Fill area
+  const lastPt = pts[pts.length - 1];
+  const firstPt = pts[0];
+  const fillD = pathD + ` L${lastPt[0].toFixed(1)},${H} L${firstPt[0].toFixed(1)},${H} Z`;
+
+  const lineEl = document.getElementById(baseId + '-line');
+  const fillEl = document.getElementById(baseId + '-fill');
+  const dotEl  = document.getElementById(baseId + '-dot');
+  if (lineEl) lineEl.setAttribute('d', pathD);
+  if (fillEl) fillEl.setAttribute('d', fillD);
+  if (dotEl) {
+    dotEl.setAttribute('cx', lastPt[0].toFixed(1));
+    dotEl.setAttribute('cy', lastPt[1].toFixed(1));
+  }
+}
+
+/* Update sub-text with "vs last refresh" context */
+function updateSub(elId, curr, prev, unit) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (prev == null) return;
+  const diff = curr - prev;
+  if (diff > 0)      el.textContent = `+${diff} ${unit} sejak refresh`;
+  else if (diff < 0) el.textContent = `${diff} ${unit} sejak refresh`;
+  else               el.textContent = `Tidak ada perubahan`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SUMMARY
+═══════════════════════════════════════════════════════════════ */
+async function loadSummary() {
+  try {
+    const r = await api('GET', '/api/mikrotik/hotspot/summary');
+    if (!r.success) return;
+    const d    = r.data;
+    const prev = _prevSummary;
+
+    // Update numbers
+    setText('s-total',    d.totalUsers    ?? '—');
+    setText('s-active',   d.activeUsers   ?? '—');
+    setText('s-disabled', d.disabledUsers ?? '—');
+    setText('s-hosts',    d.totalHosts    ?? '—');
+    setText('s-servers',  d.totalServers  ?? '—');
+
+    // Pill badges
+    renderPill('sc-pill-users',    d.totalUsers,    prev?.totalUsers    ?? null);
+    renderPill('sc-pill-active',   d.activeUsers,   prev?.activeUsers   ?? null);
+    renderPill('sc-pill-disabled', d.disabledUsers, prev?.disabledUsers ?? null);
+    renderPill('sc-pill-hosts',    d.totalHosts,    prev?.totalHosts    ?? null);
+    renderPill('sc-pill-servers',  d.totalServers,  prev?.totalServers  ?? null);
+
+    // Sync tab badges
+    const tbDis = document.getElementById('tb-disabled');
+    const tbSrv = document.getElementById('tb-servers');
+    if (tbDis) tbDis.textContent = d.disabledUsers ?? 0;
+    if (tbSrv) tbSrv.textContent = d.totalServers  ?? 0;
+
+    // Sub-texts (vs previous)
+    updateSub('sc-sub-users',    d.totalUsers,    prev?.totalUsers    ?? null, 'user');
+    updateSub('sc-sub-active',   d.activeUsers,   prev?.activeUsers   ?? null, 'sesi');
+    updateSub('sc-sub-disabled', d.disabledUsers, prev?.disabledUsers ?? null, 'user');
+    updateSub('sc-sub-hosts',    d.totalHosts,    prev?.totalHosts    ?? null, 'host');
+
+    // Sparkline line charts — simulated history trend, last point = now
+    const mkTrend = (cur, n=10) => {
+      if (!cur && cur !== 0) return Array(n).fill(0);
+      return Array.from({length: n}, (_, i) => {
+        if (i === n - 1) return cur;
+        const spread = Math.max(Math.ceil(cur * .25), 3);
+        const jitter = Math.floor(Math.random() * spread);
+        return Math.max(0, cur - jitter + Math.floor(Math.random() * Math.ceil(spread * .3)));
+      });
+    };
+    renderSparkLine('sp-users',    mkTrend(d.totalUsers    || 0));
+    renderSparkLine('sp-active',   mkTrend(d.activeUsers   || 0));
+    renderSparkLine('sp-disabled', mkTrend(d.disabledUsers || 0));
+    renderSparkLine('sp-hosts',    mkTrend(d.totalHosts    || 0));
+    renderSparkLine('sp-servers',  mkTrend(d.totalServers  || 0));
+
+    _prevSummary = { ...d };
+  } catch(e) { console.warn('loadSummary error', e); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SERVERS
+═══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   USER NONAKTIF
+═══════════════════════════════════════════════════════════════ */
+let allDisabled = [], filtDisabled = [], pgDisNum = 1, pgDisSize = 25;
+
+async function loadDisabledUsers() {
+  setEl('tbl-disabled', loaderHtml());
+  const r = await api('GET', '/api/mikrotik/hotspot/users').catch(()=>({}));
+  allDisabled  = (r.success ? r.data : []).filter(u => u.disabled);
+  filtDisabled = [...allDisabled];
+  const badge  = document.getElementById('tb-disabled');
+  if (badge) badge.textContent = allDisabled.length;
+  renderDisabledTable();
+}
+
+function renderDisabledTable() {
+  const start = (pgDisNum-1) * pgDisSize;
+  const slice = filtDisabled.slice(start, start + pgDisSize);
+  if (!slice.length) {
+    setEl('tbl-disabled', emptyHtml('Tidak ada user nonaktif'));
+    document.getElementById('pg-disabled').style.display = 'none';
+    return;
+  }
+  let h = `<table><thead><tr>
+    <th><input type="checkbox" class="chk" id="chk-all-dis" onchange="checkAllDis()"></th>
+    <th>Username</th><th>Profile</th><th>Server</th><th>Limit Waktu</th><th>Komentar</th><th>Aksi</th>
+  </tr></thead><tbody>`;
+  slice.forEach(u => {
+    h += `<tr>
+      <td><input type="checkbox" class="chk chk-dis" value="${x(u.id)}" onchange="updDelDisBtn()"></td>
+      <td>
+        <div style="font-weight:600">${x(u.name)}</div>
+        ${u.comment ? `<div style="font-size:11px;color:var(--text2)">${x(u.comment)}</div>` : ''}
+      </td>
+      <td><span class="badge b-purple">${x(u.profile)}</span></td>
+      <td><span style="font-size:12px;color:var(--text2)">${x(u.server)}</span></td>
+      <td><span style="font-size:12px">${u.limitUptime || '<span style="color:var(--text3)">∞</span>'}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${x(u.comment) || '—'}</td>
+      <td>
+        <div style="display:flex;gap:5px">
+          <button class="btn btn-success btn-xs" onclick="reactivateUser('${x(u.id)}','${x(u.name)}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="20,6 9,17 4,12"/></svg>
+            Aktifkan
+          </button>
+          <button class="btn btn-danger btn-xs" onclick="delUser('${x(u.id)}','${x(u.name)}')">Hapus</button>
+        </div>
+      </td>
+    </tr>`;
+  });
+  h += '</tbody></table>';
+  setEl('tbl-disabled', h);
+  renderDisabledPg();
+}
+
+function renderDisabledPg() {
+  const total = filtDisabled.length;
+  const pages = Math.ceil(total / pgDisSize);
+  const pg = document.getElementById('pg-disabled');
+  pg.style.display = total ? 'flex' : 'none';
+  setText('pg-dis-info', `${Math.min((pgDisNum-1)*pgDisSize+1,total)}–${Math.min(pgDisNum*pgDisSize,total)} dari ${total}`);
+  const btns = document.getElementById('pg-dis-btns');
+  btns.innerHTML = '';
+  const addBtn = (l,p,dis,act) => btns.innerHTML += `<button class="page-btn${act?' active':''}" ${dis?'disabled':''} onclick="goDisPage(${p})">${l}</button>`;
+  addBtn('‹', pgDisNum-1, pgDisNum<=1, false);
+  for (let p=Math.max(1,pgDisNum-2); p<=Math.min(pages,pgDisNum+2); p++) addBtn(p,p,false,p===pgDisNum);
+  addBtn('›', pgDisNum+1, pgDisNum>=pages, false);
+}
+function goDisPage(p) { pgDisNum=p; renderDisabledTable(); }
+
+function filterDisabled() {
+  const q = document.getElementById('q-disabled').value.toLowerCase();
+  filtDisabled = allDisabled.filter(u => !q || u.name.toLowerCase().includes(q) || u.comment.toLowerCase().includes(q));
+  pgDisNum = 1; renderDisabledTable();
+}
+
+function checkAllDis() {
+  const m = document.getElementById('chk-all-dis');
+  document.querySelectorAll('.chk-dis').forEach(c => c.checked = m.checked);
+  updDelDisBtn();
+}
+function updDelDisBtn() {
+  const n = [...document.querySelectorAll('.chk-dis:checked')].length;
+  document.getElementById('btn-del-dis').style.display = n > 0 ? 'inline-flex' : 'none';
+}
+async function deleteSelectedDisabled() {
+  const ids = [...document.querySelectorAll('.chk-dis:checked')].map(c => c.value);
+  if (!ids.length) return;
+  if (!confirm(`Hapus ${ids.length} user nonaktif?`)) return;
+  const r = await api('POST', '/api/mikrotik/hotspot/users/delete-batch', { ids });
+  if (r.success) { toast(r.message, 'success'); loadDisabledUsers(); loadSummary(); }
+  else toast(r.message, 'error');
+}
+async function reactivateUser(id, name) {
+  if (!confirm(`Aktifkan kembali user "${name}"?`)) return;
+  const r = await api('POST', `/api/mikrotik/hotspot/users/${id}/enable`);
+  if (r.success) {
+    toast(`User "${name}" berhasil diaktifkan`, 'success');
+    loadDisabledUsers(); loadUsers(); loadSummary();
+  } else toast(r.message, 'error');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PRINT HELPERS
+═══════════════════════════════════════════════════════════════ */
+const PRINT_BLUE = '#1565C0';
+const PRINT_BLUE_DARK = '#0D47A1';
+const PRINT_GREEN = '#2E7D32';
+const PRINT_RED = '#B71C1C';
+
+function _buildPrintStyle() {
+  return `
+  <style>
+    @page { size: A4; margin: 10mm 12mm; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, Helvetica, sans-serif; background: #f0f2f5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .ph { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; padding-bottom:10px; border-bottom:2px solid ${PRINT_BLUE}; }
+    .ph-left { display:flex; align-items:center; gap:9px; }
+    .ph-icon { width:34px; height:34px; border-radius:9px; background:${PRINT_BLUE}; display:flex; align-items:center; justify-content:center; }
+    .ph-icon svg { width:18px; height:18px; stroke:#fff; fill:none; stroke-width:2; }
+    .ph-name { font-size:17px; font-weight:900; color:${PRINT_BLUE_DARK}; letter-spacing:-.5px; }
+    .ph-sub { font-size:8.5px; color:#888; text-transform:uppercase; letter-spacing:.8px; margin-top:1px; }
+    .ph-right { text-align:right; font-size:8.5px; color:#666; line-height:1.75; }
+    .ph-right strong { color:#222; }
+    /* List table */
+    table { width:100%; border-collapse:collapse; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.1); }
+    thead tr { background:${PRINT_BLUE}; }
+    thead th { font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#fff; padding:7px 10px; text-align:left; }
+    tbody td { font-size:9px; color:#222; padding:6px 10px; border-bottom:1px solid #f0f0f5; font-family:Arial,sans-serif; }
+    tbody tr:last-child td { border-bottom:none; }
+    tbody tr { break-inside:avoid; page-break-inside:avoid; }
+    tbody tr:nth-child(even) td { background:#f8faff; }
+    .mono { font-family:'Courier New',monospace; font-size:9px; }
+    .badge-on  { background:#e8f5e9; color:${PRINT_GREEN}; padding:2px 6px; border-radius:4px; font-size:7.5px; font-weight:700; }
+    .badge-off { background:#ffebee; color:${PRINT_RED};   padding:2px 6px; border-radius:4px; font-size:7.5px; font-weight:700; }
+    .badge-never { background:#fff8e1; color:#F57F17; padding:2px 6px; border-radius:4px; font-size:7.5px; font-weight:700; }
+    .summary-bar { display:flex; gap:10px; margin-bottom:12px; }
+    .sum-box { flex:1; background:#fff; border-radius:8px; padding:8px 12px; box-shadow:0 1px 3px rgba(0,0,0,.08); border-left:3px solid ${PRINT_BLUE}; }
+    .sum-box.green { border-color:${PRINT_GREEN}; }
+    .sum-box.red { border-color:${PRINT_RED}; }
+    .sum-box.amber { border-color:#F57F17; }
+    .sum-lbl { font-size:7.5px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:#888; margin-bottom:3px; }
+    .sum-val { font-size:18px; font-weight:900; color:#111; line-height:1; }
+  </style>`;
+}
+
+function _buildPrintHeader(title, subtitle, meta) {
+  return `<div class="ph">
+    <div class="ph-left">
+      <div class="ph-icon">
+        <svg viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1" fill="#fff" stroke="none"/></svg>
+      </div>
+      <div>
+        <div class="ph-name">FLAYNET</div>
+        <div class="ph-sub">${subtitle}</div>
+      </div>
+    </div>
+    <div class="ph-right">
+      <strong>${title}</strong><br>${meta}
+    </div>
+  </div>`;
+}
+
+
+/* ── Print: Sesi Aktif ── */
+function printActiveSessions() {
+  if (!allActive.length) return toast('Tidak ada sesi aktif saat ini','error');
+  const today = new Date().toLocaleString('id-ID',{dateStyle:'long',timeStyle:'short'});
+  const pa = document.getElementById('print-area');
+  pa.style.display = 'block';
+
+  const totalDown = allActive.reduce((s,a)=>s+a.bytesIn,0);
+  const totalUp   = allActive.reduce((s,a)=>s+a.bytesOut,0);
+
+  pa.innerHTML = _buildPrintStyle() + _buildPrintHeader(
+    'Daftar Sesi Aktif', 'Hotspot — Sesi Aktif',
+    `Dicetak: <strong>${today}</strong> &nbsp;·&nbsp; Total: <strong>${allActive.length} sesi</strong>`
+  ) + `
+  <div class="summary-bar">
+    <div class="sum-box green">
+      <div class="sum-lbl">Sesi Online</div>
+      <div class="sum-val">${allActive.length}</div>
+    </div>
+    <div class="sum-box">
+      <div class="sum-lbl">Total Download</div>
+      <div class="sum-val" style="font-size:14px">${fmtB(totalDown)}</div>
+    </div>
+    <div class="sum-box">
+      <div class="sum-lbl">Total Upload</div>
+      <div class="sum-val" style="font-size:14px">${fmtB(totalUp)}</div>
+    </div>
+  </div>
+  <table>
+    <thead><tr>
+      <th>#</th><th>Username</th><th>IP Address</th><th>MAC Address</th>
+      <th>Server</th><th>Uptime</th><th>Download</th><th>Upload</th>
+    </tr></thead>
+    <tbody>
+      ${allActive.map((s,i) => `<tr>
+        <td style="color:#aaa;font-size:8px">${i+1}</td>
+        <td><strong>${x(s.user)}</strong></td>
+        <td class="mono">${x(s.address)}</td>
+        <td class="mono" style="font-size:8px">${x(s.macAddress)}</td>
+        <td style="font-size:8.5px;color:#555">${x(s.server)}</td>
+        <td class="mono">${x(s.uptime)}</td>
+        <td style="color:${PRINT_BLUE}">${fmtB(s.bytesIn)}</td>
+        <td style="color:${PRINT_GREEN}">${fmtB(s.bytesOut)}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+
+  window.print();
+  setTimeout(() => pa.style.display = 'none', 800);
+}
+
+/* ── Print: Semua User Nonaktif ── */
+function printDisabledUsers() {
+  if (!allDisabled.length) return toast('Tidak ada user nonaktif','error');
+  const today = new Date().toLocaleString('id-ID',{dateStyle:'long',timeStyle:'short'});
+  const pa = document.getElementById('print-area');
+  pa.style.display = 'block';
+
+  const neverUsed = allDisabled.filter(u => u.uptime === '0s' || u.uptime === '' || u.uptime === '0' || (!u.bytesIn && !u.bytesOut));
+  const everUsed  = allDisabled.filter(u => !neverUsed.includes(u));
+
+  pa.innerHTML = _buildPrintStyle() + _buildPrintHeader(
+    'User Nonaktif', 'Hotspot — User Nonaktif',
+    `Dicetak: <strong>${today}</strong> &nbsp;·&nbsp; Total: <strong>${allDisabled.length} user</strong>`
+  ) + `
+  <div class="summary-bar">
+    <div class="sum-box red">
+      <div class="sum-lbl">Total Nonaktif</div>
+      <div class="sum-val">${allDisabled.length}</div>
+    </div>
+    <div class="sum-box amber">
+      <div class="sum-lbl">Belum Pernah Dipakai</div>
+      <div class="sum-val">${neverUsed.length}</div>
+    </div>
+    <div class="sum-box">
+      <div class="sum-lbl">Pernah Dipakai</div>
+      <div class="sum-val">${everUsed.length}</div>
+    </div>
+  </div>
+  <table>
+    <thead><tr>
+      <th>#</th><th>Username</th><th>Profile</th><th>Server</th>
+      <th>Limit Waktu</th><th>Uptime</th><th>Penggunaan</th><th>Status Pakai</th>
+    </tr></thead>
+    <tbody>
+      ${allDisabled.map((u,i) => {
+        const isNever = u.uptime === '0s' || u.uptime === '' || u.uptime === '0' || (!u.bytesIn && !u.bytesOut);
+        const used = (u.bytesIn||0) + (u.bytesOut||0);
+        return `<tr>
+          <td style="color:#aaa;font-size:8px">${i+1}</td>
+          <td>
+            <strong>${x(u.name)}</strong>
+            ${u.comment ? `<br><span style="font-size:7.5px;color:#888">${x(u.comment)}</span>` : ''}
+          </td>
+          <td><span style="background:#ede9fe;color:#5b21b6;padding:2px 6px;border-radius:4px;font-size:7.5px;font-weight:700">${x(u.profile)}</span></td>
+          <td style="font-size:8.5px;color:#555">${x(u.server)}</td>
+          <td class="mono">${u.limitUptime || '∞'}</td>
+          <td class="mono">${x(u.uptime) || '0s'}</td>
+          <td style="font-size:8.5px">${used > 0 ? fmtB(used) : '—'}</td>
+          <td><span class="${isNever ? 'badge-never' : 'badge-off'}">${isNever ? 'Belum dipakai' : 'Pernah pakai'}</span></td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
+
+  window.print();
+  setTimeout(() => pa.style.display = 'none', 800);
+}
+
+/* ── Print: User Belum Pernah Digunakan (uptime=0, bytes=0) ── */
+function printNeverUsed() {
+  const neverUsed = allUsers.filter(u =>
+    (u.uptime === '0s' || u.uptime === '' || u.uptime === '0' || !u.uptime) &&
+    !u.bytesIn && !u.bytesOut
+  );
+  if (!neverUsed.length) return toast('Tidak ada user yang belum pernah digunakan','info');
+  const today = new Date().toLocaleString('id-ID',{dateStyle:'long',timeStyle:'short'});
+  const pa = document.getElementById('print-area');
+  pa.style.display = 'block';
+
+  const aktif    = neverUsed.filter(u => !u.disabled);
+  const nonaktif = neverUsed.filter(u => u.disabled);
+
+  pa.innerHTML = _buildPrintStyle() + _buildPrintHeader(
+    'User Belum Digunakan', 'Hotspot — Belum Dipakai',
+    `Dicetak: <strong>${today}</strong> &nbsp;·&nbsp; Total: <strong>${neverUsed.length} user</strong>`
+  ) + `
+  <div class="summary-bar">
+    <div class="sum-box amber">
+      <div class="sum-lbl">Belum Pernah Dipakai</div>
+      <div class="sum-val">${neverUsed.length}</div>
+    </div>
+    <div class="sum-box green">
+      <div class="sum-lbl">Status Aktif</div>
+      <div class="sum-val">${aktif.length}</div>
+    </div>
+    <div class="sum-box red">
+      <div class="sum-lbl">Status Nonaktif</div>
+      <div class="sum-val">${nonaktif.length}</div>
+    </div>
+  </div>
+  <table>
+    <thead><tr>
+      <th>#</th><th>Username</th><th>Profile</th><th>Server</th>
+      <th>Limit Waktu</th><th>Komentar</th><th>Status</th>
+    </tr></thead>
+    <tbody>
+      ${neverUsed.map((u,i) => `<tr>
+        <td style="color:#aaa;font-size:8px">${i+1}</td>
+        <td><strong>${x(u.name)}</strong></td>
+        <td><span style="background:#ede9fe;color:#5b21b6;padding:2px 6px;border-radius:4px;font-size:7.5px;font-weight:700">${x(u.profile)}</span></td>
+        <td style="font-size:8.5px;color:#555">${x(u.server)}</td>
+        <td class="mono">${u.limitUptime || '∞'}</td>
+        <td style="font-size:8.5px;color:#888">${x(u.comment) || '—'}</td>
+        <td><span class="${u.disabled ? 'badge-off' : 'badge-on'}">${u.disabled ? 'Nonaktif' : 'Aktif'}</span></td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+
+  window.print();
+  setTimeout(() => pa.style.display = 'none', 800);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SERVERS TAB
+═══════════════════════════════════════════════════════════════ */
+async function loadServersTab() {
+  setEl('tbl-servers-tab', loaderHtml());
+  const r = await api('GET', '/api/mikrotik/hotspot/servers').catch(()=>({}));
+  const servers = r.success ? r.data : [];
+  const badge = document.getElementById('tb-servers');
+  if (badge) badge.textContent = servers.length;
+  if (!servers.length) {
+    setEl('tbl-servers-tab', emptyHtml('Tidak ada hotspot server ditemukan'));
+    return;
+  }
+  let h = `<table><thead><tr>
+    <th>Nama Server</th><th>Interface</th><th>Address Pool</th>
+    <th>Profile</th><th>Idle Timeout</th><th>Status</th>
+  </tr></thead><tbody>`;
+  servers.forEach(s => {
+    const statusBadge = s.disabled
+      ? '<span class="badge b-red"><span class="bdot"></span>Disabled</span>'
+      : '<span class="badge b-green"><span class="bdot"></span>Running</span>';
+    h += `<tr>
+      <td>
+        <div style="font-weight:600;font-size:13px">${x(s.name)}</div>
+        <div style="font-size:11px;color:var(--text2)">${x(s.addressPool) || '—'}</div>
+      </td>
+      <td><span class="td-mono">${x(s.interface)}</span></td>
+      <td><span class="td-mono">${x(s.addressPool) || '—'}</span></td>
+      <td><span class="badge b-blue">${x(s.profile)}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${x(s.idleTimeout) || '—'}</td>
+      <td>${statusBadge}</td>
+    </tr>`;
+  });
+  h += '</tbody></table>';
+  setEl('tbl-servers-tab', h);
+}
+
+async function loadServers() {
+  const r = await api('GET', '/api/mikrotik/hotspot/servers').catch(()=>({}));
+  allServers = r.success ? r.data : [];
+  ['g-server','u-server','b-server'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = '<option value="all">all</option>';
+    allServers.forEach(s => el.innerHTML += `<option value="${x(s.name)}">${x(s.name)}</option>`);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   USERS
+═══════════════════════════════════════════════════════════════ */
+async function loadUsers() {
+  setEl('tbl-users', loaderHtml());
+  const r = await api('GET', '/api/mikrotik/hotspot/users').catch(()=>({}));
+  allUsers = r.success ? r.data : [];
+  filtUsers = [...allUsers];
+  document.getElementById('tb-users').textContent = allUsers.length;
+  syncProfileDropdowns();
+  renderUsersTable();
+}
+
+function renderUsersTable() {
+  const start = (pgNum-1)*pgSize;
+  const slice = filtUsers.slice(start, start+pgSize);
+  if (!slice.length) { setEl('tbl-users', emptyHtml('Tidak ada user')); setEl('pg-users', ''); document.getElementById('pg-users').style.display='none'; return; }
+
+  let h = `<table>
+    <thead><tr>
+      <th><input type="checkbox" class="chk" id="chk-all" onchange="checkAll()"></th>
+      <th>Username</th><th>Profile</th><th>Server</th>
+      <th>Limit</th><th>Uptime</th><th>Status</th><th>Aksi</th>
+    </tr></thead><tbody>`;
+  slice.forEach(u => {
+    const used = u.bytesIn + u.bytesOut;
+    const limitInfo = u.limitBytesTotal > 0
+      ? `<div style="font-size:10.5px;color:var(--text3);margin-top:2px;font-family:var(--fm)">${fmtB(used)} / ${fmtB(u.limitBytesTotal)}</div>`
+      : '';
+    h += `<tr>
+      <td><input type="checkbox" class="chk chk-u" value="${x(u.id)}" onchange="updSelBtn()"></td>
+      <td>
+        <div style="font-weight:600;font-size:13px">${x(u.name)}</div>
+        ${u.comment ? `<div style="font-size:11px;color:var(--text2)">${x(u.comment)}</div>` : ''}
+      </td>
+      <td><span class="badge b-purple">${x(u.profile)}</span></td>
+      <td><span style="font-size:12px;color:var(--text2)">${x(u.server)}</span></td>
+      <td>
+        <span style="font-size:12px">${u.limitUptime || '<span style="color:var(--text3)">∞</span>'}</span>
+        ${limitInfo}
+      </td>
+      <td><span class="td-mono">${u.uptime||'0s'}</span></td>
+      <td>${u.disabled
+        ? '<span class="badge b-red"><span class="bdot"></span>Off</span>'
+        : '<span class="badge b-green"><span class="bdot"></span>On</span>'}</td>
+      <td>
+        <div style="display:flex;gap:5px">
+          <button class="btn btn-ghost btn-xs" onclick='editUser(${JSON.stringify(u).replace(/'/g,"&#39;")})'>Edit</button>
+          ${u.disabled
+            ? `<button class="btn btn-success btn-xs" onclick="toggleUser('${u.id}',false)">Aktifkan</button>`
+            : `<button class="btn btn-ghost btn-xs" onclick="toggleUser('${u.id}',true)" style="color:var(--amber)">Nonaktifkan</button>`}
+          <button class="btn btn-danger btn-xs" onclick="delUser('${u.id}','${x(u.name)}')">Hapus</button>
+        </div>
+      </td>
+    </tr>`;
+  });
+  h += '</tbody></table>';
+  setEl('tbl-users', h);
+  renderPg();
+}
+
+function renderPg() {
+  const total = filtUsers.length;
+  const pages = Math.ceil(total/pgSize);
+  const pg = document.getElementById('pg-users');
+  pg.style.display = total ? 'flex' : 'none';
+  setText('pg-info', `${Math.min((pgNum-1)*pgSize+1,total)}–${Math.min(pgNum*pgSize,total)} dari ${total}`);
+  const btns = document.getElementById('pg-btns');
+  btns.innerHTML = '';
+  const addBtn = (lbl, p, dis, act) => {
+    btns.innerHTML += `<button class="page-btn${act?' active':''}" ${dis?'disabled':''} onclick="goPage(${p})">${lbl}</button>`;
+  };
+  addBtn('‹', pgNum-1, pgNum<=1, false);
+  for (let p=Math.max(1,pgNum-2); p<=Math.min(pages,pgNum+2); p++) addBtn(p,p,false,p===pgNum);
+  addBtn('›', pgNum+1, pgNum>=pages, false);
+}
+function goPage(p){ pgNum=p; renderUsersTable(); }
+
+function syncProfileDropdowns() {
+  const profiles = [...new Set(allUsers.map(u=>u.profile))].sort();
+  const fp = document.getElementById('fp-users');
+  const cur = fp.value;
+  fp.innerHTML = '<option value="">Semua Profile</option>';
+  profiles.forEach(p => fp.innerHTML += `<option value="${x(p)}">${x(p)}</option>`);
+  fp.value = cur;
+  ['g-profile','u-profile'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cv = el.value;
+    el.innerHTML = '<option value="default">default</option>';
+    allProfiles.forEach(p => {
+      if (p.name!=='default') el.innerHTML += `<option value="${x(p.name)}">${x(p.name)}</option>`;
+    });
+    profiles.forEach(p => {
+      if (p!=='default' && !allProfiles.find(ap=>ap.name===p))
+        el.innerHTML += `<option value="${x(p)}">${x(p)}</option>`;
+    });
+    if (cv) el.value = cv;
+  });
+}
+
+function filterUsers() {
+  const q = document.getElementById('q-users').value.toLowerCase();
+  const fp = document.getElementById('fp-users').value;
+  filtUsers = allUsers.filter(u =>
+    (!q || u.name.toLowerCase().includes(q) || u.comment.toLowerCase().includes(q)) &&
+    (!fp || u.profile===fp));
+  pgNum=1; renderUsersTable();
+}
+
+function checkAll() {
+  const m = document.getElementById('chk-all');
+  document.querySelectorAll('.chk-u').forEach(c => c.checked=m.checked);
+  updSelBtn();
+}
+function updSelBtn() {
+  const n = [...document.querySelectorAll('.chk-u:checked')].length;
+  document.getElementById('btn-del-sel').style.display = n>0?'inline-flex':'none';
+}
+
+function editUser(u) {
+  document.getElementById('m-user-title').textContent = 'Edit User: '+u.name;
+  document.getElementById('u-id').value     = u.id;
+  document.getElementById('u-name').value   = u.name;
+  document.getElementById('u-pass').value   = u.password;
+  document.getElementById('u-uptime').value = u.limitUptime||'';
+  document.getElementById('u-bytes').value  = u.limitBytesTotal||0;
+  document.getElementById('u-mac').value    = u.macAddress||'';
+  document.getElementById('u-comment').value= u.comment||'';
+  setTimeout(()=>{
+    const sp=document.getElementById('u-profile'); if(sp) sp.value=u.profile;
+    const ss=document.getElementById('u-server');  if(ss) ss.value=u.server;
+  },60);
+  openModal('m-add-user');
+}
+
+async function saveUser() {
+  const id   = document.getElementById('u-id').value;
+  const body = {
+    name:document.getElementById('u-name').value.trim(),
+    password:document.getElementById('u-pass').value,
+    profile:document.getElementById('u-profile').value,
+    server:document.getElementById('u-server').value,
+    limitUptime:document.getElementById('u-uptime').value,
+    limitBytesTotal:parseInt(document.getElementById('u-bytes').value)||0,
+    macAddress:document.getElementById('u-mac').value,
+    comment:document.getElementById('u-comment').value,
+  };
+  if (!body.name) return toast('Username harus diisi','error');
+  const btn=document.getElementById('btn-save-user');
+  btn.disabled=true; btn.textContent='Menyimpan...';
+  const r = id ? await api('PUT',`/api/mikrotik/hotspot/users/${id}`,body)
+               : await api('POST','/api/mikrotik/hotspot/users',body);
+  if (r.success){ toast(r.message,'success'); closeModal('m-add-user'); loadUsers(); loadSummary(); }
+  else toast(r.message,'error');
+  btn.disabled=false; btn.textContent='Simpan';
+}
+
+async function toggleUser(id,dis) {
+  const r = dis ? await api('POST',`/api/mikrotik/hotspot/users/${id}/disable`)
+                : await api('POST',`/api/mikrotik/hotspot/users/${id}/enable`);
+  if (r.success){ toast(r.message,'success'); loadUsers(); loadSummary(); }
+  else toast(r.message,'error');
+}
+
+async function delUser(id,name) {
+  if (!confirm(`Hapus user "${name}"?`)) return;
+  const r = await api('DELETE',`/api/mikrotik/hotspot/users/${id}`);
+  if (r.success){ toast(r.message,'success'); loadUsers(); loadSummary(); }
+  else toast(r.message,'error');
+}
+
+async function deleteSelected() {
+  const ids=[...document.querySelectorAll('.chk-u:checked')].map(c=>c.value);
+  if (!ids.length) return;
+  if (!confirm(`Hapus ${ids.length} user terpilih?`)) return;
+  const r = await api('POST','/api/mikrotik/hotspot/users/delete-batch',{ids});
+  if (r.success){ toast(r.message,'success'); loadUsers(); loadSummary(); }
+  else toast(r.message,'error');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GENERATE VOUCHERS
+═══════════════════════════════════════════════════════════════ */
+async function generateVouchers() {
+  const count=parseInt(document.getElementById('g-count').value);
+  if (!count||count<1) return toast('Jumlah minimal 1','error');
+  if (count > 5000) return toast('Jumlah maksimal 5000 per generate','error');
+
+  const btn=document.getElementById('btn-gen');
+  btn.disabled=true;
+
+  // Loading state — kalau count besar, beri estimasi waktu agar user tidak
+  // mengira hang. Estimasi: ~30ms per voucher dengan chunk paralel 8 di backend.
+  const estSec = Math.max(2, Math.ceil(count * 0.03));
+  const estText = count >= 100
+    ? ` (est. ${estSec < 60 ? `${estSec}d` : `${Math.ceil(estSec/60)}m`})`
+    : '';
+  btn.innerHTML=`<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg> Generating ${count}${estText}...`;
+
+  // Untuk batch besar, info toast supaya user yakin sedang berjalan
+  if (count >= 50) {
+    toast(`Membuat ${count} voucher di MikroTik, mohon tunggu${estText}...`, 'info');
+  }
+
+  const startTime = Date.now();
+  const r = await api('POST','/api/mikrotik/hotspot/generate',{
+    count,
+    profile:document.getElementById('g-profile').value||'default',
+    server:document.getElementById('g-server').value||'all',
+    prefix:document.getElementById('g-prefix').value||'vc',
+    limitUptime:document.getElementById('g-uptime').value,
+    passwordLength:8,
+  }).catch(e => ({ success: false, message: e?.message || 'Network error' }));
+
+  const elapsed = Math.round((Date.now() - startTime) / 1000);
+
+  btn.disabled=false;
+  btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/></svg> Generate';
+
+  if (r && r.success) {
+    lastVouchers = r.vouchers || [];
+    const okCount   = lastVouchers.length;
+    const errCount  = r.errors?.length || 0;
+    const requested = r.total || count;
+    // Feedback sukses dengan detail
+    if (errCount === 0) {
+      toast(`✓ ${okCount} voucher berhasil dibuat dalam ${elapsed} detik`, 'success');
+    } else if (okCount > 0) {
+      toast(`⚠ ${okCount}/${requested} voucher berhasil (${errCount} gagal). ${elapsed} detik`, 'info');
+    } else {
+      toast(`✗ Semua ${requested} voucher gagal dibuat`, 'error');
+    }
+    showVouchers(r);
+    loadUsers();
+    loadSummary();
+  } else {
+    toast(r?.message || 'Generate gagal — periksa koneksi & konfigurasi MikroTik', 'error');
+  }
+}
+
+function openLastVouchers() {
+  if (!lastVouchers.length) return toast('Generate voucher dulu','info');
+  closePrintMenu();
+  showVouchers({vouchers:lastVouchers,success:lastVouchers.length});
+}
+
+// ─── PRINT SELECTOR (manual selection) ──────────────────
+// State internal — voucher yang sedang di-select. Set agar lookup O(1).
+let _psAllVouchers = [];        // semua voucher dari allUsers
+let _psFiltered    = [];        // hasil filter aktif
+const _psSelected  = new Set(); // username yang ter-select
+
+function openPrintSelector() {
+  closePrintMenu();
+  // Snapshot semua user (yang ada di tab Daftar User saat ini)
+  _psAllVouchers = (allUsers || []).map(u => ({
+    username: u.name,
+    password: u.password,
+    profile:  u.profile  || 'default',
+    server:   u.server   || 'all',
+    limitUptime: u['limit-uptime'] || '',
+    disabled: u.disabled === 'true' || u.disabled === true,
+    used: (u.uptime && u.uptime !== '0s' && u.uptime !== '0') || u.bytesIn > 0 || u.bytesOut > 0
+  }));
+  if (!_psAllVouchers.length) {
+    return toast('Tidak ada voucher di daftar user', 'error');
+  }
+  _psSelected.clear();
+  // Populate profile dropdown
+  const profiles = [...new Set(_psAllVouchers.map(v => v.profile))];
+  const psP = document.getElementById('ps-profile');
+  psP.innerHTML = '<option value="">Semua profile</option>' +
+    profiles.map(p => `<option value="${x(p)}">${x(p)}</option>`).join('');
+  document.getElementById('ps-search').value = '';
+  document.getElementById('ps-status').value = '';
+  document.getElementById('ps-range-start').value = '';
+  document.getElementById('ps-range-end').value = '';
+  // Initial filter & render
+  psApplyFilter();
+  openModal('m-print-selector');
+}
+
+function psApplyFilter() {
+  const q       = (document.getElementById('ps-search').value || '').toLowerCase().trim();
+  const profile = document.getElementById('ps-profile').value;
+  const status  = document.getElementById('ps-status').value;
+
+  _psFiltered = _psAllVouchers.filter(v => {
+    if (profile && v.profile !== profile) return false;
+    if (status === 'active'   && v.disabled) return false;
+    if (status === 'disabled' && !v.disabled) return false;
+    if (status === 'unused'   && v.used) return false;
+    if (q) {
+      const hay = `${v.username} ${v.password} ${v.profile}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  psRenderList();
+}
+
+function psRenderList() {
+  const wrap = document.getElementById('ps-list');
+  const total = _psFiltered.length;
+  document.getElementById('ps-count-info').textContent =
+    `Menampilkan ${total} voucher (dari ${_psAllVouchers.length} total)`;
+
+  if (!total) {
+    wrap.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text3);font-size:13px">Tidak ada voucher yang cocok dengan filter</div>';
+    psUpdateCount();
+    return;
+  }
+
+  // Render virtualized-light: kalau lebih dari 500, batasi tampilan
+  const display = _psFiltered.slice(0, 1000);
+  const truncated = total > 1000;
+
+  let html = `<div style="position:sticky;top:0;background:#f1f5f9;padding:8px 12px;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border2);display:flex;align-items:center;gap:8px">
+    <input type="checkbox" id="ps-master-chk" onchange="psSelectAll(this.checked)" style="cursor:pointer">
+    <span>#</span>
+    <span style="flex:1">Username · Password</span>
+    <span style="width:80px">Profile</span>
+    <span style="width:60px;text-align:center">Status</span>
+  </div>`;
+
+  html += display.map((v, idx) => {
+    const checked = _psSelected.has(v.username) ? 'checked' : '';
+    const statusBadge = v.disabled
+      ? '<span style="background:#fee2e2;color:#b91c1c;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:600">Nonaktif</span>'
+      : v.used
+        ? '<span style="background:#fef3c7;color:#a16207;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:600">Terpakai</span>'
+        : '<span style="background:#dcfce7;color:#15803d;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:600">Aktif</span>';
+    return `<label style="display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid #f1f5f9;cursor:pointer;font-size:12px" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+      <input type="checkbox" class="ps-row-chk" data-user="${x(v.username)}" ${checked} onchange="psToggleOne('${x(v.username)}', this.checked)" style="cursor:pointer">
+      <span style="width:32px;color:var(--text3);font-size:11px">${idx+1}</span>
+      <span style="flex:1">
+        <strong style="color:var(--text)">${x(v.username)}</strong>
+        <span style="color:var(--text3);font-family:monospace;margin-left:6px">${x(v.password)}</span>
+      </span>
+      <span style="width:80px;color:var(--text2);font-size:11px">${x(v.profile)}</span>
+      <span style="width:60px;text-align:center">${statusBadge}</span>
+    </label>`;
+  }).join('');
+
+  if (truncated) {
+    html += `<div style="padding:12px;text-align:center;color:var(--text3);font-size:12px;font-style:italic">Hanya menampilkan 1000 baris pertama. Gunakan filter untuk mempersempit.</div>`;
+  }
+  wrap.innerHTML = html;
+  psUpdateCount();
+}
+
+function psToggleOne(username, checked) {
+  if (checked) _psSelected.add(username);
+  else _psSelected.delete(username);
+  psUpdateCount();
+}
+
+function psSelectAll(checked) {
+  if (checked) {
+    _psFiltered.forEach(v => _psSelected.add(v.username));
+  } else {
+    _psFiltered.forEach(v => _psSelected.delete(v.username));
+  }
+  // Re-render checkbox state (without re-rendering whole list for perf)
+  document.querySelectorAll('.ps-row-chk').forEach(chk => {
+    chk.checked = _psSelected.has(chk.dataset.user);
+  });
+  const mc = document.getElementById('ps-master-chk');
+  if (mc) mc.checked = checked;
+  psUpdateCount();
+}
+
+function psSelectRange() {
+  const start = parseInt(document.getElementById('ps-range-start').value);
+  const end   = parseInt(document.getElementById('ps-range-end').value);
+  if (!start || !end || start < 1 || end < start) {
+    return toast('Range tidak valid (dari ≥ 1, sampai ≥ dari)', 'error');
+  }
+  // Apply ke filtered list (1-indexed)
+  for (let i = start - 1; i < Math.min(end, _psFiltered.length); i++) {
+    _psSelected.add(_psFiltered[i].username);
+  }
+  psRenderList();
+  toast(`${Math.min(end, _psFiltered.length) - start + 1} voucher ditambahkan ke seleksi`, 'success');
+}
+
+function psUpdateCount() {
+  const n = _psSelected.size;
+  document.getElementById('ps-selected-count').textContent = n;
+  document.getElementById('ps-btn-print').disabled = n === 0;
+}
+
+function psPrintSelected() {
+  const selected = _psAllVouchers.filter(v => _psSelected.has(v.username));
+  if (!selected.length) return toast('Pilih minimal 1 voucher dulu', 'error');
+  closeModal('m-print-selector');
+  // Map ke shape yang printVoucherCards expect
+  const vouchers = selected.map(v => ({
+    username: v.username, password: v.password,
+    profile: v.profile, server: v.server,
+    limitUptime: v.limitUptime,
+    disabled: v.disabled
+  }));
+  printVoucherCards(vouchers, `Pilihan Manual (${vouchers.length})`, '', '');
+}
+
+/* ── Print Dropdown ── */
+function togglePrintMenu(e) {
+  e.stopPropagation();
+  const menu = document.getElementById('print-menu');
+  const chevron = document.querySelector('.print-chevron');
+  const isOpen = menu.style.display !== 'none';
+  if (isOpen) {
+    menu.style.display = 'none';
+    if (chevron) chevron.style.transform = '';
+  } else {
+    // Position relative to button using fixed coords
+    const btn = e.currentTarget;
+    const rect = btn.getBoundingClientRect();
+    menu.style.display = 'block';
+    menu.style.top  = (rect.bottom + 6) + 'px';
+    menu.style.left = rect.left + 'px';
+    // Prevent going off right edge
+    const menuW = 260;
+    if (rect.left + menuW > window.innerWidth - 12) {
+      menu.style.left = (rect.right - menuW) + 'px';
+    }
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
+    updatePrintMenuBadges();
+  }
+}
+
+function closePrintMenu() {
+  const menu = document.getElementById('print-menu');
+  const chevron = document.querySelector('.print-chevron');
+  if (menu) menu.style.display = 'none';
+  if (chevron) chevron.style.transform = '';
+}
+
+document.addEventListener('click', function(e) {
+  const dd = document.getElementById('print-dropdown');
+  if (dd && !dd.contains(e.target)) closePrintMenu();
+});
+
+function updatePrintMenuBadges() {
+  const unused = allUsers.filter(u => (!u.uptime || u.uptime==='0s' || u.uptime==='0') && !u.bytesIn && !u.bytesOut);
+  const active = allUsers.filter(u => !u.disabled);
+  const setB = (id, val, cls) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = val;
+    if (cls) el.className = 'pm-badge ' + cls;
+  };
+  setB('pm-badge-all',    allUsers.length,       '');
+  setB('pm-badge-active', active.length,         'pm-badge-green');
+  setB('pm-badge-unused', unused.length,         'pm-badge-amber');
+  setB('pm-badge-last',   lastVouchers.length || '—', '');
+
+  // Build profile list
+  const profiles = [...new Map(allUsers.map(u => [u.profile, {
+    name: u.profile,
+    count: allUsers.filter(x => x.profile === u.profile).length
+  }])).values()].sort((a,b) => a.name.localeCompare(b.name));
+
+  const container = document.getElementById('pm-profile-list');
+  if (!container) return;
+  if (!profiles.length) {
+    container.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:6px 12px">Tidak ada profile</div>';
+    return;
+  }
+  container.innerHTML = profiles.map(p => `
+    <button class="print-menu-item" onclick="printVoucherFilter('profile','${x(p.name)}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      ${x(p.name)}
+      <span class="pm-badge pm-badge-blue">${p.count}</span>
+    </button>`).join('');
+}
+
+function printVoucherFilter(type, profileName) {
+  closePrintMenu();
+  let users = [];
+  let title = '';
+
+  if (type === 'all') {
+    users = [...allUsers];
+    title = 'Semua User Hotspot';
+  } else if (type === 'active') {
+    users = allUsers.filter(u => !u.disabled);
+    title = 'User Aktif (On)';
+  } else if (type === 'unused') {
+    users = allUsers.filter(u =>
+      (!u.uptime || u.uptime === '0s' || u.uptime === '0') && !u.bytesIn && !u.bytesOut
+    );
+    title = 'User Belum Pernah Dipakai';
+  } else if (type === 'profile') {
+    users = allUsers.filter(u => u.profile === profileName);
+    title = `Profile: ${profileName}`;
+  }
+
+  if (!users.length) return toast('Tidak ada user untuk filter ini', 'info');
+
+  const price = document.getElementById('g-price')?.value || '';
+  const duration = document.getElementById('g-uptime')?.value || '';
+
+  // Konversi format user -> voucher untuk dicetak
+  const vouchers = users.map(u => ({
+    username: u.name,
+    password: u.password,
+    profile:  u.profile,
+    server:   u.server,
+    limitUptime: u.limitUptime || duration,
+    disabled: u.disabled,
+    uptime:   u.uptime,
+    bytesIn:  u.bytesIn,
+    bytesOut: u.bytesOut,
+  }));
+
+  printVoucherCards(vouchers, title, price, duration);
+}
+
+function printVoucherCards(vouchers, title, price, duration) {
+  const pa = document.getElementById('print-area');
+  pa.style.display = 'block';
+  const today = new Date().toLocaleString('id-ID',{dateStyle:'long',timeStyle:'short'});
+
+  // Load template settings dari AppSetting (vtpl_*) — kalau ada, override default
+  // Cache di window agar tidak fetch ulang setiap print
+  const T = window._voucherTpl || {
+    primary_color:'#1565C0', primary_dark:'#0D47A1', accent_color:'#2E7D32',
+    company_name:'FLAYNET', tagline:'Voucher Hotspot', logo_url:'',
+    label_username:'USERNAME', label_password:'PASSWORD', label_profile:'PAKET',
+    label_duration:'DURASI', label_price:'HARGA',
+    show_wifi:'1', show_price:'1', show_duration:'1', show_profile:'1', show_footer:'1',
+    columns:'5', footer_text:''
+  };
+  const BLUE = T.primary_color || '#1565C0';
+  const BLUE_D = T.primary_dark || '#0D47A1';
+  const GREEN = T.accent_color || '#2E7D32';
+  const cols = Math.max(2, Math.min(8, parseInt(T.columns) || 5));
+
+  pa.innerHTML = `<style>
+    @page { size: A4; margin: 8mm 10mm; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { font-family: Arial, Helvetica, sans-serif; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 10px; }
+
+    /* ── Page header ── */
+    .ph { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; padding-bottom:7px; border-bottom:2px solid ${BLUE}; }
+    .ph-brand { display:flex; align-items:center; gap:7px; }
+    .ph-ico { width:28px; height:28px; border-radius:7px; background:${BLUE}; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .ph-ico svg { width:14px; height:14px; stroke:#fff; fill:none; stroke-width:2; }
+    .ph-name { font-size:15px; font-weight:900; color:${BLUE_D}; letter-spacing:-.5px; }
+    .ph-sub  { font-size:7px; color:#888; text-transform:uppercase; letter-spacing:.7px; margin-top:1px; }
+    .ph-meta { text-align:right; font-size:7.5px; color:#666; line-height:1.7; }
+    .ph-meta strong { color:#222; }
+
+    /* ── Summary bar ── */
+    .sum-bar { display:flex; gap:6px; margin-bottom:8px; }
+    .sum-box { flex:1; background:#f8faff; border-radius:5px; padding:5px 8px; }
+    .sum-box.g .sum-val { color:${GREEN}; }
+    .sum-box.r .sum-val { color:#C62828; }
+    .sum-lbl { font-size:6.5px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:#999; margin-bottom:2px; }
+    .sum-val { font-size:16px; font-weight:900; color:#111; line-height:1; }
+
+    /* ── Page Sections ──
+       Setiap section adalah exactly 1 halaman cetak. Tinggi fixed agar
+       browser break tepat di batasnya — page-break-after sendiri tidak
+       cukup di Chrome preview. */
+    .page {
+      page-break-after: always;
+      break-after: page;
+      /* A4 portrait usable height = 297mm - margins(8+8) = 281mm */
+      min-height: 277mm;
+      max-height: 277mm;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+      min-height: 0;
+      max-height: none;
+      overflow: visible;
+    }
+    /* Grid voucher — kolom dari template, row height tetap agar tidak overlap */
+    .grid {
+      display:grid;
+      grid-template-columns:repeat(${cols},1fr);
+      grid-auto-rows: 44mm;  /* tinggi tetap per kartu — pakai mm agar print-safe */
+      gap:4mm 4px;
+      align-content: start;
+    }
+    /* Kontinyu header di page 2+ (lebih kecil & informatif) */
+    .page-hdr-mini { display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:6px; padding-bottom:5px; border-bottom:1.5px solid ${BLUE};
+      font-size:7px; color:#888; }
+    .page-hdr-mini strong { color:#222; }
+
+    /* ── Kartu voucher — tinggi fixed agar grid tidak overflow ── */
+    .vc {
+      border-radius:7px; overflow:hidden;
+      border:1px solid #dde3ef;
+      background:#fff;
+      break-inside:avoid;
+      page-break-inside:avoid;
+      display:flex; flex-direction:column;
+      height: 44mm;     /* match grid-auto-rows */
+      box-sizing: border-box;
+    }
+
+    /* Header biru */
+    .vh {
+      background:${BLUE};
+      padding:6px 7px 5px;
+      position:relative; overflow:hidden; flex-shrink:0;
+    }
+    .vh::after { content:''; position:absolute; bottom:-10px; right:-10px; width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,.08); }
+    .vh-row { display:flex; align-items:center; gap:5px; position:relative; z-index:1; }
+    .vh-av {
+      width:22px; height:22px; border-radius:50%;
+      background:rgba(255,255,255,.25); border:1px solid rgba(255,255,255,.5);
+      display:flex; align-items:center; justify-content:center;
+      flex-shrink:0; font-size:8px; font-weight:800; color:#fff;
+      font-family:'Courier New',monospace; letter-spacing:-.5px;
+    }
+    .vh-info { flex:1; min-width:0; }
+    .vh-brand { font-size:5.5px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:rgba(255,255,255,.65); margin-bottom:1px; }
+    .vh-user  { font-size:8px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:-.2px; }
+    .vh-prof  { font-size:6px; color:rgba(255,255,255,.7); margin-top:1px; }
+    /* wifi icon */
+    .vh-wifi { position:absolute; top:5px; right:6px; opacity:.25; }
+    .vh-wifi svg { width:11px; height:11px; stroke:#fff; fill:none; stroke-width:2; }
+
+    /* Body rows */
+    .vb { flex:1; }
+    .vr { display:flex; align-items:center; justify-content:space-between; padding:3.5px 7px; border-bottom:1px solid #f0f2f8; }
+    .vr:last-child { border-bottom:none; }
+    .vl { font-size:6px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; color:#b0bac9; }
+    .vv { font-weight:700; color:#111; font-size:8px; text-align:right; max-width:65%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .vv.pw { font-family:'Courier New',monospace; color:${BLUE_D}; font-size:10px; font-weight:900; letter-spacing:1px; max-width:70%; }
+    .vv.gn { color:${GREEN}; }
+    .s-on  { background:#e8f5e9; color:${GREEN};  padding:1px 4px; border-radius:2px; font-size:6px; font-weight:700; white-space:nowrap; }
+    .s-off { background:#ffebee; color:#C62828; padding:1px 4px; border-radius:2px; font-size:6px; font-weight:700; white-space:nowrap; }
+  </style>`;
+
+  // Hitung kapasitas per halaman berdasarkan jumlah kolom.
+  // Kartu sekarang tinggi tetap 44mm + 4mm gap = 48mm/row.
+  // A4 portrait usable ≈ 281mm:
+  //   - Page 1: minus header (~25mm) + summary (~15mm) = 241mm → 5 baris (240mm)
+  //   - Page 2+: minus mini-header (~10mm) = 271mm → 5 baris (240mm) — pakai 5 untuk safety
+  // Pakai 4 untuk page 1 agar pasti tidak overflow.
+  const PAGE1_CAP = 4 * cols;
+  const PAGEN_CAP = 5 * cols;
+
+  // Bagi vouchers ke pages
+  const pages = [];
+  let i = 0;
+  if (vouchers.length > 0) {
+    pages.push(vouchers.slice(i, i + PAGE1_CAP));
+    i += PAGE1_CAP;
+    while (i < vouchers.length) {
+      pages.push(vouchers.slice(i, i + PAGEN_CAP));
+      i += PAGEN_CAP;
+    }
+  }
+
+  // Render voucher card helper
+  const renderVoucher = (v) => {
+    const av  = (v.password || v.username || '??').substring(0,2).toUpperCase();
+    const dur = v.limitUptime || duration || '∞';
+    return `<div class="vc">
+      <div class="vh">
+        <div class="vh-wifi"><svg viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1" fill="#fff" stroke="none"/></svg></div>
+        <div class="vh-row">
+          <div class="vh-av">${av}</div>
+          <div class="vh-info">
+            <div class="vh-brand">${x(T.company_name)}</div>
+            <div class="vh-user">${x(v.username)}</div>
+            <div class="vh-prof">${x(v.profile)}</div>
+          </div>
+        </div>
+      </div>
+      <div class="vb">
+        <div class="vr"><span class="vl">Password</span><span class="vv pw">${x(v.password)||'—'}</span></div>
+        <div class="vr"><span class="vl">Durasi</span><span class="vv">${x(dur)}</span></div>
+        <div class="vr"><span class="vl">Server</span><span class="vv">${x(v.server||'all')}</span></div>
+        ${price ? `<div class="vr"><span class="vl">Harga</span><span class="vv gn">${x(price)}</span></div>` : ''}
+        <div class="vr"><span class="vl">Status</span><span class="vv"><span class="${v.disabled?'s-off':'s-on'}">${v.disabled?'Nonaktif':'Aktif'}</span></span></div>
+      </div>
+    </div>`;
+  };
+
+  // Build header (page 1 full)
+  const fullHeader = `
+    <div class="ph">
+      <div class="ph-brand">
+        ${T.logo_url
+          ? `<img src="${x(T.logo_url)}" alt="Logo" class="ph-logo" style="width:32px;height:32px;border-radius:7px;object-fit:contain;background:#fff;border:1px solid #e0e7f3;">`
+          : `<div class="ph-ico"><svg viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1" fill="#fff" stroke="none"/></svg></div>`
+        }
+        <div><div class="ph-name">${x(T.company_name)}</div><div class="ph-sub">${x(T.tagline)}</div></div>
+      </div>
+      <div class="ph-meta">
+        Filter: <strong>${x(title)}</strong>${price ? ` &nbsp;·&nbsp; Harga: <strong>${x(price)}</strong>` : ''}<br>
+        Dicetak: <strong>${today}</strong> &nbsp;·&nbsp; Jumlah: <strong>${vouchers.length} user</strong>
+      </div>
+    </div>
+    <div class="sum-bar">
+      <div class="sum-box"><div class="sum-lbl">Total Dicetak</div><div class="sum-val">${vouchers.length}</div></div>
+      <div class="sum-box g"><div class="sum-lbl">Aktif</div><div class="sum-val">${vouchers.filter(v=>!v.disabled).length}</div></div>
+      <div class="sum-box r"><div class="sum-lbl">Nonaktif</div><div class="sum-val">${vouchers.filter(v=>v.disabled).length}</div></div>
+      ${price ? `<div class="sum-box g"><div class="sum-lbl">Nilai per voucher</div><div class="sum-val" style="font-size:11px">${x(price)}</div></div>` : ''}
+    </div>`;
+
+  // Mini header untuk halaman 2+ (continuation)
+  const miniHeader = (pageNum, total) => `
+    <div class="page-hdr-mini">
+      <span><strong>${x(T.company_name)}</strong> &nbsp;·&nbsp; ${x(title)}</span>
+      <span>Hal. <strong>${pageNum}/${total}</strong> &nbsp;·&nbsp; ${today}</span>
+    </div>`;
+
+  // Compose pages
+  pa.innerHTML += pages.map((pageVouchers, idx) => {
+    const isFirst = idx === 0;
+    const hdr = isFirst ? fullHeader : miniHeader(idx + 1, pages.length);
+    return `<section class="page">
+      ${hdr}
+      <div class="grid">${pageVouchers.map(renderVoucher).join('')}</div>
+    </section>`;
+  }).join('');
+
+  window.print();
+  setTimeout(() => pa.style.display = 'none', 800);
+}
+
+function showVouchers(r) {
+  const vcs = r.vouchers || [];
+  const errCount = r.errors?.length || 0;
+  const profile = vcs[0]?.profile || '—';
+  const duration = document.getElementById('g-uptime')?.value || vcs[0]?.limitUptime || '';
+  const durationLabel = duration || 'Unlimited';
+  const price = document.getElementById('g-price')?.value || '';
+
+  // Summary text
+  const sub = document.getElementById('vc-summary');
+  if (sub) sub.innerHTML =
+    `<strong style="color:var(--green)">${vcs.length}</strong> voucher · Profile: <strong>${x(profile)}</strong> · ${new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}` +
+    (errCount ? ` · <strong style="color:var(--red)">${errCount} gagal</strong>` : '');
+
+  // Render cards
+  document.getElementById('vc-grid').innerHTML = vcs.map(v => {
+    const initials = (v.password || '??').substring(0,2).toUpperCase();
+    return `<div class="voucher-card">
+      <div class="vc-hdr">
+        <div class="vc-wifi-ico"><svg viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1" fill="#fff" stroke="none"/></svg></div>
+        <div class="vc-hdr-top">
+          <div class="vc-avatar">${initials}</div>
+          <div class="vc-hdr-info">
+            <div class="vc-isp">${x(T.company_name)} ${x(T.tagline)}</div>
+            <div class="vc-user">${x(v.username)}</div>
+          </div>
+        </div>
+      </div>
+      <div class="vc-body">
+        <div class="vc-row">
+          <span class="vc-row-lbl">Password</span>
+          <span class="vc-row-val pw">${x(v.password)}</span>
+        </div>
+        <div class="vc-row">
+          <span class="vc-row-lbl">Durasi</span>
+          <span class="vc-row-val">${x(durationLabel)}</span>
+        </div>
+        <div class="vc-row">
+          <span class="vc-row-lbl">Profile</span>
+          <span class="vc-row-val">${x(v.profile)}</span>
+        </div>
+        ${price ? `<div class="vc-row">
+          <span class="vc-row-lbl">Harga</span>
+          <span class="vc-row-val price">${x(price)}</span>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  openModal('m-vouchers');
+}
+
+function dlCSV() {
+  if (!lastVouchers.length) return;
+  const rows=[['Username','Password','Profile','Server'],...lastVouchers.map(v=>[v.username,v.password,v.profile,v.server])];
+  const csv=rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv'})),download:`voucher-${Date.now()}.csv`});
+  a.click();
+}
+
+function printVouchers() {
+  if (!lastVouchers.length) return toast('Tidak ada voucher untuk diprint','error');
+  const pa = document.getElementById('print-area');
+  pa.style.display = 'block';
+  const duration = document.getElementById('g-uptime')?.value || lastVouchers[0]?.limitUptime || '';
+  const durationLabel = duration || 'Unlimited';
+  const price = document.getElementById('g-price')?.value || '';
+  const profile = lastVouchers[0]?.profile || '';
+  const today = new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+
+  // Load template voucher dari AppSetting (cache di window._voucherTpl)
+  const T = window._voucherTpl || {
+    primary_color:'#1565C0', primary_dark:'#0D47A1', accent_color:'#2E7D32',
+    company_name:'FLAYNET', tagline:'Voucher Hotspot', logo_url:'',
+    show_wifi:'1', show_profile:'1', show_footer:'1', footer_text:''
+  };
+
+  // Warna header — pakai template settings
+  const BLUE = T.primary_color || '#1565C0';
+  const BLUE_DARK = T.primary_dark || '#0D47A1';
+  const GREEN = T.accent_color || '#2E7D32';
+
+  pa.innerHTML = `
+  <style>
+    @page { size: A4; margin: 10mm 12mm; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, Helvetica, sans-serif; background: #f0f2f5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    /* ── Halaman header ── */
+    .ph { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid ${BLUE}; }
+    .ph-left { display: flex; align-items: center; gap: 9px; }
+    .ph-icon { width: 34px; height: 34px; border-radius: 9px; background: ${BLUE}; display: flex; align-items: center; justify-content: center; }
+    .ph-icon svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; }
+    .ph-name { font-size: 17px; font-weight: 900; color: ${BLUE_DARK}; letter-spacing: -.5px; }
+    .ph-sub { font-size: 8.5px; color: #888; text-transform: uppercase; letter-spacing: .8px; margin-top: 1px; }
+    .ph-right { text-align: right; font-size: 8.5px; color: #666; line-height: 1.75; }
+    .ph-right strong { color: #222; }
+
+    /* ── Grid voucher: auto-paginate via break-inside:avoid pada .vc ── */
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; }
+
+    /* ── Voucher card ── */
+    .vc {
+      border-radius: 11px; overflow: hidden;
+      border: none;
+      box-shadow: 0 1px 4px rgba(0,0,0,.15);
+      break-inside: avoid; page-break-inside: avoid;
+      background: #fff;
+    }
+
+    /* header biru bergaya referensi */
+    .vc-hdr {
+      background: ${BLUE};
+      padding: 10px 11px 9px;
+      position: relative;
+      overflow: hidden;
+    }
+    /* subtle wave pattern di header */
+    .vc-hdr::after {
+      content: '';
+      position: absolute;
+      bottom: -14px; right: -14px;
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.08);
+    }
+    .vc-hdr::before {
+      content: '';
+      position: absolute;
+      top: -10px; right: 16px;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.06);
+    }
+    .vc-hdr-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; position: relative; z-index: 1; }
+
+    /* avatar circle dengan inisial */
+    .vc-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: rgba(255,255,255,.22);
+      border: 1.5px solid rgba(255,255,255,.5);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-size: 11px; font-weight: 800; color: #fff;
+      font-family: 'Courier New', monospace;
+    }
+    .vc-hdr-info { flex: 1; min-width: 0; }
+    .vc-title { font-size: 11px; font-weight: 800; color: #fff; letter-spacing: -.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .vc-subtitle { font-size: 8px; color: rgba(255,255,255,.75); margin-top: 1px; }
+
+    /* wifi icon pojok kanan */
+    .vc-wifi { position: absolute; top: 8px; right: 10px; z-index: 1; opacity: .35; }
+    .vc-wifi svg { width: 14px; height: 14px; stroke: #fff; fill: none; stroke-width: 2; }
+
+    /* body info rows */
+    .vc-body { padding: 0; }
+    .vc-row-info {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 11px;
+      border-bottom: 1px solid #f3f4f6;
+      font-size: 9px;
+    }
+    .vc-row-info:last-child { border-bottom: none; }
+    .vc-row-lbl { color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; font-size: 7.5px; }
+    .vc-row-val { font-weight: 700; color: #111; font-size: 9.5px; text-align: right; }
+    .vc-row-val.pw { font-family: 'Courier New', monospace; color: ${BLUE_DARK}; font-size: 13px; font-weight: 900; letter-spacing: 1.5px; }
+    .vc-row-val.green { color: ${GREEN}; font-size: 10px; }
+
+    /* footer dua tombol gaya referensi */
+    .vc-foot { display: flex; }
+    .vc-foot-btn {
+      flex: 1; padding: 6px 4px; text-align: center;
+      font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px;
+      display: flex; align-items: center; justify-content: center; gap: 3px;
+    }
+    .vc-foot-btn svg { width: 8px; height: 8px; flex-shrink: 0; }
+    .vc-foot-left { background: ${BLUE}; color: #fff; }
+    .vc-foot-right { background: ${GREEN}; color: #fff; }
+  </style>
+
+  <!-- Page header -->
+  <div class="ph">
+    <div class="ph-left">
+      ${T.logo_url
+        ? `<img src="${x(T.logo_url)}" alt="Logo" style="width:34px;height:34px;border-radius:8px;object-fit:contain;background:#fff;border:1px solid #e0e7f3;">`
+        : `<div class="ph-icon"><svg viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1" fill="#fff" stroke="none"/></svg></div>`
+      }
+      <div>
+        <div class="ph-name">${x(T.company_name)}</div>
+        <div class="ph-sub">${x(T.tagline)}</div>
+      </div>
+    </div>
+    <div class="ph-right">
+      Profile: <strong>${x(profile)}</strong> &nbsp;·&nbsp; Durasi: <strong>${x(durationLabel)}</strong>${price ? ` &nbsp;·&nbsp; Harga: <strong>${x(price)}</strong>` : ''}<br>
+      Dicetak: <strong>${today}</strong> &nbsp;·&nbsp; Jumlah: <strong>${lastVouchers.length} voucher</strong>
+    </div>
+  </div>
+
+  <!-- Voucher grid — auto-paginate via CSS break-inside:avoid pada .vc -->
+  <div class="grid">${lastVouchers.map(v => {
+    const initials = (v.password || '??').substring(0,2).toUpperCase();
+    return `
+    <div class="vc">
+      <!-- Header biru -->
+      <div class="vc-hdr">
+        <div class="vc-wifi"><svg viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1" fill="#fff" stroke="none"/></svg></div>
+        <div class="vc-hdr-top">
+          <div class="vc-avatar">${initials}</div>
+          <div class="vc-hdr-info">
+            <div class="vc-title">${x(v.username)}</div>
+            <div class="vc-subtitle">${x(T.company_name)} &nbsp;·&nbsp; ${x(v.profile)}</div>
+          </div>
+        </div>
+      </div>
+      <!-- Info rows -->
+      <div class="vc-body">
+        <div class="vc-row-info">
+          <span class="vc-row-lbl">Password</span>
+          <span class="vc-row-val pw">${x(v.password)}</span>
+        </div>
+        <div class="vc-row-info">
+          <span class="vc-row-lbl">Durasi</span>
+          <span class="vc-row-val">${x(durationLabel)}</span>
+        </div>
+        <div class="vc-row-info">
+          <span class="vc-row-lbl">Server</span>
+          <span class="vc-row-val">${x(v.server || 'all')}</span>
+        </div>
+        ${price ? `<div class="vc-row-info">
+          <span class="vc-row-lbl">Harga</span>
+          <span class="vc-row-val green">${x(price)}</span>
+        </div>` : ''}
+      </div>
+      <!-- Footer dua warna -->
+      <div class="vc-foot">
+        <div class="vc-foot-btn vc-foot-left">
+          <svg viewBox="0 0 24 24" stroke="#fff" fill="none" stroke-width="2.5"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1" fill="#fff" stroke="none"/></svg>
+          Hotspot
+        </div>
+        <div class="vc-foot-btn vc-foot-right">
+          <svg viewBox="0 0 24 24" stroke="#fff" fill="none" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+          Siap Pakai
+        </div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+
+  window.print();
+  setTimeout(() => pa.style.display = 'none', 800);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ACTIVE SESSIONS
+═══════════════════════════════════════════════════════════════ */
+async function loadActive() {
+  setEl('tbl-active', loaderHtml());
+  const r = await api('GET','/api/mikrotik/hotspot/active').catch(()=>({}));
+  allActive = r.success?r.data:[];
+  filtActive=[...allActive];
+  document.getElementById('tb-active').textContent=allActive.length;
+  renderActive();
+}
+
+function renderActive() {
+  if (!filtActive.length){ setEl('tbl-active',emptyHtml('Tidak ada sesi aktif')); return; }
+  let h=`<table><thead><tr>
+    <th><input type="checkbox" class="chk" id="chk-all-a" onchange="checkAllActive()"></th>
+    <th>User</th><th>IP Address</th><th>MAC</th><th>Uptime</th><th>↓ Download</th><th>↑ Upload</th><th>Server</th><th>Aksi</th>
+  </tr></thead><tbody>`;
+  filtActive.forEach(s => {
+    h+=`<tr>
+      <td><input type="checkbox" class="chk chk-a" value="${x(s.id)}" onchange="updDiscBtn()"></td>
+      <td><strong>${x(s.user)}</strong></td>
+      <td><span class="td-mono">${x(s.address)}</span></td>
+      <td><span class="td-mono" style="font-size:11px">${x(s.macAddress)}</span></td>
+      <td><span class="td-mono">${x(s.uptime)}</span></td>
+      <td style="font-size:12px">${fmtB(s.bytesIn)}</td>
+      <td style="font-size:12px">${fmtB(s.bytesOut)}</td>
+      <td style="font-size:12px;color:var(--text2)">${x(s.server)}</td>
+      <td><button class="btn btn-danger btn-xs" onclick="disconnectOne('${s.id}','${x(s.user)}')">Putus</button></td>
+    </tr>`;
+  });
+  h+='</tbody></table>';
+  setEl('tbl-active',h);
+}
+
+function filterActive() {
+  const q=document.getElementById('q-active').value.toLowerCase();
+  filtActive=allActive.filter(s=>!q||s.user.toLowerCase().includes(q)||s.address.includes(q)||s.macAddress.toLowerCase().includes(q));
+  renderActive();
+}
+
+function checkAllActive(){ const m=document.getElementById('chk-all-a'); document.querySelectorAll('.chk-a').forEach(c=>c.checked=m.checked); updDiscBtn(); }
+function updDiscBtn(){ const n=[...document.querySelectorAll('.chk-a:checked')].length; document.getElementById('btn-disc-sel').style.display=n>0?'inline-flex':'none'; }
+
+async function disconnectOne(id,name){
+  if (!confirm(`Putus sesi "${name}"?`)) return;
+  const r=await api('POST',`/api/mikrotik/hotspot/active/${id}/disconnect`);
+  if (r.success){ toast(r.message,'success'); loadActive(); loadSummary(); } else toast(r.message,'error');
+}
+
+async function disconnectSelected(){
+  const ids=[...document.querySelectorAll('.chk-a:checked')].map(c=>c.value);
+  if (!ids.length) return;
+  if (!confirm(`Putus ${ids.length} sesi?`)) return;
+  const r=await api('POST','/api/mikrotik/hotspot/active/disconnect-batch',{ids});
+  if (r.success){ toast(`${r.disconnected} sesi diputus`,'success'); loadActive(); loadSummary(); } else toast(r.message,'error');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   USER PROFILES
+═══════════════════════════════════════════════════════════════ */
+async function loadUserProfiles() {
+  setEl('tbl-profiles', loaderHtml());
+  const r=await api('GET','/api/mikrotik/hotspot/user-profiles').catch(()=>({}));
+  allProfiles=r.success?r.data:[];
+  syncProfileDropdowns();
+  if (!allProfiles.length){ setEl('tbl-profiles',emptyHtml('Belum ada user profile')); return; }
+  let h=`<table><thead><tr>
+    <th>Nama</th><th>Rate Limit</th><th>Shared</th><th>Session Timeout</th><th>Idle Timeout</th><th>Aksi</th>
+  </tr></thead><tbody>`;
+  allProfiles.forEach(p=>{
+    h+=`<tr>
+      <td><strong>${x(p.name)}</strong></td>
+      <td><span class="td-mono">${x(p.rateLimit)||'—'}</span></td>
+      <td style="text-align:center">${x(p.sharedUsers)}</td>
+      <td style="font-size:12px;color:var(--text2)">${x(p.sessionTimeout)||'<span style="color:var(--text3)">∞</span>'}</td>
+      <td style="font-size:12px;color:var(--text2)">${x(p.idleTimeout)||'<span style="color:var(--text3)">∞</span>'}</td>
+      <td><div style="display:flex;gap:5px">
+        <button class="btn btn-ghost btn-xs" onclick='editProfile(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Edit</button>
+        <button class="btn btn-danger btn-xs" onclick="delProfile('${p.id}','${x(p.name)}')">Hapus</button>
+      </div></td>
+    </tr>`;
+  });
+  h+='</tbody></table>';
+  setEl('tbl-profiles',h);
+}
+
+function editProfile(p){
+  document.getElementById('m-profile-title').textContent='Edit Profile: '+p.name;
+  document.getElementById('p-id').value=p.id;
+  document.getElementById('p-name').value=p.name;
+  document.getElementById('p-rate').value=p.rateLimit;
+  document.getElementById('p-shared').value=p.sharedUsers;
+  document.getElementById('p-session').value=p.sessionTimeout;
+  document.getElementById('p-idle').value=p.idleTimeout;
+  document.getElementById('p-alist').value=p.addressList;
+  openModal('m-add-profile');
+}
+
+async function saveProfile(){
+  const id=document.getElementById('p-id').value;
+  const body={name:document.getElementById('p-name').value.trim(),rateLimit:document.getElementById('p-rate').value,sharedUsers:document.getElementById('p-shared').value,sessionTimeout:document.getElementById('p-session').value,idleTimeout:document.getElementById('p-idle').value,addressList:document.getElementById('p-alist').value};
+  if (!body.name) return toast('Nama profile harus diisi','error');
+  const btn=document.getElementById('btn-save-profile'); btn.disabled=true; btn.textContent='Menyimpan...';
+  const r=id?await api('PUT',`/api/mikrotik/hotspot/user-profiles/${id}`,body):await api('POST','/api/mikrotik/hotspot/user-profiles',body);
+  if (r.success){ toast(r.message,'success'); closeModal('m-add-profile'); loadUserProfiles(); } else toast(r.message,'error');
+  btn.disabled=false; btn.textContent='Simpan';
+}
+
+async function delProfile(id,name){
+  if (!confirm(`Hapus profile "${name}"?`)) return;
+  const r=await api('DELETE',`/api/mikrotik/hotspot/user-profiles/${id}`);
+  if (r.success){ toast(r.message,'success'); loadUserProfiles(); } else toast(r.message,'error');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HOSTS
+═══════════════════════════════════════════════════════════════ */
+async function loadHosts(){
+  setEl('tbl-hosts',loaderHtml());
+  const r=await api('GET','/api/mikrotik/hotspot/hosts').catch(()=>({}));
+  allHosts=r.success?r.data:[];
+  filtHosts=[...allHosts];
+  renderHosts();
+}
+
+function renderHosts(){
+  if (!filtHosts.length){ setEl('tbl-hosts',emptyHtml('Tidak ada host terdaftar')); return; }
+  let h=`<table><thead><tr><th>MAC Address</th><th>IP Address</th><th>Server</th><th>Uptime</th><th>Authorized</th><th>Bypassed</th></tr></thead><tbody>`;
+  filtHosts.forEach(h2=>{
+    h+=`<tr>
+      <td><span class="td-mono">${x(h2.macAddress)}</span></td>
+      <td><span class="td-mono">${x(h2.address)}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${x(h2.server)}</td>
+      <td><span class="td-mono">${x(h2.uptime)}</span></td>
+      <td>${h2.authorized?'<span class="badge b-green">Ya</span>':'<span class="badge b-gray">Tidak</span>'}</td>
+      <td>${h2.bypassed?'<span class="badge b-amber">Ya</span>':'<span class="badge b-gray">Tidak</span>'}</td>
+    </tr>`;
+  });
+  h+='</tbody></table>';
+  setEl('tbl-hosts',h);
+}
+
+function filterHosts(){
+  const q=document.getElementById('q-hosts').value.toLowerCase();
+  filtHosts=allHosts.filter(h=>!q||h.macAddress.toLowerCase().includes(q)||h.address.includes(q));
+  renderHosts();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COOKIES
+═══════════════════════════════════════════════════════════════ */
+async function loadCookies(){
+  setEl('tbl-cookies',loaderHtml());
+  const r=await api('GET','/api/mikrotik/hotspot/cookies').catch(()=>({}));
+  const cookies=r.success?r.data:[];
+  if (!cookies.length){ setEl('tbl-cookies',emptyHtml('Tidak ada cookie aktif')); return; }
+  let h=`<table><thead><tr><th>User</th><th>Domain</th><th>IP Address</th><th>MAC</th><th>Expires</th><th>Aksi</th></tr></thead><tbody>`;
+  cookies.forEach(c=>{
+    h+=`<tr>
+      <td><strong>${x(c.user)}</strong></td>
+      <td style="font-size:12px">${x(c.domain)||'—'}</td>
+      <td><span class="td-mono">${x(c.address)}</span></td>
+      <td><span class="td-mono" style="font-size:11px">${x(c.macAddress)}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${x(c.expiresAt)}</td>
+      <td><button class="btn btn-danger btn-xs" onclick="delCookie('${c.id}')">Hapus</button></td>
+    </tr>`;
+  });
+  h+='</tbody></table>';
+  setEl('tbl-cookies',h);
+}
+
+async function delCookie(id){
+  if (!confirm('Hapus cookie ini?')) return;
+  const r=await api('DELETE',`/api/mikrotik/hotspot/cookies/${id}`);
+  if (r.success){ toast(r.message,'success'); loadCookies(); } else toast(r.message,'error');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   IP BINDING
+═══════════════════════════════════════════════════════════════ */
+async function loadBindings(){
+  setEl('tbl-binding',loaderHtml());
+  const r=await api('GET','/api/mikrotik/hotspot/ip-binding').catch(()=>({}));
+  const bindings=r.success?r.data:[];
+  if (!bindings.length){ setEl('tbl-binding',emptyHtml('Tidak ada IP binding')); return; }
+  const tb={regular:'b-blue',bypassed:'b-amber',blocked:'b-red'};
+  let h=`<table><thead><tr><th>MAC Address</th><th>IP</th><th>To Address</th><th>Server</th><th>Type</th><th>Komentar</th><th>Aksi</th></tr></thead><tbody>`;
+  bindings.forEach(b=>{
+    h+=`<tr>
+      <td><span class="td-mono">${x(b.macAddress)}</span></td>
+      <td><span class="td-mono">${x(b.address)||'—'}</span></td>
+      <td><span class="td-mono">${x(b.toAddress)||'—'}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${x(b.server)}</td>
+      <td><span class="badge ${tb[b.type]||'b-gray'}">${x(b.type)}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${x(b.comment)||'—'}</td>
+      <td><button class="btn btn-danger btn-xs" onclick="delBinding('${b.id}')">Hapus</button></td>
+    </tr>`;
+  });
+  h+='</tbody></table>';
+  setEl('tbl-binding',h);
+}
+
+async function saveBinding(){
+  const body={macAddress:document.getElementById('b-mac').value.trim(),type:document.getElementById('b-type').value,address:document.getElementById('b-addr').value.trim(),toAddress:document.getElementById('b-to').value.trim(),server:document.getElementById('b-server').value,comment:document.getElementById('b-comment').value};
+  if (!body.macAddress) return toast('MAC Address harus diisi','error');
+  const r=await api('POST','/api/mikrotik/hotspot/ip-binding',body);
+  if (r.success){ toast(r.message,'success'); closeModal('m-add-binding'); loadBindings(); } else toast(r.message,'error');
+}
+
+async function delBinding(id){
+  if (!confirm('Hapus IP binding ini?')) return;
+  const r=await api('DELETE',`/api/mikrotik/hotspot/ip-binding/${id}`);
+  if (r.success){ toast(r.message,'success'); loadBindings(); } else toast(r.message,'error');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════════════════════ */
+function x(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtB(b){
+  if (!b) return '0 B';
+  if (b<1024) return b+' B';
+  if (b<1048576) return (b/1024).toFixed(1)+' KB';
+  if (b<1073741824) return (b/1048576).toFixed(1)+' MB';
+  return (b/1073741824).toFixed(2)+' GB';
+}
+function setText(id,val){ const el=document.getElementById(id); if(el) el.textContent=val; }
+function setEl(id,html){ const el=document.getElementById(id); if(el) el.innerHTML=html; }
+function loaderHtml(){ return `<div class="loader"><svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>Memuat data...</div>`; }
+function emptyHtml(msg){
+  return `<div class="empty">
+    <div class="empty-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+    <h3>${x(msg)}</h3><p>Tidak ada data untuk ditampilkan</p>
+  </div>`;
+}
+
+function openModal(id){ document.getElementById(id).style.display='flex'; document.body.style.overflow='hidden'; }
+function closeModal(id){ document.getElementById(id).style.display='none'; document.body.style.overflow=''; }
+function bgClose(e,id){ if (e.target===e.currentTarget) closeModal(id); }
+
+function toast(msg, type='info'){
+  const el=document.createElement('div');
+  const icons={success:'<polyline points="20,6 9,17 4,12"/>',error:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',info:'<line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'};
+  el.className=`toast toast-${type}`;
+  el.innerHTML=`<svg viewBox="0 0 24 24">${icons[type]||icons.info}</svg>${x(msg)}`;
+  const tc=document.getElementById('toasts');
+  tc.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translateY(4px)'; el.style.transition='all .2s'; setTimeout(()=>el.remove(),200); },3200);
+}
+
+// Keyboard: Esc closes modal
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') {
+    ['m-add-user','m-add-profile','m-add-binding','m-vouchers'].forEach(id => {
+      const el=document.getElementById(id);
+      if (el&&el.style.display!=='none') closeModal(id);
+    });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+//  TRAFFIC INTERFACE CHART — Grafana-style, Real-time
+// ══════════════════════════════════════════════════════════════
+(function(){
+  var MAX_PTS = 60;
+  var INTERVAL = 2000;
+  var _charts  = { combined: null };
+  var _socket  = null;
+  var _selIface = '';
+  var _buf = { rx:[], tx:[], ts:[] };
+  var _restTimer = null;
+  var _lastUpd   = 0;
+
+  // ── Format bps ──────────────────────────────────────────────
+  function bps(v, dec){
+    v = +v||0; dec = dec===undefined?2:dec;
+    if(v>=1e9) return (v/1e9).toFixed(dec)+' Gbps';
+    if(v>=1e6) return (v/1e6).toFixed(dec)+' Mbps';
+    if(v>=1e3) return (v/1e3).toFixed(dec)+' Kbps';
+    return v+' bps';
+  }
+  function bpsShort(v){ return bps(v,1); }
+
+  // ── Stats (avg/max) ─────────────────────────────────────────
+  function stats(arr){
+    if(!arr.length) return {cur:0,avg:0,max:0};
+    var cur=arr[arr.length-1],sum=0,max=0;
+    arr.forEach(function(v){sum+=v;if(v>max)max=v;});
+    return {cur:cur,avg:sum/arr.length,max:max};
+  }
+
+  // ── createGfPanel — clone dari device-monitor ───────────────
+  function createCombinedChart(rxData, txData){
+    var el = document.getElementById('tc-combined-chart');
+    if(!el) return null;
+    if(_charts.combined){ try{_charts.combined.destroy();}catch(e){} }
+    el.innerHTML = '';
+
+    var now = Date.now();
+    function toSeries(arr){
+      return arr.map(function(v,i){
+        return [now-(arr.length-1-i)*INTERVAL, v];
+      });
+    }
+
+    var chart = new ApexCharts(el, {
+      chart:{
+        type:'area', height:180,
+        background:'#fff',
+        toolbar:{show:false},
+        fontFamily:"'Geist Mono', monospace",
+        zoom:{enabled:false},
+        animations:{enabled:false},
+        sparkline:{enabled:false}
+      },
+      theme:{mode:'light'},
+      series:[
+        {name:'RX Download', data:toSeries(rxData)},
+        {name:'TX Upload',   data:toSeries(txData)}
+      ],
+      colors:['#4dd0e1','#ff8a65'],
+      fill:{
+        type:'gradient',
+        gradient:{shadeIntensity:1,opacityFrom:0.35,opacityTo:0.02,stops:[0,100]}
+      },
+      stroke:{curve:'straight',width:[1.5,1.5]},
+      dataLabels:{enabled:false},
+      legend:{show:false},
+      grid:{
+        borderColor:'#f0f4f8',strokeDashArray:0,
+        xaxis:{lines:{show:false}},
+        yaxis:{lines:{show:true}},
+        padding:{top:0,right:8,bottom:0,left:0}
+      },
+      xaxis:{
+        type:'datetime',
+        labels:{
+          style:{fontSize:'9px',colors:'#94a3b8',fontFamily:'DM Sans,sans-serif'},
+          datetimeUTC:false,format:'HH:mm:ss'
+        },
+        axisBorder:{show:false},
+        axisTicks:{show:false}
+      },
+      yaxis:{
+        min:0,tickAmount:3,
+        labels:{
+          style:{fontSize:'9px',colors:'#94a3b8',fontFamily:'DM Sans,sans-serif'},
+          formatter:bpsShort
+        }
+      },
+      tooltip:{
+        theme:'light',x:{format:'HH:mm:ss'},
+        shared:true,intersect:false,
+        y:{formatter:bps},
+        style:{fontSize:'11px',fontFamily:'DM Sans,sans-serif'}
+      },
+      markers:{size:0}
+    });
+    chart.render();
+    return chart;
+  }
+
+  // ── Push data & update ───────────────────────────────────────
+  function pushData(rx, tx){
+    var now = Date.now();
+    _buf.rx.push(rx); _buf.tx.push(tx); _buf.ts.push(now);
+    if(_buf.rx.length>MAX_PTS){ _buf.rx.shift(); _buf.tx.shift(); _buf.ts.shift(); }
+
+    // Update combined chart
+    var tsSeries = {
+      rx: _buf.rx.map(function(v,i){ return [_buf.ts[i],v]; }),
+      tx: _buf.tx.map(function(v,i){ return [_buf.ts[i],v]; })
+    };
+    if(!_charts.combined){
+      _charts.combined = createCombinedChart(_buf.rx, _buf.tx);
+    } else {
+      _charts.combined.updateSeries([
+        {name:'RX Download', data:tsSeries.rx},
+        {name:'TX Upload',   data:tsSeries.tx}
+      ], false);
+    }
+    // Update stats
+    function upStat(buf, curId, avgId, maxId){
+      var s=stats(buf);
+      var c2=document.getElementById(curId),a=document.getElementById(avgId),m=document.getElementById(maxId);
+      if(c2)c2.textContent=bpsShort(s.cur);
+      if(a)a.textContent=bpsShort(s.avg);
+      if(m)m.textContent=bpsShort(s.max);
+    }
+    upStat(_buf.rx,'tc-rx-cur','tc-rx-avg','tc-rx-max');
+    upStat(_buf.tx,'tc-tx-cur','tc-tx-avg','tc-tx-max');
+  }
+
+  // ── Start/stop monitor ──────────────────────────────────────
+  function startMonitor(ifaceName){
+    if(!ifaceName) return;
+    _selIface = ifaceName;
+    _buf = {rx:[],tx:[],ts:[]};
+    _charts.combined = null;
+    createCombinedChart([0],[0]);
+
+    var badge = document.getElementById('tc-live-badge');
+    if(badge) badge.style.display='flex';
+
+    if(_socket){
+      _socket.emit('interface:stop_monitor');
+      _socket.emit('interface:start_monitor',{interfaces:[ifaceName],interval:INTERVAL});
+    }
+    startRestPoll(ifaceName);
+  }
+
+  function stopMonitor(){
+    if(_socket) _socket.emit('interface:stop_monitor');
+    stopRestPoll();
+    var badge=document.getElementById('tc-live-badge');
+    if(badge) badge.style.display='none';
+  }
+
+  // ── REST fallback polling ────────────────────────────────────
+  function startRestPoll(ifaceName){
+    stopRestPoll();
+    _restTimer = setInterval(async function(){
+      if(Date.now()-_lastUpd < 3500) return;
+      try{
+        var r=await api('GET','/api/mikrotik/interfaces/monitor-selected?names='+encodeURIComponent(ifaceName));
+        if(!r.success||!r.data.length) return;
+        var row=r.data.find(function(x){return x.name===ifaceName;})||r.data[0];
+        if(!row) return;
+        var rx=+(row.rxBitsPerSecond||row['rx-bits-per-second']||0);
+        var tx=+(row.txBitsPerSecond||row['tx-bits-per-second']||0);
+        _lastUpd=Date.now();
+        pushData(rx,tx);
+      }catch(e){}
+    }, INTERVAL);
+  }
+  function stopRestPoll(){ if(_restTimer){clearInterval(_restTimer);_restTimer=null;} }
+
+  // ── Time range ─────────────────────────────────────────────
+  function setTimeRange(min){
+    _timeMin = min;
+    MAX_PTS  = Math.ceil(min * 60 * 1000 / INTERVAL);
+    // Trim buffer ke MAX_PTS
+    while(_buf.rx.length > MAX_PTS){ _buf.rx.shift(); _buf.tx.shift(); _buf.ts.shift(); }
+    // Update active button style
+    document.querySelectorAll('.tc-time-btn').forEach(function(btn){
+      var active = +btn.dataset.min === min;
+      btn.style.background = active ? '#2563eb' : 'transparent';
+      btn.style.color      = active ? '#fff'    : '#64748b';
+    });
+    // Redraw chart dengan data yang ada
+    if(_buf.rx.length){
+      if(_charts.combined){ try{_charts.combined.destroy();}catch(e){} _charts.combined=null; }
+      _charts.combined = createCombinedChart(_buf.rx, _buf.tx);
+    }
+  }
+
+  // ── Load interfaces ─────────────────────────────────────────
+  async function loadInterfaces(){
+    var sel=document.getElementById('tc-iface-select');
+    if(!sel) return;
+    try{
+      var r=await api('GET','/api/mikrotik/interfaces');
+      if(!r.success||!r.data.length) return;
+      var ifaces=r.data.filter(function(i){return i.running&&!i.disabled;});
+      sel.innerHTML='<option value="">-- Pilih interface --</option>'+
+        ifaces.map(function(i){
+          var lbl=i.name+(i.comment?' ('+i.comment+')':'');
+          return '<option value="'+i.name+'">'+lbl+'</option>';
+        }).join('');
+      var hs=ifaces.find(function(i){
+        var n=i.name.toLowerCase();
+        return n.indexOf('hotspot')!==-1||n.indexOf('wlan')!==-1||i.type==='ether';
+      });
+      if(hs){sel.value=hs.name;startMonitor(hs.name);}
+    }catch(e){console.warn('[TrafficChart]',e.message);}
+  }
+
+  // ── Init ────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded',function(){
+    try{
+      _socket=io({transports:['websocket','polling']});
+      _socket.on('connect',function(){ if(_selIface) startMonitor(_selIface); });
+      _socket.on('interface:traffic_update',function(data){
+        // Filter: kalau socket broadcast device_id berbeda dengan device aktif user,
+        // skip — mencegah chart device A tertimpa data device B saat multi-MikroTik.
+        if (window.MikrotikSelector && window.MikrotikSelector.getSelectedId) {
+          var activeId = String(window.MikrotikSelector.getSelectedId() || '');
+          var msgId    = String(data && (data.device_id || data.deviceId) || '');
+          if (activeId && msgId && activeId !== msgId) return;
+        }
+        var rows=data.data||[];
+        var row=rows.find(function(r){return r.name===_selIface;})||rows[0];
+        if(!row) return;
+        var rx=+(row.rxBitsPerSecond||row['rx-bits-per-second']||0);
+        var tx=+(row.txBitsPerSecond||row['tx-bits-per-second']||0);
+        _lastUpd=Date.now();
+        pushData(rx,tx);
+      });
+    }catch(e){console.warn('[TrafficChart] Socket.IO:',e);}
+
+    var sel=document.getElementById('tc-iface-select');
+    if(sel) sel.addEventListener('change',function(){
+      if(this.value) startMonitor(this.value); else stopMonitor();
+    });
+
+    // Time range buttons
+    document.querySelectorAll('.tc-time-btn').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        setTimeRange(+this.dataset.min);
+      });
+    });
+
+    // Saat user ganti device via selector, reset & reload interface list.
+    // Pakai event 'mt-device-change' yang di-broadcast modul selector (kalau ada).
+    // Fallback: poll localStorage. Lebih aman: hook MikrotikSelector via opts.onChange
+    // — tapi opts.onChange sudah dipakai oleh refreshAll() di blok lain, jadi
+    // kita pakai pendekatan: listener storage event (cross-tab) + poll lokal.
+    var _lastDeviceId = (window.MikrotikSelector && window.MikrotikSelector.getSelectedId) ? window.MikrotikSelector.getSelectedId() : '';
+    setInterval(function(){
+      if (!window.MikrotikSelector || !window.MikrotikSelector.getSelectedId) return;
+      var curId = window.MikrotikSelector.getSelectedId() || '';
+      if (curId !== _lastDeviceId) {
+        _lastDeviceId = curId;
+        stopMonitor();
+        loadInterfaces();
+      }
+    }, 1000);
+
+    // Tunggu selector siap sebelum loadInterfaces — selector ready event
+    // belum ada, jadi tetap call & loadInterfaces akan pakai withDevice() yang
+    // baca localStorage. Kalau visit pertama localStorage kosong, fallback OK
+    // ke device default; saat onChange device, _lastDeviceId watcher di atas
+    // akan trigger reload.
+    if (window.MikrotikSelector) {
+      // Beri 1 tick agar mikrotik-selector.js sempat fetch list & set activeId
+      setTimeout(loadInterfaces, 250);
+    } else {
+      loadInterfaces();
+    }
+  });
+})();
+</script>
+</body>
+</html>

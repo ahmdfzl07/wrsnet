@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    :root{--d-bg:#eef2f9;--d-card:#fff;--d-border:#e0e7f3;--d-text:#0d1b3e;--d-muted:#6b7fa8;--d-blue1:#1a6ef5;}
+    .rp-page{font-family:'DM Sans',sans-serif;}
+    /* ── STAT CARDS — single strip ── */
+    .fin-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      background: #fff; border-radius: 16px;
+      border: 1px solid #e8eaed; overflow: hidden; margin-bottom: 20px;
+    }
+    .fin-card {
+      padding: 20px 22px 18px; border-right: 1px solid #e8eaed;
+      cursor: default; display: flex; flex-direction: column; gap: 0;
+      position: relative; overflow: hidden; transition: background .15s;
+    }
+    .fin-card::before, .fin-card::after { display:none !important; content:none !important; }
+    .fin-card:last-child { border-right: none; }
+    .xc-lbl  { font-size:12px; font-weight:500; color:#64748b; margin-bottom:10px; letter-spacing:.1px; }
+    .xc-body { display:flex; align-items:flex-end; justify-content:space-between; gap:8px; }
+    .xc-left { display:flex; flex-direction:column; min-width:0; }
+    .xc-val  { font-size:30px; font-weight:800; color:#0f172a; letter-spacing:-1.2px; line-height:1; }
+    @media(max-width:1400px){ .xc-val { font-size:26px; } }
+    .xc-meta { display:flex; align-items:center; gap:5px; margin-top:6px; flex-wrap:wrap; }
+    .xc-pill { display:inline-flex; align-items:center; gap:2px; padding:1px 6px; border-radius:100px; font-size:10.5px; font-weight:700; white-space:nowrap; flex-shrink:0; }
+    .xc-blue   { background:#dbeafe; color:#1d4ed8; }
+    .xc-green  { background:#dcfce7; color:#16a34a; }
+    .xc-red    { background:#fee2e2; color:#dc2626; }
+    .xc-amber  { background:#fef3c7; color:#b45309; }
+    .xc-teal   { background:#cffafe; color:#0e7490; }
+    .xc-slate  { background:#f1f5f9; color:#475569; }
+    .xc-orange { background:#ffedd5; color:#c2410c; }
+    .xc-sub  { font-size:11px; color:#94a3b8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .xc-spark { flex-shrink:0; width:72px; height:36px; }
+    .xc-spark svg { width:72px; height:36px; }
+    .sp-fill { transition:fill .3s; }
+    .sp-line { stroke-width:1.8; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+    .sp-dot  { }
+    @media(max-width:700px) {
+      .fin-grid { grid-template-columns:repeat(2,1fr); }
+      .fin-card { border-right:none; border-bottom:1px solid #e8eaed; }
+      .fin-card:nth-child(odd)  { border-right:1px solid #e8eaed; }
+      .fin-card:nth-child(even) { border-right:none; }
+      .fin-card:nth-last-child(-n+2) { border-bottom:none; }
+    }
+    @media(max-width:400px) {
+      .fin-grid { grid-template-columns:1fr; }
+      .fin-card { border-right:none !important; border-bottom:1px solid #e8eaed; }
+      .fin-card:last-child { border-bottom:none; }
+    }
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    .a1{animation:fadeUp .4s ease both}.a2{animation:fadeUp .4s .07s ease both}.a3{animation:fadeUp .4s .14s ease both}
+    .a4{animation:fadeUp .4s .21s ease both}.a5{animation:fadeUp .4s .28s ease both}
+    /* Layout */
+    .rp-layout{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;}
+    @media(max-width:1000px){.rp-layout{grid-template-columns:1fr;}}
+    .w-card{background:#fff;border:1px solid var(--d-border);border-radius:22px;padding:20px;}
+    .pf-label{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--d-muted);display:block;margin-bottom:6px;}
+    .pf-input,.pf-select,.pf-textarea{width:100%;padding:9px 12px;border-radius:9px;border:1.5px solid var(--d-border);font-size:13px;box-sizing:border-box;font-family:'DM Sans',sans-serif;outline:none;background:#fff;color:var(--d-text);transition:all .15s;}
+    .pf-input:focus,.pf-select:focus,.pf-textarea:focus{border-color:var(--d-blue1);box-shadow:0 0 0 3px rgba(26,110,245,.1);}
+    .pf-field{margin-bottom:14px;}
+    /* Period tabs */
+    .period-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+    .period-tab{padding:7px 14px;border-radius:20px;border:1.5px solid var(--d-border);background:#fff;color:var(--d-muted);font-size:12.5px;font-weight:700;cursor:pointer;transition:all .15s;}
+    .period-tab.active{background:var(--d-blue1);border-color:var(--d-blue1);color:#fff;}
+    .period-tab:hover:not(.active){border-color:var(--d-blue1);color:var(--d-blue1);}
+    /* Section checkboxes */
+    .section-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+    .sec-check{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;border:1.5px solid var(--d-border);background:#fff;cursor:pointer;transition:all .15s;font-size:12.5px;font-weight:600;color:var(--d-muted);}
+    .sec-check input{width:15px;height:15px;accent-color:var(--d-blue1);cursor:pointer;flex-shrink:0;}
+    .sec-check.checked{border-color:var(--d-blue1);background:#eff6ff;color:var(--d-blue1);}
+    /* ── WA Chat Preview ── */
+    .wa-screen {
+      background: #efeae2;
+      background-image:
+        url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h60v60H0z' fill='%23e8ddd0' fill-opacity='.3'/%3E%3C/svg%3E");
+      border-radius: 0 0 12px 12px;
+      padding: 12px 10px 16px;
+      min-height: 180px;
+      max-height: 480px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    /* Scrollbar */
+    .wa-screen::-webkit-scrollbar { width: 4px; }
+    .wa-screen::-webkit-scrollbar-track { background: transparent; }
+    .wa-screen::-webkit-scrollbar-thumb { background: rgba(0,0,0,.2); border-radius: 4px; }
+
+    /* Topbar */
+    .wa-topbar {
+      background: #075e54;
+      border-radius: 12px 12px 0 0;
+      padding: 10px 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .wa-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: #128c7e;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .wa-avatar svg { width: 20px; height: 20px; stroke: rgba(255,255,255,.9); fill: none; stroke-width: 1.8; }
+    .wa-contact-name { font-size: 13.5px; font-weight: 700; color: #fff; line-height: 1; }
+    .wa-contact-status { font-size: 11px; color: rgba(255,255,255,.65); margin-top: 2px; }
+    .wa-topbar-dots { margin-left: auto; display: flex; gap: 3px; }
+    .wa-topbar-dots span { width: 4px; height: 4px; background: rgba(255,255,255,.7); border-radius: 50%; display: block; }
+
+    /* Date pill */
+    .wa-date-pill {
+      align-self: center;
+      background: rgba(255,255,255,.85);
+      padding: 3px 10px; border-radius: 10px;
+      font-size: 10px; font-weight: 600; color: #64748b;
+      margin: 4px 0 8px;
+    }
+
+    /* Bubble */
+    .wa-bubble-wrap { display: flex; justify-content: flex-end; padding: 0 2px; }
+    .wa-bubble {
+      background: #d9fdd3;
+      border-radius: 12px 2px 12px 12px;
+      padding: 8px 10px 6px 12px;
+      max-width: 88%;
+      box-shadow: 0 1px 2px rgba(0,0,0,.12);
+      position: relative;
+    }
+    /* Tail */
+    .wa-bubble::before {
+      content: '';
+      position: absolute;
+      top: 0; right: -8px;
+      border-width: 0 0 10px 10px;
+      border-style: solid;
+      border-color: transparent transparent transparent #d9fdd3;
+    }
+    .wa-bubble-text {
+      font-family: -apple-system, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      white-space: pre-wrap;
+      line-height: 1.6;
+      color: #111b21;
+      word-break: break-word;
+    }
+    /* WA bold: *text* */
+    .wa-bold { font-weight: 700; }
+    /* WA italic: _text_ */
+    .wa-italic { font-style: italic; }
+    .wa-bubble-footer {
+      display: flex; align-items: center; justify-content: flex-end;
+      gap: 4px; margin-top: 4px;
+    }
+    .wa-bubble-time { font-size: 10.5px; color: #667781; }
+    .wa-tick {
+      display: inline-flex; align-items: center;
+    }
+    .wa-tick svg { width: 16px; height: 11px; fill: #53bdeb; }
+    /* Phone pills */
+    .ph-pill{display:inline-flex;align-items:center;gap:5px;background:#eff6ff;border:1px solid #bfdbfe;color:var(--d-blue1);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;margin:2px;}
+    /* Schedule cards */
+
+    /* ── Variabel chips ── */
+    .var-section { background:#f8faff; border:1px solid #e0e7f3; border-radius:12px; padding:14px 16px; margin-bottom:14px; }
+    .var-section-title {
+      font-size:10.5px; font-weight:700; color:#64748b;
+      text-transform:uppercase; letter-spacing:.08em;
+      margin-bottom:12px; display:flex; align-items:center; gap:6px;
+    }
+    .var-section-title::after { content:''; flex:1; height:1px; background:#e0e7f3; }
+    .var-groups { display:flex; flex-direction:column; gap:8px; }
+    .var-group { display:flex; flex-wrap:wrap; gap:5px; align-items:center; }
+    .var-group-label {
+      font-size:9.5px; font-weight:700; color:#94a3b8;
+      text-transform:uppercase; letter-spacing:.06em;
+      width:100%; margin-bottom:2px;
+    }
+    .var-chip {
+      display:inline-flex; align-items:center;
+      padding:4px 10px;
+      border-radius:6px;
+      font-size:12px; font-weight:600; font-family:'DM Mono',monospace;
+      cursor:pointer;
+      border:1.5px solid transparent;
+      transition:all .12s;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .var-chip:hover { transform:translateY(-1px); box-shadow:0 3px 8px rgba(0,0,0,.1); }
+    .var-chip:active { transform:translateY(0); }
+    /* Color variants by group */
+    .vc-blue   { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+    .vc-blue:hover   { background:#dbeafe; }
+    .vc-green  { background:#f0fdf4; color:#15803d; border-color:#bbf7d0; }
+    .vc-green:hover  { background:#dcfce7; }
+    .vc-red    { background:#fef2f2; color:#dc2626; border-color:#fecaca; }
+    .vc-red:hover    { background:#fee2e2; }
+    .vc-amber  { background:#fffbeb; color:#b45309; border-color:#fde68a; }
+    .vc-amber:hover  { background:#fef3c7; }
+    .vc-slate  { background:#f8fafc; color:#475569; border-color:#cbd5e1; }
+    .vc-slate:hover  { background:#f1f5f9; }
+    .vc-teal   { background:#f0fdfa; color:#0f766e; border-color:#99f6e4; }
+    .vc-teal:hover   { background:#ccfbf1; }
+    /* Tooltip hint */
+    .var-chip[data-desc]:hover::after {
+      content: attr(data-desc);
+      position:absolute; bottom:calc(100% + 5px); left:50%; transform:translateX(-50%);
+      background:#0f172a; color:#fff; font-size:10px; font-weight:500;
+      padding:3px 8px; border-radius:5px; white-space:nowrap;
+      pointer-events:none; font-family:'DM Sans',sans-serif;
+    }
+    .var-chip { position:relative; }
+    .sched-card{border:1.5px solid var(--d-border);border-radius:12px;padding:12px 14px;margin-bottom:10px;transition:all .15s;}
+    .sched-card.active{border-color:#c7d8ff;background:#f8fbff;}
+    /* Buttons */
+    .pay-btn{width:100%;padding:11px;border-radius:11px;font-size:13.5px;font-weight:700;background:linear-gradient(135deg,#1a6ef5,#0047cc);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:'DM Sans',sans-serif;transition:opacity .15s;}
+    .pay-btn:hover{opacity:.9;}
+    .pay-btn.green{background:linear-gradient(135deg,#00c896,#00a07a);}
+    .pay-btn.ghost{background:#f4f8ff;color:var(--d-blue1);border:1.5px solid var(--d-border);}
+    .tog-wrap{position:relative;width:40px;height:22px;border-radius:99px;background:var(--d-border);cursor:pointer;transition:background .2s;flex-shrink:0;}
+    .tog-wrap.on{background:var(--d-blue1);}
+    .tog-wrap .tog-thumb{position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+    .tog-wrap.on .tog-thumb{left:21px;}
+  </style>
+</head>
+<body>
+<div class="app-layout rp-page">
+  <%- include('../partials/sidebar') %>
+  <div class="main-content">
+    <%- include('../partials/topbar') %>
+    <main class="page-content">
+      <!-- Header -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;" class="a1">
+        <div>
+          <h1 style="font-size:22px;font-weight:800;color:#0d1b3e;margin:0 0 4px;">Automation Report</h1>
+          <p style="font-size:13px;color:var(--d-muted);margin:0;" id="rpHeaderSub">Laporan otomatis pembayaran via WhatsApp</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button onclick="previewReport()" style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid #e2e8f0;background:#fff;color:#374151;" id="btnPreview">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            Preview
+          </button>
+          <button onclick="sendReportNow()" style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:linear-gradient(135deg,#00c896,#00a07a);color:#fff;" id="btnSendNow">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            Kirim Sekarang
+          </button>
+        </div>
+      </div>
+
+            <!-- Stat Cards (dinamis dari preview) -->
+      <div class="fin-grid">
+        <div class="fin-card" id="xc-total">
+          <div class="xc-lbl">Total Tagihan</div>
+          <div class="xc-body">
+            <div class="xc-left">
+              <span class="xc-val" id="scTotal">–</span>
+              <div class="xc-meta">
+                <span class="xc-pill xc-blue" id="xp-total">—</span>
+                <span class="xc-sub" id="scTotalSub">–</span>
+              </div>
+            </div>
+            <div class="xc-spark">
+              <svg id="sp-total" viewBox="0 0 72 36" preserveAspectRatio="none">
+                <path class="sp-fill" id="sp-total-fill" d="" fill="#2563eb" opacity=".12"/>
+                <path class="sp-line" id="sp-total-line" d="" stroke="#2563eb"/>
+                <circle class="sp-dot" id="sp-total-dot" r="2.5" fill="#2563eb"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="fin-card" id="xc-bayar">
+          <div class="xc-lbl">Dibayar</div>
+          <div class="xc-body">
+            <div class="xc-left">
+              <span class="xc-val" id="scBayar">–</span>
+              <div class="xc-meta">
+                <span class="xc-pill xc-green" id="xp-bayar">—</span>
+                <span class="xc-sub" id="scBayarSub">–</span>
+              </div>
+            </div>
+            <div class="xc-spark">
+              <svg id="sp-bayar" viewBox="0 0 72 36" preserveAspectRatio="none">
+                <path class="sp-fill" id="sp-bayar-fill" d="" fill="#16a34a" opacity=".12"/>
+                <path class="sp-line" id="sp-bayar-line" d="" stroke="#16a34a"/>
+                <circle class="sp-dot" id="sp-bayar-dot" r="2.5" fill="#16a34a"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="fin-card" id="xc-belum">
+          <div class="xc-lbl">Belum Bayar</div>
+          <div class="xc-body">
+            <div class="xc-left">
+              <span class="xc-val" id="scBelum">–</span>
+              <div class="xc-meta">
+                <span class="xc-pill xc-red" id="xp-belum">—</span>
+                <span class="xc-sub" id="scBelumSub">Tagihan outstanding</span>
+              </div>
+            </div>
+            <div class="xc-spark">
+              <svg id="sp-belum" viewBox="0 0 72 36" preserveAspectRatio="none">
+                <path class="sp-fill" id="sp-belum-fill" d="" fill="#dc2626" opacity=".12"/>
+                <path class="sp-line" id="sp-belum-line" d="" stroke="#dc2626"/>
+                <circle class="sp-dot" id="sp-belum-dot" r="2.5" fill="#dc2626"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="fin-card" id="xc-rate">
+          <div class="xc-lbl">Collection Rate</div>
+          <div class="xc-body">
+            <div class="xc-left">
+              <span class="xc-val" id="scRate">–</span>
+              <div class="xc-meta">
+                <span class="xc-pill xc-amber" id="xp-rate">—</span>
+                <span class="xc-sub">Persentase sudah bayar</span>
+              </div>
+            </div>
+            <div class="xc-spark">
+              <svg id="sp-rate" viewBox="0 0 72 36" preserveAspectRatio="none">
+                <path class="sp-fill" id="sp-rate-fill" d="" fill="#d97706" opacity=".12"/>
+                <path class="sp-line" id="sp-rate-line" d="" stroke="#d97706"/>
+                <circle class="sp-dot" id="sp-rate-dot" r="2.5" fill="#d97706"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main layout -->
+      <div class="rp-layout a5">
+        <!-- Left: config + preview -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+
+          <!-- Period & sections -->
+          <div class="w-card">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--d-muted);margin-bottom:12px;">Periode Laporan</div>
+            <div class="period-tabs" id="periodTabs">
+              <button class="period-tab active" onclick="setPeriod('this_month', this)">Bulan Ini</button>
+              <button class="period-tab" onclick="setPeriod('last_month', this)">Bulan Lalu</button>
+              <button class="period-tab" onclick="setPeriod('this_week', this)">Minggu Ini</button>
+              <button class="period-tab" onclick="setPeriod('last_week', this)">Minggu Lalu</button>
+            </div>
+
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--d-muted);margin-bottom:10px;">Bagian Laporan</div>
+            <div class="section-grid">
+              <label class="sec-check checked" id="sec-summary"><input type="checkbox" checked onchange="toggleSec('summary',this)"> Ringkasan Tagihan</label>
+              <label class="sec-check checked" id="sec-rate"><input type="checkbox" checked onchange="toggleSec('rate',this)"> Collection Rate</label>
+              <label class="sec-check" id="sec-method"><input type="checkbox" onchange="toggleSec('method',this)"> Metode Pembayaran</label>
+              <label class="sec-check" id="sec-top"><input type="checkbox" onchange="toggleSec('top',this)"> Top Pembayar</label>
+              <label class="sec-check" id="sec-due"><input type="checkbox" onchange="toggleSec('due',this)"> Jatuh Tempo 7 Hari</label>
+            </div>
+          </div>
+
+          <!-- WA Preview -->
+          <div class="w-card" style="padding:0;overflow:hidden;">
+            <!-- Topbar WA -->
+            <div class="wa-topbar">
+              <div class="wa-avatar">
+                <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+              </div>
+              <div>
+                <div class="wa-contact-name">ISP NetOps</div>
+                <div class="wa-contact-status" id="waContactStatus">Auto Report</div>
+              </div>
+              <div class="wa-topbar-dots">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+
+            <!-- Chat screen -->
+            <div class="wa-screen" id="waScreen">
+              <div class="wa-date-pill" id="waDatePill">Hari ini</div>
+              <div class="wa-bubble-wrap">
+                <div class="wa-bubble">
+                  <div class="wa-bubble-text" id="waPreviewText">Klik <strong>Preview</strong> untuk melihat isi pesan laporan...</div>
+                  <div class="wa-bubble-footer">
+                    <span class="wa-bubble-time" id="waPreviewTime">–</span>
+                    <span class="wa-tick">
+                      <svg viewBox="0 0 16 11" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M11.071.653L4.42 7.304 1.929 4.813 1 5.742l3.42 3.42L12 1.582z"/>
+                        <path d="M15.071.653L8.42 7.304 7.5 6.384l-.929.929 1.849 1.849L16 1.582z"/>
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Preview label -->
+            <div style="padding:7px 14px;background:#f0f2f5;border-top:1px solid #e9edef;display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:10.5px;color:#667781;font-style:italic;">Preview otomatis · tidak nyata</span>
+              <span id="previewLabel" style="font-size:10.5px;color:#667781;"></span>
+            </div>
+          </div>
+
+          <!-- Template Editor -->
+          <div class="w-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div>
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--d-muted);">Edit Template Pesan</div>
+                <div style="font-size:11.5px;color:var(--d-muted);margin-top:2px;">Kustomisasi format laporan WA</div>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <button onclick="resetReportTemplate()" style="padding:5px 11px;border-radius:8px;border:1.5px solid var(--d-border);background:#f8faff;font-size:11.5px;font-weight:600;cursor:pointer;color:var(--d-muted);">↺ Reset</button>
+                <button onclick="saveReportTemplate()" style="padding:5px 11px;border-radius:8px;border:none;background:linear-gradient(135deg,#1a6ef5,#0047cc);color:#fff;font-size:11.5px;font-weight:600;cursor:pointer;">Simpan</button>
+              </div>
+            </div>
+
+            <!-- Variabel helper -->
+            <div class="var-section">
+              <div class="var-section-title">Variabel Tersedia — Klik untuk sisipkan</div>
+              <div class="var-groups">
+
+                <div class="var-group">
+                  <div class="var-group-label">Identitas</div>
+                  <span class="var-chip vc-blue" onclick="insertVar('{label}')" data-desc="Judul laporan">{label}</span>
+                  <span class="var-chip vc-blue" onclick="insertVar('{app_name}')" data-desc="Nama aplikasi">{app_name}</span>
+                  <span class="var-chip vc-blue" onclick="insertVar('{period}')" data-desc="Periode laporan">{period}</span>
+                  <span class="var-chip vc-blue" onclick="insertVar('{now}')" data-desc="Waktu saat ini">{now}</span>
+                  <span class="var-chip vc-slate" onclick="insertVar('{sep}')" data-desc="Garis pemisah">{sep}</span>
+                </div>
+
+                <div class="var-group">
+                  <div class="var-group-label">Pelanggan & Tagihan</div>
+                  <span class="var-chip vc-blue" onclick="insertVar('{aktif_cnt}')" data-desc="Jumlah pelanggan aktif">{aktif_cnt}</span>
+                  <span class="var-chip vc-blue" onclick="insertVar('{aktif_total}')" data-desc="Total tagihan aktif">{aktif_total}</span>
+                  <span class="var-chip vc-amber" onclick="insertVar('{due_cnt}')" data-desc="Jumlah jatuh tempo">{due_cnt}</span>
+                  <span class="var-chip vc-amber" onclick="insertVar('{due_total}')" data-desc="Total nominal jatuh tempo">{due_total}</span>
+                  <span class="var-chip vc-teal" onclick="insertVar('{rate}')" data-desc="Collection rate (%)">{rate}</span>
+                </div>
+
+                <div class="var-group">
+                  <div class="var-group-label">Pembayaran</div>
+                  <span class="var-chip vc-green" onclick="insertVar('{bayar_cnt}')" data-desc="Jumlah yang sudah bayar">{bayar_cnt}</span>
+                  <span class="var-chip vc-green" onclick="insertVar('{bayar_total}')" data-desc="Total nominal dibayar">{bayar_total}</span>
+                  <span class="var-chip vc-red" onclick="insertVar('{unpaid_cnt}')" data-desc="Jumlah belum bayar">{unpaid_cnt}</span>
+                  <span class="var-chip vc-red" onclick="insertVar('{unpaid_total}')" data-desc="Total nominal belum bayar">{unpaid_total}</span>
+                </div>
+
+                <div class="var-group">
+                  <div class="var-group-label">Daftar Detail</div>
+                  <span class="var-chip vc-green" onclick="insertVar('{paid_list}')" data-desc="List pelanggan sudah bayar">{paid_list}</span>
+                  <span class="var-chip vc-red" onclick="insertVar('{unpaid_list}')" data-desc="List pelanggan belum bayar">{unpaid_list}</span>
+                  <span class="var-chip vc-amber" onclick="insertVar('{due_today_list}')" data-desc="List jatuh tempo hari ini">{due_today_list}</span>
+                  <span class="var-chip vc-amber" onclick="insertVar('{due_list}')" data-desc="List semua jatuh tempo">{due_list}</span>
+                </div>
+
+              </div>
+            </div>
+
+            <textarea id="reportTemplate" rows="16"
+              style="width:100%;box-sizing:border-box;border:1.5px solid var(--d-border);border-radius:10px;padding:11px 12px;font-family:'DM Mono',monospace;font-size:12px;line-height:1.7;resize:vertical;outline:none;background:#fdfdff;color:#0d1b3e;transition:border-color .15s;"
+              onfocus="this.style.borderColor='#1a6ef5'"
+              onblur="this.style.borderColor=''"
+              oninput="livePreviewTemplate()">Memuat template...</textarea>
+            <div style="font-size:11px;color:#94a3b8;margin-top:5px;">Gunakan *teks* untuk <strong>bold</strong>, _teks_ untuk <em>italic</em> di WA</div>
+          </div>
+
+          <!-- Jadwal otomatis -->
+          <div class="w-card">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--d-muted);margin-bottom:14px;">Jadwal Otomatis</div>
+            <div id="schedGrid">
+              <div style="text-align:center;color:#94a3b8;padding:20px;">Memuat jadwal...</div>
+            </div>
+            <button class="pay-btn" onclick="saveSchedules()" style="margin-top:14px;">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              Simpan Jadwal
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: admin phones + last sent -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="w-card">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--d-border);">
+              <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#25d366,#128c7e);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="16" height="16" fill="white" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--d-muted);">Nomor Admin</div>
+                <div style="font-size:13.5px;font-weight:700;color:var(--d-text);">Penerima Laporan</div>
+              </div>
+            </div>
+            <div id="phonePills" style="margin-bottom:10px;min-height:28px;"></div>
+            <div class="pf-field">
+              <label class="pf-label">Tambah/Edit Nomor</label>
+              <textarea class="pf-input" id="phoneInput" rows="3" placeholder="628123456789&#10;628987654321&#10;(satu nomor per baris)" style="resize:vertical;font-family:'DM Mono',monospace;font-size:12px;"></textarea>
+            </div>
+            <button class="pay-btn" onclick="savePhones()">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              Simpan Nomor
+            </button>
+          </div>
+
+          <div class="w-card">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--d-muted);margin-bottom:10px;">Status Pengiriman</div>
+            <div id="lastSentInfo" style="font-size:12.5px;color:var(--d-muted);">–</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/wa-report.js"></script>
+
+<script>
+(function(){
+  const W=72,H=36,MAX=20,hist={},C={'total':'#2563eb','bayar':'#16a34a','belum':'#dc2626','rate':'#d97706'},IDS={'total':'scTotal','bayar':'scBayar','belum':'scBelum','rate':'scRate'};
+  Object.keys(C).forEach(k=>hist[k]=[]);
+  function sp(v){
+    if(!v||v.length<2)return null;
+    const mn=Math.min(...v),mx=Math.max(...v),r=mx-mn||1;
+    const p=v.map((n,i)=>[(i/(v.length-1))*W,H-((n-mn)/r)*(H-6)-3]);
+    const d=p.reduce((a,[x,y],i)=>{
+      if(!i)return'M'+x.toFixed(1)+','+y.toFixed(1);
+      const[px,py]=p[i-1],cx=(px+x)/2;
+      return a+' C'+cx.toFixed(1)+','+py.toFixed(1)+' '+cx.toFixed(1)+','+y.toFixed(1)+' '+x.toFixed(1)+','+y.toFixed(1);
+    },'');
+    const lp=p[p.length-1],fp=p[0];
+    return{d,fill:d+' L'+lp[0].toFixed(1)+','+H+' L'+fp[0].toFixed(1)+','+H+' Z',dot:lp};
+  }
+  function draw(id,v){
+    const s=sp(v);if(!s)return;
+    const f=document.getElementById(id+'-fill'),l=document.getElementById(id+'-line'),d=document.getElementById(id+'-dot');
+    if(f)f.setAttribute('d',s.fill);if(l)l.setAttribute('d',s.d);
+    if(d){d.setAttribute('cx',s.dot[0].toFixed(1));d.setAttribute('cy',s.dot[1].toFixed(1));}
+  }
+  function rn(id){const e=document.getElementById(id);return e?parseFloat(e.textContent.replace(/[^\d.]/g,''))||0:0;}
+  function upd(){
+    Object.keys(C).forEach(k=>{
+      const v=rn(IDS[k]);hist[k].push(v);if(hist[k].length>MAX)hist[k].shift();
+      draw('sp-'+k,hist[k]);
+      const p=document.getElementById('xp-'+k);if(p)p.textContent=v;
+    });
+  }
+  window._repUpd=upd;
+  Object.values(IDS).forEach(id=>{const e=document.getElementById(id);if(e)new MutationObserver(()=>setTimeout(upd,50)).observe(e,{childList:true,characterData:true,subtree:true});});
+  document.addEventListener('DOMContentLoaded',upd);
+})();
+</script>
+</body></html>
