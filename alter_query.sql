@@ -1,0 +1,7 @@
+CREATE TABLE live_messages (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  room VARCHAR(100),
+  user_id INT,
+  message TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
