@@ -1155,20 +1155,20 @@ const customer = JSON.parse(localStorage.getItem("portal_customer"));
 
 const USER_ID = user?.id ?? null;
 const CUSTOMER_ID = customer?.customer_id ?? null;
-
-console.log("USER_ID:", USER_ID);
-console.log("CUSTOMER_ID:", CUSTOMER_ID);
+const CUSTOMER_ID_KEY = customer?.id ?? null;
 
 const ROOM = CUSTOMER_ID
   ? `customer_${CUSTOMER_ID}`
   : `user_${USER_ID}`;
 
+const USER_ID_CHAT = CUSTOMER_ID_KEY
+  ? `${CUSTOMER_ID_KEY}`
+  : `${USER_ID}`;
+
 const ticketId =
   new URLSearchParams(window.location.search).get("ticket_id") || "1";
 
 socket.on("connect", () => {
-  console.log("connected:", socket.id);
-
   socket.emit("chat:join", ROOM);
 
   loadChat();
@@ -1197,7 +1197,7 @@ function renderMessage(data) {
 
   const isMe =
     String(data.user_id) === String(USER_ID) ||
-    String(data.customer_id) === String(CUSTOMER_ID);
+    String(data.user_id) === String(CUSTOMER_ID_KEY);
 
   const wrap = document.createElement("div");
   wrap.style.display = "flex";
@@ -1240,6 +1240,7 @@ function sendChat() {
 
   socket.emit("chat:send", {
     room: ROOM,
+    user_id: USER_ID_CHAT,
     message
   });
 

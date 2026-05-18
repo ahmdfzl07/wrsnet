@@ -43,18 +43,19 @@ module.exports = (io) => {
     });
 
     socket.on("chat:send", async (data) => {
-      const { room, message } = data;
+      const { room, user_id, message } = data;
 
       const saved = await LiveMessage.create({
         room,
-        user_id: socket.userId,
+        // user_id: socket.userId,
+        user_id,
         message,
       });
 
       const payload = {
         id: saved.id,
         room,
-        user_id: socket.userId,
+        user_id,
         message,
         created_at: saved.created_at,
       };
