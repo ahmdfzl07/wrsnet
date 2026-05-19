@@ -20,7 +20,6 @@ router.get('/',         portalAuth, (req, res) => res.render('portal/dashboard',
 router.get('/dashboard',portalAuth, (req, res) => res.render('portal/dashboard', { title: 'Dashboard', layout: false, customer: req.portalUser }));
 
 // Payment result pages (render halaman dedicated, bukan dashboard)
-<<<<<<< HEAD
 router.get("/payment/finish", (req, res) =>
   res.render("portal/payment-result", {
     title: "Status Pembayaran",
