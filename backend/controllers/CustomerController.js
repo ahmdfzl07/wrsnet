@@ -14,31 +14,26 @@ class CustomerController {
       const { page = 1, limit = 20, search, status, package_id } = req.query;
       const where = {};
 
-      if (search) {
-        where[Op.or] = [
-          { name: { [Op.like]: `%${search}%` } },
-          { customer_id: { [Op.like]: `%${search}%` } },
-          { phone: { [Op.like]: `%${search}%` } },
-          { address: { [Op.like]: `%${search}%` } },
+       if (search) {
+      where[Op.or] = [
+        { name: { [Op.like]: `%${search}%` } },
+        { customer_id: { [Op.like]: `%${search}%` } },
+        { phone: { [Op.like]: `%${search}%` } },
+        { address: { [Op.like]: `%${search}%` } },
 
-          { "$package.name$": { [Op.like]: `%${search}%` } },
-          Sequelize.where(
-            Sequelize.cast(Sequelize.col("package.price"), "CHAR"),
-            {
-              [Op.like]: `%${search}%`,
-
-              if(search) {
-                where[Op.or] = [
-                  { name: { [Op.like]: `%${search}%` } },
-                  { customer_id: { [Op.like]: `%${search}%` } },
-                  { phone: { [Op.like]: `%${search}%` } },
-                  { address: { [Op.like]: `%${search}%` } },
-                ];
-              },
-            },
-          ),
-        ];
-      }
+        {
+          "$package.name$": {
+            [Op.like]: `%${search}%`,
+          },
+        },
+        Sequelize.where(
+          Sequelize.cast(Sequelize.col("package.price"), "CHAR"),
+          {
+            [Op.like]: `%${search}%`,
+          }
+        ),
+      ];
+    }
       // overdue & due_soon adalah filter virtual — tidak set where.status
       if (status && status !== "overdue" && status !== "due_soon") {
         where.status = status;
