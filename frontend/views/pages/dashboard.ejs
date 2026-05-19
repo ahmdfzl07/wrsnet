@@ -57,9 +57,125 @@
             min-width:160px; cursor:pointer;
           }
           .mt-selector:disabled { color:#94a3b8; cursor:not-allowed; }
+
+          /* Interface selector — konsisten dengan period-select */
+          .iface-select {
+            padding: 5px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #1e293b;
+            background: #fff;
+            cursor: pointer;
+            transition: border-color .15s, box-shadow .15s;
+            min-width: 110px;
+            max-width: 160px;
+          }
+          .iface-select:hover { border-color:#1d4ed8; }
+          .iface-select:focus {
+            outline:none; border-color:#1d4ed8;
+            box-shadow:0 0 0 3px rgba(29,78,216,.12);
+          }
+          .iface-select:disabled { color:#94a3b8; cursor:not-allowed; background:#f8fafc; }
+
+          /* Wrapper untuk dropdown + period di Bandwidth Trends card */
+          .bw-trends-controls {
+            display:flex; align-items:center; gap:8px;
+          }
+
+          /* ===== Open Tickets List (di card Ticket Statistics) ===== */
+          .open-tickets-list {
+            margin-top: 16px;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 340px;
+            overflow-y: auto;
+          }
+          .open-tickets-list .loading-state,
+          .open-tickets-list .empty-state {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 12px;
+            padding: 18px 8px;
+          }
+          .open-ticket-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: #f8fafc;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            text-decoration: none;
+            color: inherit;
+            transition: background .15s, border-color .15s, transform .15s;
+          }
+          .open-ticket-item:hover {
+            background: #fff;
+            border-color: #cbd5e1;
+            transform: translateX(2px);
+          }
+          .ot-priority {
+            flex: 0 0 4px;
+            align-self: stretch;
+            border-radius: 4px;
+            min-height: 36px;
+          }
+          .ot-priority.critical { background: #ef4444; }
+          .ot-priority.high     { background: #f59e0b; }
+          .ot-priority.medium   { background: #3b82f6; }
+          .ot-priority.low      { background: #94a3b8; }
+          .ot-body { flex: 1; min-width: 0; }
+          .ot-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+          }
+          .ot-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: #64748b;
+          }
+          .ot-meta .ot-num { font-weight: 600; color: #475569; }
+          .ot-meta .ot-customer {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 140px;
+          }
+          .ot-status {
+            flex: 0 0 auto;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 999px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+          }
+          .ot-status.open        { background: #dbeafe; color: #1e40af; }
+          .ot-status.in_progress { background: #fef3c7; color: #92400e; }
+          .ot-status.pending     { background: #ccfbf1; color: #115e59; }
+
+          @media (max-width: 640px) {
+            .ot-meta .ot-customer { max-width: 90px; }
+            .ot-title { font-size: 12px; }
+          }
+
           @media (max-width: 640px) {
             .mt-selector-wrap { min-width:140px; padding:5px 10px; }
             .mt-selector { min-width:110px; font-size:12px; }
+            .iface-select { min-width:90px; max-width:120px; font-size:11px; }
+            .bw-trends-controls { flex-wrap:wrap; gap:6px; }
           }
         </style>
 
@@ -116,6 +232,9 @@
                 <h3>Activity Chart</h3>
               </div>
               <div class="chart-legend">
+                <select id="activityChartIface" class="iface-select" title="Pilih interface untuk dipantau">
+                  <option value="__all__">All Interfaces</option>
+                </select>
                 <span class="legend-item"><span class="legend-line blue"></span> RX</span>
                 <span class="legend-item"><span class="legend-line orange"></span> TX</span>
                 <div class="chart-range-btns">
@@ -266,6 +385,11 @@
                   </div>
                 </div>
               </div>
+
+              <!-- Open Tickets List — klik untuk buka detail di /tickets/:id -->
+              <div class="open-tickets-list" id="openTicketsList">
+                <div class="loading-state">Loading tickets...</div>
+              </div>
             </div>
           </div>
 
@@ -279,11 +403,16 @@
                 </svg>
                 <h3>Bandwidth Trends</h3>
               </div>
-              <select id="bandwidthTrendsPeriod" class="period-select">
-                <option value="realtime">Realtime (1h)</option>
-                <option value="daily" selected>Daily (30d)</option>
-                <option value="weekly">Weekly (7d)</option>
-              </select>
+              <div class="bw-trends-controls">
+                <select id="bandwidthTrendsIface" class="iface-select" title="Pilih interface">
+                  <option value="">All Interfaces</option>
+                </select>
+                <select id="bandwidthTrendsPeriod" class="period-select">
+                  <option value="realtime">Realtime (1h)</option>
+                  <option value="daily" selected>Daily (30d)</option>
+                  <option value="weekly">Weekly (7d)</option>
+                </select>
+              </div>
             </div>
             <div class="card-body">
               <div class="chart-container" style="height:280px;">

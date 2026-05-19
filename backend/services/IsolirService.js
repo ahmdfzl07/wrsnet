@@ -12,6 +12,7 @@ const http     = require('http');
 const https    = require('https');
 const crypto   = require('crypto');
 const { sequelize } = require('../models');
+const { getCompanyName } = require('../utils/companyInfo');
 
 const ADDRLIST    = 'FLAYNET-ISOLIR';
 const COMMENT_SRC = 'FLAYNET-BLOCK-SRC';
@@ -1109,7 +1110,7 @@ async function sendIsolirWA(cust, action) {
       jatuh_tempo:     fmtDate(invoiceData?.due_date),
       tgl_bayar:       fmtDate(new Date()),
       paket:           invoiceData?.package_name || '-',
-      perusahaan:      process.env.COMPANY_NAME || process.env.APP_NAME || 'ISP Provider',
+      perusahaan:      await getCompanyName(),
       // Backward compat
       customer_id:     cust.customer_id || '',
       static_ip:       cust.static_ip || '-'

@@ -668,10 +668,92 @@ async function deleteRouterBypass(deviceId, entryId) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// PUBLIC HELPER: lookup customer dari static_ip — dipakai oleh halaman /p/isolir
+// PUBLIC HELPER: lookup customer dari IP — dipakai oleh halaman /p/isolir
+//
+// Multi-layer fallback strategy (urutan dari cepat ke lambat):
+//
+//   Layer 1: static_ip di DB (paling cepat, 0 network round-trip)
+//            Cocok untuk pelanggan dengan static IP yang terdata di sistem.
+//
+//   Layer 2: PPPoE active session di MikroTik
+//            Query /ppp/active where address=X → dapat username →
+//            cocokkan ke customer.pppoe_username.
+//            Cocok untuk PPPoE dengan dynamic IP pool.
+//
+//   Layer 3: DHCP lease di MikroTik
+//            Query /ip/dhcp-server/lease where address=X → dapat MAC →
+//            cocokkan ke customer.ont_mac.
+//            Cocok untuk static IP via DHCP atau ONT mode bridge.
+//
+//   Layer 4: address-list FLAYNET-ISOLIR comment
+//            Saat customer di-isolir, comment di address-list di-set ke
+//            customer_id. Kalau IP ada di list isolir, ambil customer
+//            dari comment.
+//            Fallback terakhir untuk skenario edge case.
+//
+// Setiap layer di-wrap try/catch independen — kalau MikroTik unreachable,
+// layer berikutnya tetap di-coba. Layer 1 selalu jalan (in-DB).
+//
+// Result di-cache 30 detik di caller untuk hindari spam query MikroTik
+// kalau pelanggan refresh berkali-kali.
 // ════════════════════════════════════════════════════════════════════════
 async function lookupCustomerByIp(ip) {
   if (!ip) return null;
+
+  // ── Layer 1: static_ip ──────────────────────────────────────────
+  const byStatic = await _lookupByStaticIp(ip);
+  if (byStatic) return byStatic;
+
+  // Layer 2-4 butuh koneksi MikroTik. Coba semua device yg aktif
+  // (sistem support multi-MikroTik).
+  let devices = [];
+  try {
+    devices = await sequelize.query(
+      `SELECT m.id AS mikrotik_id, e.binary_port, e.wan_interface
+         FROM mikrotiks m
+         LEFT JOIN mikrotik_extensions e ON e.device_id = m.id
+         WHERE COALESCE(m.is_active, 1) = 1
+         ORDER BY m.id ASC`,
+      { type: sequelize.QueryTypes.SELECT }
+    );
+  } catch (e) {
+    logger.warn(`[lookupCustomerByIp] gagal ambil device list: ${e.message}`);
+    return null;
+  }
+
+  for (const dev of devices) {
+    let api = null;
+    try {
+      // Reuse koneksi pattern dari IsolirService
+      const IsolirSvc = require('./IsolirService');
+      const fullDev   = await IsolirSvc.loadDeviceWithMaster(dev.mikrotik_id, false);
+      if (!fullDev) continue;
+      api = await IsolirSvc.connectDevice(fullDev);
+
+      // ── Layer 2: PPPoE active session ─────────────────────────────
+      const byPppoe = await _lookupByPPPoEActive(api, ip);
+      if (byPppoe) { try { api.close(); } catch {} return byPppoe; }
+
+      // ── Layer 3: DHCP lease binding by MAC ────────────────────────
+      const byDhcp = await _lookupByDhcpLease(api, ip);
+      if (byDhcp) { try { api.close(); } catch {} return byDhcp; }
+
+      // ── Layer 4: address-list FLAYNET-ISOLIR comment ──────────────
+      const byList = await _lookupByAddressList(api, ip);
+      if (byList) { try { api.close(); } catch {} return byList; }
+
+    } catch (e) {
+      logger.warn(`[lookupCustomerByIp] device #${dev.mikrotik_id} error: ${e.message}`);
+    } finally {
+      if (api) { try { api.close(); } catch {} }
+    }
+  }
+
+  return null;
+}
+
+// ── Layer 1: query langsung ke DB by static_ip ──
+async function _lookupByStaticIp(ip) {
   const rows = await sequelize.query(
     `SELECT c.id, c.customer_id, c.name, c.phone, c.static_ip, c.isolir_status,
             c.installation_date, c.billing_date,
@@ -683,6 +765,105 @@ async function lookupCustomerByIp(ip) {
     { replacements: [ip], type: sequelize.QueryTypes.SELECT }
   );
   return rows[0] || null;
+}
+
+// ── Layer 2: PPPoE active → username → customer ──
+async function _lookupByPPPoEActive(api, ip) {
+  try {
+    const sessions = await runWithRetry(api, ['/ppp/active/print', '?address=' + ip]);
+    if (!sessions || !sessions.length) return null;
+    const username = sessions[0].name;
+    if (!username) return null;
+
+    const rows = await sequelize.query(
+      `SELECT c.id, c.customer_id, c.name, c.phone, c.static_ip, c.isolir_status,
+              c.installation_date, c.billing_date,
+              pkg.name AS package_name, pkg.price AS package_price
+         FROM customers c
+         LEFT JOIN packages pkg ON pkg.id = c.package_id
+         WHERE c.pppoe_username = ?
+         LIMIT 1`,
+      { replacements: [username], type: sequelize.QueryTypes.SELECT }
+    );
+    if (rows[0]) {
+      // Override static_ip ke IP aktual yang sedang dipakai supaya
+      // info di halaman akurat.
+      rows[0].static_ip = ip;
+      rows[0]._lookup_source = 'pppoe';
+      return rows[0];
+    }
+  } catch (e) {
+    logger.warn(`[lookup:pppoe] error: ${e.message}`);
+  }
+  return null;
+}
+
+// ── Layer 3: DHCP lease → MAC → customer ──
+async function _lookupByDhcpLease(api, ip) {
+  try {
+    const leases = await runWithRetry(api, ['/ip/dhcp-server/lease/print', '?address=' + ip]);
+    if (!leases || !leases.length) return null;
+    const mac = (leases[0]['mac-address'] || leases[0]['active-mac-address'] || '').toUpperCase();
+    if (!mac) return null;
+
+    // ont_mac di DB bisa dengan format ":" atau "-" — normalisasi
+    const macNormalized = mac.replace(/[^0-9A-F]/g, '');
+    const rows = await sequelize.query(
+      `SELECT c.id, c.customer_id, c.name, c.phone, c.static_ip, c.isolir_status,
+              c.installation_date, c.billing_date,
+              pkg.name AS package_name, pkg.price AS package_price
+         FROM customers c
+         LEFT JOIN packages pkg ON pkg.id = c.package_id
+         WHERE UPPER(REPLACE(REPLACE(c.ont_mac,':',''),'-','')) = ?
+         LIMIT 1`,
+      { replacements: [macNormalized], type: sequelize.QueryTypes.SELECT }
+    );
+    if (rows[0]) {
+      rows[0].static_ip = ip;
+      rows[0]._lookup_source = 'dhcp';
+      return rows[0];
+    }
+  } catch (e) {
+    logger.warn(`[lookup:dhcp] error: ${e.message}`);
+  }
+  return null;
+}
+
+// ── Layer 4: cek address-list FLAYNET-ISOLIR pakai comment ──
+async function _lookupByAddressList(api, ip) {
+  try {
+    const entries = await runWithRetry(api, [
+      '/ip/firewall/address-list/print',
+      '?list=' + LIST_ISOLIR,
+      '?address=' + ip
+    ]);
+    if (!entries || !entries.length) return null;
+    const comment = entries[0].comment || '';
+    // Comment format yang di-set IsolirService.isolirCustomer:
+    //   "FLAYNET-ISOLIR-<customer_id>"
+    // Note: ada juga legacy format "WAU-ISOLIR-..." yang dimigrate ke FLAYNET-.
+    const m = comment.match(/(?:FLAYNET|WAU)-ISOLIR-([^\s|,]+)/);
+    if (!m) return null;
+    const customerId = m[1];
+
+    const rows = await sequelize.query(
+      `SELECT c.id, c.customer_id, c.name, c.phone, c.static_ip, c.isolir_status,
+              c.installation_date, c.billing_date,
+              pkg.name AS package_name, pkg.price AS package_price
+         FROM customers c
+         LEFT JOIN packages pkg ON pkg.id = c.package_id
+         WHERE c.customer_id = ?
+         LIMIT 1`,
+      { replacements: [customerId], type: sequelize.QueryTypes.SELECT }
+    );
+    if (rows[0]) {
+      rows[0]._lookup_source = 'address-list';
+      return rows[0];
+    }
+  } catch (e) {
+    logger.warn(`[lookup:addrlist] error: ${e.message}`);
+  }
+  return null;
 }
 
 async function getCustomerInvoices(customerId) {

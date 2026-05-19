@@ -4,10 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
-  <link
-  rel="stylesheet"
-  href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css"/>
-  <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
   <style>
@@ -383,8 +379,16 @@
           <div style="font-size:11px;color:var(--d-muted);margin-top:3px" id="dueDateHint">Contoh: 15 → jatuh tempo tiap tgl 15</div>
         </div>
         <div><label class="flbl">Tanggal Aktivasi</label><input type="date" class="finput" id="custInstallDate" onchange="onActivationDateChange()"></div>
-        <div><label class="flbl">PPPoE Username</label><input type="text" class="finput" id="custPPPoE" placeholder="pppoe-username"></div>
         <div><label class="flbl">ONT Serial Number</label><input type="text" class="finput" id="custOntSn" placeholder="HWTC12345678"></div>
+        <!-- Slot khusus untuk field PPPoE Username di mode EDIT.
+             Saat mode tambah baru: slot ini hidden, field custPPPoE ada di dalam pppoeFormBox.
+             Saat mode edit: JS memindahkan field custPPPoE ke sini dan menampilkan slot. -->
+        <div id="custPPPoEEditSlot" style="display:none;grid-column:1/-1">
+          <label class="flbl">PPPoE Username
+            <span style="font-size:10px;color:#64748b;font-weight:400;text-transform:none">— mendukung format user@realm</span>
+          </label>
+          <!-- field custPPPoE di-move ke sini oleh editCustomer() -->
+        </div>
         <div><label class="flbl">Static IP <span style="font-size:10px;color:#0891b2;font-weight:600">(isolir)</span></label>
           <input type="text" class="finput" id="custStaticIP" placeholder="192.168.1.x">
           <div style="font-size:10.5px;color:var(--d-muted);margin-top:3px">IP statis pelanggan di MikroTik</div>
@@ -392,58 +396,7 @@
         <div><label class="flbl">Router MikroTik <span style="font-size:10px;color:#0891b2;font-weight:600">(isolir)</span></label>
           <select class="finput" id="custMikrotikId"><option value="">— Pilih router —</option></select>
         </div>
-<div style="grid-column:1/-1; border-top:1px solid #e2e8f0; margin-top:10px; padding-top:10px;">
-  <strong style="font-size:13px; color:#334155;">Informasi Wilayah & Lokasi Pelanggan</strong>
-</div>
-
-<div>
-  <label class="flbl">Nama Lokasi / Cluster</label>
-  <input type="text" class="finput" id="custLocationName" placeholder="Contoh: Perum Grand Residen">
-</div>
-
-<div><label class="flbl">Kode Lokasi</label>
-  <input type="text" class="finput" id="custKodeLokasi" readonly>
-</div>
-
-<div><label class="flbl">Provinsi</label>
-  <select id="custProvinsi" class="finput">
-  <option value=""> Pilih Provinsi</option>
-</select>
-</div>
-<div><label class="flbl">Kabupaten</label>
-  <select class="finput" id="custKabupaten" onchange="loadKecamatan(this.value)">
-    <option value="">Pilih Kabupaten</option>
-  </select>
-</div>
-
-<div><label class="flbl">Kecamatan</label>
-  <select class="finput" id="custKecamatan" onchange="loadKelurahan(this.value)">
-    <option value="">Pilih Kecamatan</option>
-  </select>
-</div>
-
-<div><label class="flbl">Kelurahan</label>
-  <select class="finput" id="custKelurahan">
-    <option value="">Pilih Kelurahan</option>
-  </select>
-</div>
-
-<div>
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-   <div><label class="flbl">RT</label>
-  <input type="text" class="finput" id="custRt" placeholder="001">
-</div>
-   <div><label class="flbl">RW</label>
-  <input type="text" class="finput" id="custRw" placeholder="002">
-</div>
-
-  </div>
-</div>
-
-<div style="grid-column:1/-1">
-  <label class="flbl">Alamat Lengkap (Jalan, No. Rumah, dll)</label>
-  <textarea class="finput" id="custAddress" rows="2" placeholder="Nama jalan, nomor rumah, detail patokan..."></textarea>
-</div>
+        <div style="grid-column:1/-1"><label class="flbl">Alamat</label><textarea class="finput" id="custAddress" rows="2" placeholder="Alamat lengkap"></textarea></div>
         <div><label class="flbl">Latitude <span style="font-size:10px;font-weight:400;text-transform:none;color:var(--d-muted)">— koordinat peta</span></label><input type="text" class="finput" id="custLatitude" placeholder="-6.12345678" style="font-family:'DM Mono',monospace"></div>
         <div><label class="flbl">Longitude <span style="font-size:10px;font-weight:400;text-transform:none;color:var(--d-muted)">— koordinat peta</span></label><input type="text" class="finput" id="custLongitude" placeholder="106.12345678" style="font-family:'DM Mono',monospace"></div>
       </div>
@@ -485,6 +438,14 @@
                 <option value="">— Pilih router dulu —</option>
               </select>
               <div style="font-size:10.5px;color:#64748b;margin-top:3px">Daftar profile diambil langsung dari router yang dipilih</div>
+            </div>
+            <div id="custPPPoEAddSlot" style="grid-column:1/-1">
+              <label class="flbl" style="display:flex;align-items:center;gap:6px;">
+                Username PPPoE *
+                <span style="font-size:10px;color:#64748b;font-weight:400;text-transform:none">auto dari Nama, bisa diubah</span>
+              </label>
+              <input type="text" class="finput" id="custPPPoE" placeholder="pppoe-username" autocomplete="off">
+              <div style="font-size:10.5px;color:#64748b;margin-top:3px">Otomatis terisi dari Nama Customer. Bisa di-edit manual (mendukung format <strong>user@realm</strong>).</div>
             </div>
             <div>
               <label class="flbl">Password PPPoE *</label>
@@ -667,53 +628,9 @@ window.custCardClick = function(el) {
 };
 
 /* Modal open/close shim — customers.js already handles openAddCustomer/closeModal */
-window.saveCustomerBtn = async function () {
-  const btn = document.getElementById("saveCustomerBtn");
-
-  btn.disabled = true;
-  btn.innerText = "Menyimpan...";
-
-  try {
-    const body = {
-      name: document.getElementById("custName").value,
-      phone: document.getElementById("custPhone").value,
-      address: document.getElementById("custAddress").value,
-
-      province: document.getElementById("custProvinsi").selectedOptions[0]?.text || "",
-      province_id: document.getElementById("custProvinsi").value || "",
-
-      kabupaten: document.getElementById("custKabupaten").selectedOptions[0]?.text || "",
-      kabupaten_id: document.getElementById("custKabupaten").value || "",
-
-      kecamatan: document.getElementById("custKecamatan").selectedOptions[0]?.text || "",
-      kecamatan_id: document.getElementById("custKecamatan").value || "",
-
-      kelurahan: document.getElementById("custKelurahan").selectedOptions[0]?.text || "",
-      kelurahan_id: document.getElementById("custKelurahan").value || "",
-    };
-
-    const res = await fetch("/api/customers", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-
-    const result = await res.json();
-
-    if (result.success) {
-      closeModal();
-      loadCustomers();
-    } else {
-      alert(result.message);
-    }
-  } catch (err) {
-    console.error(err);
-  }
-
-  btn.disabled = false;
-  btn.innerText = "Simpan";
+window.saveCustomerBtn = function() {
+  const btn = document.getElementById('saveCustomerBtn');
+  if (typeof saveCustomer === 'function') saveCustomer();
 };
 
 /* ── Customer name link → profile page ── */
@@ -917,6 +834,9 @@ window.saveCustomerBtn = async function () {
       <!-- Step 2: Preview & Confirm -->
       <div id="importSummary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;"></div>
 
+      <!-- Router secret check banner — di-isi oleh renderImportPreview() saat preview render -->
+      <div id="importRouterCheckBanner"></div>
+
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 12px;background:#fafbfc;border-radius:10px;">
         <svg width="14" height="14" fill="none" stroke="#64748b" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/></svg>
         <label style="font-size:12.5px;font-weight:600;color:#0f172a;">Customer yang sudah ada:</label>
@@ -934,6 +854,9 @@ window.saveCustomerBtn = async function () {
               <th style="padding:10px 12px;text-align:left;border-bottom:1px solid #e2e8f0;font-weight:600;color:#64748b;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;">Status</th>
               <th style="padding:10px 12px;text-align:left;border-bottom:1px solid #e2e8f0;font-weight:600;color:#64748b;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;">ID</th>
               <th style="padding:10px 12px;text-align:left;border-bottom:1px solid #e2e8f0;font-weight:600;color:#64748b;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;">Nama</th>
+              <th style="padding:10px 12px;text-align:left;border-bottom:1px solid #e2e8f0;font-weight:600;color:#64748b;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;">PPPoE</th>
+              <th style="padding:10px 12px;text-align:left;border-bottom:1px solid #e2e8f0;font-weight:600;color:#64748b;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;">Static IP</th>
+              <th style="padding:10px 12px;text-align:left;border-bottom:1px solid #e2e8f0;font-weight:600;color:#64748b;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;">Router</th>
               <th style="padding:10px 12px;text-align:left;border-bottom:1px solid #e2e8f0;font-weight:600;color:#64748b;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;">Phone</th>
               <th style="padding:10px 12px;text-align:left;border-bottom:1px solid #e2e8f0;font-weight:600;color:#64748b;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;">Paket</th>
               <th style="padding:10px 12px;text-align:left;border-bottom:1px solid #e2e8f0;font-weight:600;color:#64748b;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;">Aksi</th>
@@ -964,6 +887,7 @@ window.saveCustomerBtn = async function () {
 <script>
 // ── Import / Export Customer Logic ─────────────────────────────────
 let _importToken = null;
+let __importRouterIdToName = new Map(); // populated by renderImportPreview from routerCheck.routerIdToName
 let _importValidCount = 0;
 
 // Pindahkan dropdown ke body root saat halaman siap, supaya 100% lepas
@@ -1187,6 +1111,15 @@ function showImportPreview(data) {
   document.getElementById('importConfirmBtn').disabled = _importValidCount === 0;
   document.getElementById('importModalSubtitle').textContent = 'Periksa preview di bawah, lalu klik "Import Sekarang".';
 
+  // Build map mikrotik_id → router name (untuk display di kolom Router preview).
+  // Backend kirim sebagai object {id: name} di data.routerCheck.routerIdToName.
+  // Convert ke Map untuk lookup yang gampang.
+  __importRouterIdToName = new Map();
+  const idToName = data.routerCheck?.routerIdToName || {};
+  Object.keys(idToName).forEach(idStr => {
+    __importRouterIdToName.set(parseInt(idStr, 10), idToName[idStr]);
+  });
+
   // Summary cards
   const s = data.summary;
   const autoSubtitle = s.toCreateAuto > 0
@@ -1214,6 +1147,62 @@ function showImportPreview(data) {
       ${autoSubtitle}
     </div>
   `;
+
+  // ── Router secret check info banner ──────────────────────────────
+  // Tampilkan ringkasan hasil validasi PPPoE username terhadap secret di router.
+  // Hitung berapa row dengan warning "TIDAK ditemukan di router" untuk give
+  // overall visibility. Render sebagai banner kuning/info di atas tabel preview.
+  const banner = document.getElementById('importRouterCheckBanner');
+  if (banner) {
+    const rc = data.routerCheck || {};
+    // Hitung row dengan warning "tidak ditemukan di router"
+    const missingCount = data.rows.filter(r =>
+      (r.warnings || []).some(w => w.includes('TIDAK ditemukan di'))
+    ).length;
+
+    let bannerHTML = '';
+    if (rc.checkedRouters && rc.checkedRouters.length > 0) {
+      // Ada router yang berhasil di-cek
+      if (missingCount > 0) {
+        // Ada row yang username-nya tidak ditemukan di router
+        bannerHTML = `
+          <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;background:#fef3c7;border:1px solid #fde68a;border-radius:10px;margin-bottom:12px;">
+            <svg width="16" height="16" fill="none" stroke="#d97706" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:2px;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            </svg>
+            <div style="flex:1;font-size:12px;color:#92400e;line-height:1.5;">
+              <strong>${missingCount} customer</strong> punya username PPPoE yang <strong>tidak ditemukan</strong> di router (${rc.checkedRouters.length} router di-cek: ${rc.checkedRouters.map(n => `<code style="background:#fbbf24;color:#451a03;padding:1px 5px;border-radius:3px;font-size:11px;">${n}</code>`).join(' ')}, total ${rc.totalSecrets} secret).
+              Cek kolom <strong>Catatan</strong> di tabel — row tetap valid &amp; bisa di-import, tapi pastikan buat secret di router sebelum customer aktif, atau via halaman PPPoE Manager setelah import.
+            </div>
+          </div>`;
+      } else {
+        // Semua username sudah ada di router — OK
+        bannerHTML = `
+          <div style="display:flex;gap:10px;align-items:center;padding:10px 14px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;margin-bottom:12px;">
+            <svg width="16" height="16" fill="none" stroke="#059669" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+            <div style="font-size:12px;color:#065f46;line-height:1.5;">
+              Semua username PPPoE sudah cocok dengan secret yang ada di router (${rc.checkedRouters.length} router: ${rc.checkedRouters.map(n => `<code style="background:#a7f3d0;color:#064e3b;padding:1px 5px;border-radius:3px;font-size:11px;">${n}</code>`).join(' ')}).
+            </div>
+          </div>`;
+      }
+    }
+    // Tambahkan warning kalau ada router yang gagal di-cek
+    if (rc.warnings && rc.warnings.length > 0) {
+      bannerHTML += `
+        <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;margin-bottom:12px;">
+          <svg width="14" height="14" fill="none" stroke="#64748b" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:2px;"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4M12 16h.01"/></svg>
+          <div style="flex:1;font-size:11.5px;color:#475569;line-height:1.5;">
+            <strong>Catatan validasi:</strong>
+            <ul style="margin:4px 0 0 0;padding-left:18px;">
+              ${rc.warnings.map(w => `<li>${w.replace(/</g, '&lt;')}</li>`).join('')}
+            </ul>
+          </div>
+        </div>`;
+    }
+    banner.innerHTML = bannerHTML;
+  }
 
   // Render rows
   const tbody = document.getElementById('importPreviewRows');
@@ -1261,6 +1250,28 @@ function showImportPreview(data) {
       <td style="padding:9px 12px;">${statusBadge}</td>
       <td style="padding:9px 12px;font-size:12.5px;">${customerIdDisplay}</td>
       <td style="padding:9px 12px;color:#0f172a;font-size:12.5px;">${escapeHtml(r.data.name || '')}</td>
+      <td style="padding:9px 12px;font-size:12px;">${
+        r.data.pppoe_username
+          ? `<span style="font-family:'DM Mono',monospace;color:#0f172a;background:#eff6ff;padding:2px 7px;border-radius:5px;">${escapeHtml(r.data.pppoe_username)}</span>`
+          : `<span style="color:#cbd5e1;">—</span>`
+      }</td>
+      <td style="padding:9px 12px;font-size:12px;">${
+        // Static IP cell — tampilkan IP dengan style mono kalau ada
+        r.data.static_ip
+          ? `<span style="font-family:'DM Mono',monospace;color:#0f172a;background:#f0f9ff;padding:2px 7px;border-radius:5px;border:1px solid #bae6fd;">${escapeHtml(r.data.static_ip)}</span>`
+          : `<span style="color:#cbd5e1;">—</span>`
+      }</td>
+      <td style="padding:9px 12px;font-size:11.5px;">${
+        // Router cell: tampilkan nama router + badge source (PPPoE/ARP) kalau auto-detect.
+        // 3 sumber: explicit (user isi nama), auto-PPPoE (badge biru), auto-ARP (badge ungu).
+        r.data.mikrotik_id
+          ? `<span style="background:#dbeafe;color:#1e3a8a;padding:2px 7px;border-radius:5px;font-weight:500;">${escapeHtml(__importRouterIdToName.get(r.data.mikrotik_id) || ('ID #' + r.data.mikrotik_id))}</span>`
+            + (r.data.router_auto_source === 'pppoe' ? ` <span style="font-size:9.5px;background:#f0f9ff;color:#0369a1;padding:1px 5px;border-radius:3px;font-weight:500;" title="Auto-detected dari secret PPPoE">auto: PPPoE</span>` : '')
+            + (r.data.router_auto_source === 'arp'   ? ` <span style="font-size:9.5px;background:#faf5ff;color:#7e22ce;padding:1px 5px;border-radius:3px;font-weight:500;" title="Auto-detected dari ARP table">auto: ARP</span>` : '')
+          : (r.data.router_name_input
+              ? `<span style="color:#dc2626;font-style:italic;" title="Nama router tidak match Device Management">${escapeHtml(r.data.router_name_input)} ✗</span>`
+              : `<span style="color:#cbd5e1;">—</span>`)
+      }</td>
       <td style="padding:9px 12px;color:#64748b;font-size:12px;">${escapeHtml(r.data.phone || '')}</td>
       <td style="padding:9px 12px;color:#64748b;font-size:12px;">${escapeHtml(r.data.package_name || '')}</td>
       <td style="padding:9px 12px;">${actionBadge}</td>
@@ -1380,216 +1391,6 @@ function showImportResult(summary, errors, generatedIds) {
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-
-const API =
-  window.location.origin +
-  "/api/wilayah";
-
-let kabupatenSelect;
-let kecamatanSelect;
-let kelurahanSelect;
-
-
-async function loadKabupaten(
-  provinsiId
-) {
-
-  const res = await fetch(
-    `${API}/kabupaten/${provinsiId}`
-  );
-
-  const data = await res.json();
-
-  const kabupaten =
-    document.getElementById(
-      "custKabupaten"
-    );
-
-  kabupaten.innerHTML =
-    '<option value="">Pilih Kabupaten</option>';
-
-  data.forEach(item => {
-
-    kabupaten.innerHTML += `
-      <option value="${item.id}">
-        ${item.name}
-      </option>
-    `;
-  });
-
-  if (kabupatenSelect) {
-    kabupatenSelect.destroy();
-  }
-
-  kabupatenSelect =
-    new TomSelect(
-      "#custKabupaten",
-      {
-        create: false,
-
-        sortField: {
-          field: "text",
-          direction: "asc",
-        },
-
-        onChange(value) {
-
-          if (value) {
-            loadKecamatan(value);
-          }
-        },
-      }
-    );
-}
-
-async function loadKecamatan(
-  kabupatenId
-) {
-
-  const res = await fetch(
-    `${API}/kecamatan/${kabupatenId}`
-  );
-
-  const data = await res.json();
-
-  const kecamatan =
-    document.getElementById(
-      "custKecamatan"
-    );
-
-  kecamatan.innerHTML =
-    '<option value="">Pilih Kecamatan</option>';
-
-  data.forEach(item => {
-
-    kecamatan.innerHTML += `
-      <option value="${item.id}">
-        ${item.name}
-      </option>
-    `;
-  });
-
-  if (kecamatanSelect) {
-    kecamatanSelect.destroy();
-  }
-
-  kecamatanSelect =
-    new TomSelect(
-      "#custKecamatan",
-      {
-        create: false,
-
-        onChange(value) {
-
-          if (value) {
-            loadKelurahan(value);
-          }
-        },
-      }
-    );
-}
-
-
-async function loadKelurahan(
-  kecamatanId
-) {
-
-  const res = await fetch(
-    `${API}/kelurahan/${kecamatanId}`
-  );
-
-  const data = await res.json();
-
-  const kelurahan =
-    document.getElementById(
-      "custKelurahan"
-    );
-
-  kelurahan.innerHTML =
-    '<option value="">Pilih Kelurahan</option>';
-
-  data.forEach(item => {
-
-    kelurahan.innerHTML += `
-      <option
-        value="${item.id}"
-        data-code="${item.id}"
-      >
-        ${item.name}
-      </option>
-    `;
-  });
-
-  if (kelurahanSelect) {
-    kelurahanSelect.destroy();
-  }
-
-  kelurahanSelect =
-    new TomSelect(
-      "#custKelurahan",
-      {
-        create: false,
-
-        onChange(value) {
-
-          const select =
-            document.getElementById(
-              "custKelurahan"
-            );
-
-          const code =
-            select.options[
-              select.selectedIndex
-            ]?.dataset?.code;
-
-          document.getElementById(
-            "custKodeLokasi"
-          ).value = code || "";
-        },
-      }
-    );
-}
-
-async function loadProvinsi() {
-
-  const res = await fetch(
-    "/api/wilayah/provinsi"
-  );
-
-  const data = await res.json();
-
-  const provinsi =
-    document.getElementById(
-      "custProvinsi"
-    );
-
-  provinsi.innerHTML =
-    '<option value="">Pilih Provinsi</option>';
-
-  data.forEach(item => {
-
-    provinsi.innerHTML += `
-      <option value="${item.id}">
-        ${item.name}
-      </option>
-    `;
-  });
-
-  new TomSelect(
-    "#custProvinsi",
-    {
-      onChange(value) {
-
-        if (value) {
-          loadKabupaten(value);
-        }
-      },
-    }
-  );
-}
-
-
-loadProvinsi();
 </script>
 
 </body>

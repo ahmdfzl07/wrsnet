@@ -678,7 +678,11 @@
                 </div>
                 <div class="pf-field">
                   <label class="pf-label">URL Halaman Isolir</label>
-                  <input type="text" class="pf-input" id="isolirPageUrl" placeholder="http://...">
+                  <input type="text" class="pf-input" id="isolirPageUrl" placeholder="http://192.168.x.x:3000/p/isolir">
+                  <div id="isolirPageUrlHint" style="font-size:10.5px;color:var(--d-muted);margin-top:3px;line-height:1.4;">
+                    Wajib <strong>HTTP</strong> (bukan HTTPS) dan IP LAN. MikroTik tidak bisa redirect ke HTTPS.
+                  </div>
+                  <div id="isolirPageUrlWarn" style="display:none;font-size:11px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:6px 8px;margin-top:6px;line-height:1.45;"></div>
                 </div>
               </div>
               <label class="toggle-wrap">
@@ -687,6 +691,47 @@
               <label class="toggle-wrap" style="margin-bottom:12px;">
                 <input type="checkbox" id="isolirAutoEnable"> Auto isolir otomatis (tiap jam)
               </label>
+
+              <!-- ═══ Tampilan Halaman Isolir ═══ -->
+              <div style="border-top:1px solid var(--d-border);margin:14px 0 10px;padding-top:12px;">
+                <div style="font-size:12px;font-weight:700;color:var(--d-text);margin-bottom:4px;">🎨 Tampilan Halaman Isolir</div>
+                <div style="font-size:11px;color:var(--d-muted);margin-bottom:10px;line-height:1.4;">
+                  Customisasi yang muncul di halaman <code>/p/isolir</code> saat pelanggan terisolir buka browser.
+                </div>
+                <div class="pf-field" style="margin-bottom:10px;">
+                  <label class="pf-label">Judul Halaman</label>
+                  <input type="text" class="pf-input" id="isolirPageTitle" placeholder="Layanan Anda Sedang Diisolir">
+                </div>
+                <div class="pf-field" style="margin-bottom:10px;">
+                  <label class="pf-label">Sub-deskripsi Halaman</label>
+                  <textarea class="pf-input" id="isolirPageSubtitle" rows="2" placeholder="Akses internet Anda diblokir karena ada tagihan yang belum dibayar..." style="font-family:inherit;resize:vertical;"></textarea>
+                </div>
+                <div class="pf-row2">
+                  <div class="pf-field">
+                    <label class="pf-label">Warna Utama</label>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                      <input type="color" id="isolirPageColor" value="#1a6ef5" style="width:38px;height:38px;border:1px solid var(--d-border);border-radius:6px;padding:2px;cursor:pointer;background:transparent;">
+                      <input type="text" class="pf-input" id="isolirPageColorHex" placeholder="#1a6ef5" style="flex:1;font-family:'DM Mono',monospace;text-transform:uppercase;">
+                    </div>
+                  </div>
+                  <div class="pf-field">
+                    <label class="pf-label">Tampilkan Rincian Tagihan</label>
+                    <label class="toggle-wrap" style="margin-top:8px;">
+                      <input type="checkbox" id="isolirPageShowInvoices" checked> Tampilkan daftar invoice
+                    </label>
+                  </div>
+                </div>
+                <div class="pf-field" style="margin-bottom:10px;">
+                  <label class="pf-label">Teks Bantuan (di atas tombol)</label>
+                  <textarea class="pf-input" id="isolirPageHelpText" rows="2" placeholder="Contoh: Pembayaran dapat dilakukan melalui transfer bank, QRIS, atau e-wallet" style="font-family:inherit;resize:vertical;"></textarea>
+                  <div style="font-size:10.5px;color:var(--d-muted);margin-top:3px;">Boleh kosong. Gunakan baris baru untuk ganti paragraf.</div>
+                </div>
+                <div class="pf-field" style="margin-bottom:4px;">
+                  <label class="pf-label">Teks Footer Tambahan</label>
+                  <textarea class="pf-input" id="isolirPageFooter" rows="2" placeholder="Contoh: Hubungi admin via WhatsApp 24/7" style="font-family:inherit;resize:vertical;"></textarea>
+                </div>
+              </div>
+
               <button class="btn-primary btn-full" onclick="saveSettings()">Simpan Settings</button>
             </div>
           </div>
@@ -833,7 +878,11 @@
 
       <div class="pf-field">
         <label class="pf-label">URL Halaman Isolir</label>
-        <input type="text" class="pf-input" id="fIsolirUrl" placeholder="http://... (kosongkan = pakai global)">
+        <input type="text" class="pf-input" id="fIsolirUrl" placeholder="http://192.168.x.x:3000/p/isolir (kosongkan = pakai global)">
+        <div style="font-size:10.5px;color:var(--d-muted);margin-top:3px;line-height:1.4;">
+          Wajib <strong>HTTP</strong> (bukan HTTPS) dan IP LAN. Kosongkan untuk pakai URL global.
+        </div>
+        <div id="fIsolirUrlWarn" style="display:none;font-size:11px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:6px 8px;margin-top:6px;line-height:1.45;"></div>
       </div>
 
       <div class="pf-field">

@@ -167,6 +167,23 @@ class IsolirController {
       const url     = isolir_page_url ? String(isolir_page_url).trim() : null;
       const ntext   = notes ? String(notes).trim() : null;
 
+      // ── Validasi URL halaman isolir (kalau di-set per-device) ──
+      // HTTPS tidak akan jalan di dst-nat. Tolak di server-side.
+      if (url) {
+        if (/^https:\/\//i.test(url)) {
+          return res.status(400).json({
+            success: false,
+            message: 'URL halaman isolir per-device tidak boleh HTTPS. MikroTik dst-nat tidak bisa redirect ke HTTPS. Wajib pakai http:// dengan IP LAN. Contoh: http://192.168.1.100:3000/p/isolir'
+          });
+        }
+        if (!/^https?:\/\//i.test(url)) {
+          return res.status(400).json({
+            success: false,
+            message: 'URL halaman isolir harus diawali "http://". Contoh: http://192.168.1.100:3000/p/isolir'
+          });
+        }
+      }
+
       if (id) {
         // UPDATE: pastikan extension ada, dan device_id tidak konflik dengan extension lain
         const conflict = await sequelize.query(
@@ -444,7 +461,11 @@ class IsolirController {
   async getSettings(req, res) {
     try {
       const rows = await sequelize.query(
-        "SELECT `key`, value FROM app_settings WHERE `key` IN ('isolir_grace_days','isolir_notify_wa','isolir_page_url','isolir_auto_enable')",
+        `SELECT \`key\`, value FROM app_settings WHERE \`key\` IN (
+           'isolir_grace_days','isolir_notify_wa','isolir_page_url','isolir_auto_enable',
+           'isolir_page_title','isolir_page_subtitle','isolir_page_color',
+           'isolir_page_footer','isolir_page_help_text','isolir_page_show_invoices'
+         )`,
         { type: sequelize.QueryTypes.SELECT }
       ).catch(() => []);
       const cfg = {};
@@ -455,7 +476,36 @@ class IsolirController {
 
   async saveSettings(req, res) {
     try {
-      const allowed = ['isolir_grace_days','isolir_notify_wa','isolir_page_url','isolir_auto_enable'];
+      // ── Server-side validator URL halaman isolir ──
+      // Jangan trust client. HTTPS dst-nat tidak akan jalan, jadi tolak di sini.
+      const rawUrl = String(req.body.isolir_page_url || '').trim();
+      if (rawUrl) {
+        if (/^https:\/\//i.test(rawUrl)) {
+          return res.status(400).json({
+            success: false,
+            message: 'URL halaman isolir tidak boleh HTTPS. MikroTik dst-nat tidak bisa redirect ke HTTPS karena TLS handshake akan gagal. Wajib pakai http:// dengan IP LAN. Contoh: http://192.168.1.100:3000/p/isolir'
+          });
+        }
+        // Kalau ada nilai tapi tidak ada protocol, anggap dia ketik tanpa "http://"
+        // → reject supaya error message clear (bukan auto-prepend yang silent).
+        if (!/^https?:\/\//i.test(rawUrl)) {
+          return res.status(400).json({
+            success: false,
+            message: 'URL halaman isolir harus diawali "http://". Contoh: http://192.168.1.100:3000/p/isolir'
+          });
+        }
+      }
+
+      const allowed = [
+        'isolir_grace_days','isolir_notify_wa','isolir_page_url','isolir_auto_enable',
+        // Customisasi tampilan halaman isolir publik (/p/isolir):
+        'isolir_page_title',        // judul utama (default: "Layanan Anda Sedang Diisolir")
+        'isolir_page_subtitle',     // sub-deskripsi di hero
+        'isolir_page_color',        // warna utama hex (default: #1a6ef5)
+        'isolir_page_footer',       // teks footer tambahan
+        'isolir_page_help_text',    // teks bantuan setelah daftar tagihan
+        'isolir_page_show_invoices' // '1'/'0' tampilkan rincian tagihan atau tidak
+      ];
       for (const key of allowed) {
         if (req.body[key] !== undefined) {
           const { AppSetting } = require('../models');

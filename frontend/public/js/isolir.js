@@ -475,6 +475,9 @@ window.editDevice = async function(dev) {
   document.getElementById('fIsolirUrl').value   = dev.isolir_page_url || '';
   document.getElementById('fNotes').value       = dev.notes || '';
 
+  // Pasang validator real-time pada field URL (kalau belum)
+  if (typeof attachUrlValidators === 'function') attachUrlValidators();
+
   openModal('deviceModal');
 };
 
@@ -508,6 +511,9 @@ window.openDeviceModal = async function() {
   await loadAvailableDevices(null);
   populateDevicePicker(null);
 
+  // Pasang validator real-time pada field URL
+  if (typeof attachUrlValidators === 'function') attachUrlValidators();
+
   openModal('deviceModal');
 };
 
@@ -518,6 +524,17 @@ window.saveDevice = async function() {
   if (!deviceId) {
     App.showToast('Pilih device dari dropdown terlebih dahulu', 'error');
     return;
+  }
+
+  // ── HARD BLOCK: tolak save kalau URL HTTPS ──
+  const fIsolirUrl = document.getElementById('fIsolirUrl');
+  if (fIsolirUrl && window.validateIsolirUrl) {
+    const v = window.validateIsolirUrl(fIsolirUrl.value);
+    if (!v.ok && v.severity === 'error') {
+      App.showToast(v.msg, 'error');
+      fIsolirUrl.focus();
+      return;
+    }
   }
 
   const body = {
@@ -724,6 +741,90 @@ window.runAutoIsolir = async function() {
 };
 
 // ── Settings ──────────────────────────────────────────────────
+
+// Validator URL halaman isolir.
+// Return:  { ok: true }              jika URL kosong atau valid
+//          { ok: false, msg, severity: 'error'|'warn' }  jika invalid
+// severity 'error' = wajib HTTP (HTTPS pasti gagal di MikroTik)
+// severity 'warn'  = mungkin tidak bekerja (mis. host bukan IP / domain publik)
+function validateIsolirUrl(raw) {
+  const url = String(raw || '').trim();
+  if (!url) return { ok: true };  // kosong = fallback ke default, oke
+
+  // Wajib pakai prefix protocol (kalau cuma "192.168.x.x" auto-tambah http://)
+  let withProto = url;
+  if (!/^https?:\/\//i.test(withProto)) {
+    return { ok: false, severity: 'error',
+      msg: 'URL harus diawali "http://". Contoh: http://192.168.1.100:3000/p/isolir' };
+  }
+
+  // HARD BLOCK: HTTPS tidak akan pernah jalan
+  if (/^https:\/\//i.test(withProto)) {
+    return { ok: false, severity: 'error',
+      msg: 'MikroTik dst-nat tidak bisa redirect ke HTTPS (TLS handshake akan gagal). Wajib pakai http:// dengan IP LAN.' };
+  }
+
+  // Parse
+  let parsed;
+  try { parsed = new URL(withProto); } catch (_) {
+    return { ok: false, severity: 'error', msg: 'URL tidak valid.' };
+  }
+
+  // Validasi host: IP LAN (private) lebih bagus.
+  const host = parsed.hostname;
+  const isIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+
+  if (!isIp) {
+    // Domain → warning saja (server-side validator akan resolve DNS dan cek private/public).
+    // Tapi kasih hint user: kalau domainnya digs.co.id (Cloudflare), pasti gagal.
+    return { ok: false, severity: 'warn',
+      msg: 'Pakai IP LAN langsung (192.168.x atau 10.x) lebih aman. Domain publik biasanya resolve ke Cloudflare/CDN — paket akan nyasar ke server CDN, bukan server Anda.' };
+  }
+
+  const isPrivate =
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host) ||
+    /^127\./.test(host);
+
+  if (!isPrivate) {
+    return { ok: false, severity: 'warn',
+      msg: `IP ${host} bukan IP LAN private. Pastikan IP ini reachable dari MikroTik via LAN.` };
+  }
+
+  return { ok: true };
+}
+
+// Pasang real-time warning ke input URL global + per-device.
+// Idempotent — dipasang sekali, di-trigger tiap input event.
+function attachUrlValidators() {
+  function bind(inputId, warnId) {
+    const inp  = document.getElementById(inputId);
+    const warn = document.getElementById(warnId);
+    if (!inp || !warn || inp.__validatorAttached) return;
+    const check = () => {
+      const r = validateIsolirUrl(inp.value);
+      if (r.ok) {
+        warn.style.display = 'none';
+        inp.style.borderColor = '';
+      } else {
+        warn.style.display = 'block';
+        warn.textContent = (r.severity === 'error' ? '✗ ' : '⚠ ') + r.msg;
+        warn.style.color = r.severity === 'error' ? '#dc2626' : '#92400e';
+        warn.style.background = r.severity === 'error' ? '#fef2f2' : '#fefce8';
+        warn.style.borderColor = r.severity === 'error' ? '#fecaca' : '#fde68a';
+        inp.style.borderColor = r.severity === 'error' ? '#fca5a5' : '#fcd34d';
+      }
+    };
+    inp.addEventListener('input', check);
+    inp.addEventListener('blur', check);
+    inp.__validatorAttached = true;
+    check();   // initial check
+  }
+  bind('isolirPageUrl', 'isolirPageUrlWarn');
+  bind('fIsolirUrl',    'fIsolirUrlWarn');
+}
+
 async function loadSettings() {
   const d = await App.api('/isolir/settings');
   if (!d?.success) return;
@@ -733,19 +834,79 @@ async function loadSettings() {
   if (el('isolirPageUrl'))  el('isolirPageUrl').value = cfg.isolir_page_url || '';
   if (el('isolirNotifWa'))  el('isolirNotifWa').checked = cfg.isolir_notify_wa === '1';
   if (el('isolirAutoEnable')) el('isolirAutoEnable').checked = cfg.isolir_auto_enable === '1';
+
+  // ── Customisasi halaman /p/isolir ──
+  if (el('isolirPageTitle'))    el('isolirPageTitle').value    = cfg.isolir_page_title || '';
+  if (el('isolirPageSubtitle')) el('isolirPageSubtitle').value = cfg.isolir_page_subtitle || '';
+  if (el('isolirPageFooter'))   el('isolirPageFooter').value   = cfg.isolir_page_footer || '';
+  if (el('isolirPageHelpText')) el('isolirPageHelpText').value = cfg.isolir_page_help_text || '';
+  const color = (cfg.isolir_page_color || '#1a6ef5').trim();
+  if (el('isolirPageColor'))    el('isolirPageColor').value    = color;
+  if (el('isolirPageColorHex')) el('isolirPageColorHex').value = color.toUpperCase();
+  if (el('isolirPageShowInvoices')) {
+    // Default '1' (true) kalau belum pernah di-set
+    el('isolirPageShowInvoices').checked = (cfg.isolir_page_show_invoices ?? '1') !== '0';
+  }
+
+  // Sync color picker ↔ text input
+  const colorPicker = el('isolirPageColor');
+  const colorHex    = el('isolirPageColorHex');
+  if (colorPicker && colorHex && !colorPicker.__synced) {
+    colorPicker.addEventListener('input', e => {
+      colorHex.value = e.target.value.toUpperCase();
+    });
+    colorHex.addEventListener('input', e => {
+      const v = e.target.value.trim();
+      if (/^#[0-9a-f]{6}$/i.test(v)) colorPicker.value = v.toLowerCase();
+    });
+    colorPicker.__synced = true;
+  }
+
+  // Pasang validator real-time untuk field URL
+  attachUrlValidators();
 }
 
 window.saveSettings = async function() {
+  const el = id => document.getElementById(id);
+
+  // ── HARD BLOCK: tolak save kalau URL HTTPS ──
+  const urlVal = el('isolirPageUrl')?.value || '';
+  const v = validateIsolirUrl(urlVal);
+  if (!v.ok && v.severity === 'error') {
+    App.showToast(v.msg, 'error');
+    el('isolirPageUrl')?.focus();
+    return;
+  }
+  // 'warn' di-allow tapi tetap di-tampilkan warning-nya
+
+  // Color: pakai text input kalau valid, kalau tidak fallback ke picker
+  let color = el('isolirPageColorHex')?.value.trim() || '';
+  if (!/^#[0-9a-f]{6}$/i.test(color)) {
+    color = el('isolirPageColor')?.value || '#1a6ef5';
+  }
+  color = color.toLowerCase();
+
   const body = {
-    isolir_grace_days:  document.getElementById('graceDays')?.value || '0',
-    isolir_page_url:    document.getElementById('isolirPageUrl')?.value || '',
-    isolir_notify_wa:   document.getElementById('isolirNotifWa')?.checked ? '1' : '0',
-    isolir_auto_enable: document.getElementById('isolirAutoEnable')?.checked ? '1' : '0',
+    isolir_grace_days:  el('graceDays')?.value || '0',
+    isolir_page_url:    urlVal,
+    isolir_notify_wa:   el('isolirNotifWa')?.checked ? '1' : '0',
+    isolir_auto_enable: el('isolirAutoEnable')?.checked ? '1' : '0',
+
+    // Customisasi halaman /p/isolir
+    isolir_page_title:         el('isolirPageTitle')?.value || '',
+    isolir_page_subtitle:      el('isolirPageSubtitle')?.value || '',
+    isolir_page_color:         color,
+    isolir_page_footer:        el('isolirPageFooter')?.value || '',
+    isolir_page_help_text:     el('isolirPageHelpText')?.value || '',
+    isolir_page_show_invoices: el('isolirPageShowInvoices')?.checked ? '1' : '0',
   };
   const d = await App.api('/isolir/settings', { method:'POST', body: JSON.stringify(body) });
   if (d?.success) App.showToast('Settings disimpan', 'success');
   else App.showToast(d?.message||'Gagal', 'error');
 };
+
+// Export validator supaya bisa dipakai dari form simpan device (saveDevice)
+window.validateIsolirUrl = validateIsolirUrl;
 
 // ── Tab switch ────────────────────────────────────────────────
 window.switchTab = function(tab, btn) {

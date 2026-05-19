@@ -105,6 +105,12 @@ router.get('/hotspot/ip-binding',                     authenticate, HotspotContr
 router.post('/hotspot/ip-binding',                    authenticate, authorize('superadmin','admin'), logActivity('create','ip_binding'), HotspotController.createIpBinding);
 router.delete('/hotspot/ip-binding/:id',              authenticate, authorize('superadmin','admin'), logActivity('delete','ip_binding'), HotspotController.deleteIpBinding);
 
+// ── PRICING (profile → harga) & LAPORAN ───────────────────────────
+router.get('/hotspot/pricing',         authenticate, HotspotController.getPricing);
+router.post('/hotspot/pricing',        authenticate, authorize('superadmin','admin'), logActivity('update','hotspot_pricing'), HotspotController.savePricing);
+router.get('/hotspot/sales-report',    authenticate, HotspotController.salesReport);
+router.get('/hotspot/usage-history',   authenticate, HotspotController.usageHistory);
+
 
 // ── Customer Traffic History ─────────────────────────────────
 // GET /api/mikrotik/customer-history?queueName=xxx&range=1m|3h|24h|3d

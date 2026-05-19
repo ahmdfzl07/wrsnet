@@ -365,39 +365,6 @@
     .spinner-wrap{text-align:center;padding:28px;color:var(--muted);}
     .spinner{display:inline-block;width:22px;height:22px;border:2.5px solid #e2e8f0;border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite;}
     @keyframes spin{to{transform:rotate(360deg)}}
-
-    .chat {
-        display: flex;
-        flex-direction: column;
-      }
-
-      .bubble {
-        max-width: 70%;
-        padding: 8px 12px;
-        border-radius: 12px;
-        font-size: 14px;
-        word-wrap: break-word;
-      }
-
-      .me {
-        align-self: flex-end;
-        background: #2563eb;
-        color: white;
-        border-bottom-right-radius: 4px;
-      }
-
-      .other {
-        align-self: flex-start;
-        background: #e5e7eb;
-        color: #111;
-        border-bottom-left-radius: 4px;
-      }
-
-      .meta {
-        font-size: 10px;
-        opacity: 0.6;
-        margin-top: 2px;
-      }
   </style>
 </head>
 <body>
@@ -948,42 +915,10 @@
     </div>
   </div>
 
-  <!-- panel live chat  -->
-  <div class="panel" id="panel-chat">
-    <div class="w-card">
-      <div class="w-card-title">Live Chat</div>
-
-      <div id="chatBox"
-          style="
-            height:300px;
-            overflow-y:auto;
-            border:1px solid #eee;
-            padding:10px;
-            border-radius:10px;
-            background:#f9fafb;
-            display:flex;
-            flex-direction:column;
-            gap:8px;
-          ">
-        </div>
-
-      <div style="display:flex;gap:10px">
-        <input id="chatInput" class="form-input" placeholder="Ketik pesan..." />
-        <button onclick="sendChat()" class="btn-save">Kirim</button>
-      </div>
-    </div>
-  </div>
-
 </div><!-- /content -->
 
 <!-- ═══ BOTTOM NAV ═══ -->
 <div class="bottom-nav">
-  <a class="bn-item" id="bn-chat" onclick="navTo('chat')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M21 15a4 4 0 01-4 4H7l-4 4V7a4 4 0 014-4h10a4 4 0 014 4z"/>
-    </svg>
-    <span>Chat</span>
-  </a>
   <a class="bn-item active" id="bn-home" onclick="navTo('home')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
     <span>Home</span>
@@ -1005,6 +940,7 @@
     <span>Profil</span>
   </a>
 </div>
+
 
 <!-- ═══ MODAL: Konfirmasi Upgrade Paket ═══ -->
 <div class="modal-overlay" id="modalUpgrade">
@@ -1141,126 +1077,6 @@
   </div>
 </div>
 
-<script src="/socket.io/socket.io.js"></script>
-<script>
-const socket = io("http://localhost:3001", {
-  auth: {
-    token: localStorage.getItem("token")
-  }
-});
-
-const user = JSON.parse(localStorage.getItem("user"));
-const customer = JSON.parse(localStorage.getItem("portal_customer"));
-
-const USER_ID = user?.id ?? null;
-const CUSTOMER_ID = customer?.customer_id ?? null;
-const CUSTOMER_ID_KEY = customer?.id ?? null;
-const CUSTOMER_NAME= customer?.name ?? null;
-
-const ROOM = CUSTOMER_ID
-  ? `customer_${CUSTOMER_ID}`
-  : `user_${USER_ID}`;
-
-const USER_ID_CHAT = CUSTOMER_ID_KEY
-  ? `${CUSTOMER_ID_KEY}`
-  : `${USER_ID}`;
-
-const TYPE = "customer";
-
-const ticketId =
-  new URLSearchParams(window.location.search).get("ticket_id") || "1";
-
-socket.on("connect", () => {
-  socket.emit("chat:join", ROOM);
-
-  loadChat();
-});
-
-function loadChat() {
-  fetch(`/portal/api/chat/${ROOM}`)
-    .then(res => res.json())
-    .then(data => {
-      const box = document.getElementById("chatBox");
-      box.innerHTML = "";
-
-      data.forEach(renderMessage);
-      scrollBottom();
-    });
-}
-socket.on("chat:receive", (data) => {
-  if (data.room !== ROOM) return;
-
-  renderMessage(data);
-  scrollBottom();
-});
-
-function renderMessage(data) {
-  const box = document.getElementById("chatBox");
-
-  const isMe =
-    (String(data.user_id) === String(USER_ID) && data.type === "customer") ||
-    (String(data.user_id) === String(CUSTOMER_ID_KEY) && data.type === "customer");
-
-  const wrap = document.createElement("div");
-  wrap.style.display = "flex";
-  wrap.style.flexDirection = "column";
-  wrap.style.alignItems = isMe ? "flex-end" : "flex-start";
-  wrap.style.margin = "6px 0";
-
-  const bubble = document.createElement("div");
-  bubble.style.maxWidth = "70%";
-  bubble.style.padding = "10px 14px";
-  bubble.style.borderRadius = "14px";
-  bubble.style.fontSize = "14px";
-  bubble.style.wordBreak = "break-word";
-  bubble.style.background = isMe ? "#4f46e5" : "#e5e7eb";
-  bubble.style.color = isMe ? "white" : "#111";
-
-  bubble.innerText = data.message;
-
-  const meta = document.createElement("small");
-
-  const time = new Date(data.created_at).toLocaleTimeString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-
-  meta.style.fontSize = "11px";
-  meta.style.opacity = "0.6";
-
-  meta.innerText = isMe
-    ? `You • ${time}`
-    : `${data.name} • ${time}`;
-
-  wrap.appendChild(bubble);
-  wrap.appendChild(meta);
-
-  box.appendChild(wrap);
-}
-
-function sendChat() {
-  const input = document.getElementById("chatInput");
-  const message = input.value.trim();
-
-  if (!message) return;
-
-  socket.emit("chat:send", {
-    room: ROOM,
-    name: CUSTOMER_NAME,
-    user_id: USER_ID_CHAT,
-    type: TYPE,
-    message
-  });
-
-  input.value = "";
-}
-
-function scrollBottom() {
-  const box = document.getElementById("chatBox");
-  box.scrollTop = box.scrollHeight;
-}
-</script>
-
 <script>
 // ══════════════════════════════════════════════════════════════
 // STATE
@@ -1311,8 +1127,8 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 // ══════════════════════════════════════════════════════════════
 // NAVIGATION — sinkron bottom nav + quick menu sekaligus
 // ══════════════════════════════════════════════════════════════
-var PANELS = ['chat','home','billing','traffic','ont','wifi','upgrade','profil','tickets'];
-var BN_MAP  = { chat:'chat', home:'home', billing:'billing', traffic:'traffic', ont:'traffic', wifi:'wifi', upgrade:'wifi', profil:'profil', tickets:'profil' };
+var PANELS = ['home','billing','traffic','ont','wifi','upgrade','profil','tickets'];
+var BN_MAP  = { home:'home', billing:'billing', traffic:'traffic', ont:'traffic', wifi:'wifi', upgrade:'wifi', profil:'profil', tickets:'profil' };
 
 function navTo(id) {
   currentPanel = id;
@@ -1324,7 +1140,7 @@ function navTo(id) {
   });
 
   // Sync quick-menu (8 items)
-  ['chat','home','billing','traffic','wifi','upgrade','profil','tickets'].forEach(function(p) {
+  ['home','billing','traffic','wifi','upgrade','profil','tickets'].forEach(function(p) {
     var el = document.getElementById('qm-'+p);
     if (el) el.classList.toggle('active', p === id || (id === 'ont' && p === 'traffic'));
   });

@@ -110,27 +110,35 @@ class HotspotService {
   }
 
   async createUserProfile(data) {
-    const body = {
-      name:           data.name,
-      'rate-limit':   data.rateLimit   || '',
-      'shared-users': String(data.sharedUsers || '1'),
-      'session-timeout': data.sessionTimeout || '',
-      'idle-timeout':  data.idleTimeout || '',
-      'add-mac-cookie': data.addMacCookie ? 'yes' : 'no',
-    };
-    if (data.addressList) body['address-list'] = data.addressList;
+    // RouterOS REST API menolak string kosong untuk field time/rate
+    // ("invalid time value for argument session-timeout"). Jadi field
+    // hanya disertakan kalau benar-benar terisi — sisanya pakai default
+    // MikroTik (0 = unlimited).
+    const body = { name: data.name };
+    const rate    = (data.rateLimit       || '').trim();
+    const shared  = (data.sharedUsers     || '').toString().trim();
+    const session = (data.sessionTimeout  || '').trim();
+    const idle    = (data.idleTimeout     || '').trim();
+    const addrLst = (data.addressList     || '').trim();
+    if (rate)    body['rate-limit']      = rate;
+    if (shared)  body['shared-users']    = shared;
+    if (session) body['session-timeout'] = session;
+    if (idle)    body['idle-timeout']    = idle;
+    if (addrLst) body['address-list']    = addrLst;
+    body['add-mac-cookie'] = data.addMacCookie ? 'yes' : 'no';
     return this.mt.put('/ip/hotspot/user/profile', body);
   }
 
   async updateUserProfile(id, data) {
-    const body = {
-      name:           data.name,
-      'rate-limit':   data.rateLimit   || '',
-      'shared-users': String(data.sharedUsers || '1'),
-      'session-timeout': data.sessionTimeout || '',
-      'idle-timeout':  data.idleTimeout || '',
-    };
-    if (data.addressList !== undefined) body['address-list'] = data.addressList;
+    // Untuk PATCH, hanya update field yang dikirim user.
+    // String kosong → kirim '0' (= reset ke default) bukan '' (yang akan ditolak).
+    const body = {};
+    if (data.name !== undefined) body.name = data.name;
+    if (data.rateLimit       !== undefined) body['rate-limit']      = String(data.rateLimit      || '').trim() || '0';
+    if (data.sharedUsers     !== undefined) body['shared-users']    = String(data.sharedUsers    || '1').trim();
+    if (data.sessionTimeout  !== undefined) body['session-timeout'] = String(data.sessionTimeout || '').trim() || '0';
+    if (data.idleTimeout     !== undefined) body['idle-timeout']    = String(data.idleTimeout    || '').trim() || 'none';
+    if (data.addressList     !== undefined) body['address-list']    = String(data.addressList    || '').trim();
     return this.mt.patch(`/ip/hotspot/user/profile/${id}`, body);
   }
 

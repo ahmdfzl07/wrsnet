@@ -2,6 +2,7 @@ const { Invoice, Payment, Customer, Package, FinancialReport, sequelize } = requ
 const { Op } = require('sequelize');
 const { generateInvoiceNumber, paginateResponse, formatCurrency } = require('../utils/helpers');
 const moment = require('moment');
+const { getCompanyName } = require('../utils/companyInfo');
 
 /**
  * Status customer yang berhak menerima invoice generate bulanan.
@@ -514,13 +515,13 @@ class BillingController {
         }
       });
 
-      // Unpaid: invoice unpaid yang due_date BELUM lewat (bulan berjalan)
+      // Belum Bayar: TOTAL invoice yang belum dibayar — TANPA filter periode
+      // atau due_date. Mencakup baik yang masih dalam tempo maupun yang sudah
+      // lewat jatuh tempo. Ini adalah jumlah aktual invoice unpaid keseluruhan
+      // di sistem (sumber kebenaran tunggal: kolom `status`).
       const unpaid = await Invoice.count({
         where: {
-          status: { [Op.in]: ['unpaid','overdue'] },
-          due_date: { [Op.gte]: today },
-          period_month: currentMonth,
-          period_year:  currentYear
+          status: { [Op.in]: ['unpaid','overdue'] }
         }
       });
 
@@ -528,6 +529,16 @@ class BillingController {
       const paidThisMonth = await Invoice.count({
         where: { status: 'paid', period_month: currentMonth, period_year: currentYear }
       });
+
+      // Jumlah PELANGGAN UNIK yang invoicenya paid bulan ini.
+      // Berbeda dengan paidThisMonth (jumlah invoice) — jika 1 pelanggan
+      // bayar 2 invoice maka di sini tetap dihitung 1.
+      const paidCustomerRows = await Invoice.findAll({
+        where: { status: 'paid', period_month: currentMonth, period_year: currentYear },
+        attributes: [[sequelize.fn('COUNT', sequelize.fn('DISTINCT', sequelize.col('customer_id'))), 'cnt']],
+        raw: true
+      });
+      const paidCustomerCount = parseInt(paidCustomerRows?.[0]?.cnt || 0);
 
       // Revenue: total payment yang masuk bulan ini
       const firstDay = moment().startOf('month').format('YYYY-MM-DD');
@@ -538,7 +549,427 @@ class BillingController {
 
       res.json({
         success: true,
-        data: { unpaid, overdue, paidThisMonth, revenueThisMonth }
+        data: {
+          unpaid,
+          overdue,
+          paidThisMonth,
+          paidCustomerCount,
+          revenueThisMonth
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  /**
+   * GET /api/billing/collection-stats
+   * ───────────────────────────────────────────────────────────────
+   * Statistik collection rate bulan berjalan (atau bulan yang
+   * disebut via query ?month=&year=):
+   *  - total_invoices      : jumlah invoice bulan tsb
+   *  - paid_count          : jumlah invoice lunas
+   *  - unpaid_count        : jumlah invoice unpaid/overdue (belum bayar)
+   *  - total_billed        : total nilai invoice (semua status)
+   *  - total_collected     : total nilai invoice yang sudah lunas
+   *  - total_outstanding   : total nilai invoice belum lunas
+   *  - collection_rate     : (paid_count / total_invoices) × 100
+   *  - collection_rate_amt : (total_collected / total_billed) × 100
+   *  - paid_customers      : jumlah pelanggan unik yang sudah bayar
+   *  - unpaid_customers    : jumlah pelanggan unik yang belum bayar
+   *
+   * Catatan: hitung berbasis invoice.status — sumber kebenaran tunggal.
+   */
+  async collectionStats(req, res) {
+    try {
+      const month = parseInt(req.query.month) || (moment().month() + 1);
+      const year  = parseInt(req.query.year)  || moment().year();
+      const today    = moment().format('YYYY-MM-DD');
+      const in3Days  = moment().add(3, 'days').format('YYYY-MM-DD');
+
+      // Total invoice bulan ini (per status) — query agregat tunggal
+      const rows = await sequelize.query(
+        `SELECT
+            COUNT(*) AS total_count,
+            COALESCE(SUM(total),0) AS total_amount,
+            COALESCE(SUM(CASE WHEN status='paid'                  THEN 1 ELSE 0 END),0) AS paid_count,
+            COALESCE(SUM(CASE WHEN status='paid'                  THEN total ELSE 0 END),0) AS paid_amount,
+            COALESCE(SUM(CASE WHEN status IN ('unpaid','overdue') THEN 1 ELSE 0 END),0) AS unpaid_count,
+            COALESCE(SUM(CASE WHEN status IN ('unpaid','overdue') THEN total ELSE 0 END),0) AS unpaid_amount,
+            COALESCE(SUM(CASE WHEN status='overdue'               THEN 1 ELSE 0 END),0) AS overdue_count,
+            COALESCE(SUM(CASE WHEN status='overdue'               THEN total ELSE 0 END),0) AS overdue_amount,
+            COUNT(DISTINCT CASE WHEN status='paid'                  THEN customer_id END) AS paid_customers,
+            COUNT(DISTINCT CASE WHEN status IN ('unpaid','overdue') THEN customer_id END) AS unpaid_customers
+          FROM invoices
+          WHERE period_year=:year AND period_month=:month`,
+        { replacements: { year, month }, type: sequelize.QueryTypes.SELECT }
+      );
+
+      const r = (Array.isArray(rows) ? rows[0] : rows) || {};
+      const total_invoices    = parseInt(r.total_count       || 0);
+      const total_billed      = parseFloat(r.total_amount    || 0);
+      const paid_count        = parseInt(r.paid_count        || 0);
+      const total_collected   = parseFloat(r.paid_amount     || 0);
+      const unpaid_count      = parseInt(r.unpaid_count      || 0);
+      const total_outstanding = parseFloat(r.unpaid_amount   || 0);
+      const overdue_count     = parseInt(r.overdue_count     || 0);
+      const overdue_amount    = parseFloat(r.overdue_amount  || 0);
+      const paid_customers    = parseInt(r.paid_customers    || 0);
+      const unpaid_customers  = parseInt(r.unpaid_customers  || 0);
+
+      // Collection rate (by count, by amount)
+      const collection_rate     = total_invoices > 0
+        ? Math.round((paid_count / total_invoices) * 1000) / 10   // 1 desimal
+        : 0;
+      const collection_rate_amt = total_billed > 0
+        ? Math.round((total_collected / total_billed) * 1000) / 10
+        : 0;
+
+      // ───── Due-date buckets (across ALL periods, not just this month) ─────
+      // due_today      : due_date = today, status unpaid/overdue
+      // due_in_3_days  : due_date dalam 1-3 hari ke depan, status unpaid/overdue
+      // past_due       : due_date < today, status unpaid/overdue
+      // Pakai 1 query agregat agar efisien (index `due_date` membantu).
+      const [dueRow] = await sequelize.query(
+        `SELECT
+            COALESCE(SUM(CASE WHEN due_date = :today                                 THEN 1 ELSE 0 END),0) AS due_today_count,
+            COALESCE(SUM(CASE WHEN due_date = :today                                 THEN total ELSE 0 END),0) AS due_today_amount,
+            COALESCE(SUM(CASE WHEN due_date > :today  AND due_date <= :in3Days       THEN 1 ELSE 0 END),0) AS due_3days_count,
+            COALESCE(SUM(CASE WHEN due_date > :today  AND due_date <= :in3Days       THEN total ELSE 0 END),0) AS due_3days_amount,
+            COALESCE(SUM(CASE WHEN due_date < :today                                 THEN 1 ELSE 0 END),0) AS past_due_count,
+            COALESCE(SUM(CASE WHEN due_date < :today                                 THEN total ELSE 0 END),0) AS past_due_amount,
+            COUNT(DISTINCT CASE WHEN due_date = :today                               THEN customer_id END) AS due_today_customers,
+            COUNT(DISTINCT CASE WHEN due_date > :today AND due_date <= :in3Days      THEN customer_id END) AS due_3days_customers,
+            COUNT(DISTINCT CASE WHEN due_date < :today                               THEN customer_id END) AS past_due_customers
+          FROM invoices
+          WHERE status IN ('unpaid','overdue')`,
+        { replacements: { today, in3Days }, type: sequelize.QueryTypes.SELECT }
+      ) || [{}];
+
+      const due_today_count       = parseInt(dueRow?.due_today_count       || 0);
+      const due_today_amount      = parseFloat(dueRow?.due_today_amount    || 0);
+      const due_today_customers   = parseInt(dueRow?.due_today_customers   || 0);
+      const due_3days_count       = parseInt(dueRow?.due_3days_count       || 0);
+      const due_3days_amount      = parseFloat(dueRow?.due_3days_amount    || 0);
+      const due_3days_customers   = parseInt(dueRow?.due_3days_customers   || 0);
+      const past_due_count        = parseInt(dueRow?.past_due_count        || 0);
+      const past_due_amount       = parseFloat(dueRow?.past_due_amount     || 0);
+      const past_due_customers    = parseInt(dueRow?.past_due_customers    || 0);
+
+      res.json({
+        success: true,
+        data: {
+          month, year,
+          total_invoices, total_billed,
+          paid_count, total_collected, paid_customers,
+          unpaid_count, total_outstanding, unpaid_customers,
+          overdue_count, overdue_amount,
+          collection_rate, collection_rate_amt,
+          // due-date buckets
+          due_today_count,    due_today_amount,    due_today_customers,
+          due_3days_count,    due_3days_amount,    due_3days_customers,
+          past_due_count,     past_due_amount,     past_due_customers,
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  /**
+   * GET /api/billing/due-date-lists
+   * ───────────────────────────────────────────────────────────────
+   * Daftar invoice + nama pelanggan per bucket due-date.
+   * Bucket:
+   *   - due_today     : due_date = today, unpaid/overdue
+   *   - due_3days     : due_date 1-3 hari ke depan, unpaid/overdue
+   *   - past_due      : due_date < today, unpaid/overdue
+   *   - unpaid_all    : SEMUA invoice unpaid/overdue (Belum Bayar total)
+   *
+   * Query: ?limit=8 (default 8 per bucket, max 50)
+   * Return: { due_today:[...], due_3days:[...], past_due:[...], unpaid_all:[...] }
+   *   Each item: { invoice_id, invoice_number, due_date, total, status,
+   *                customer_id, customer_name, customer_phone, days }
+   */
+  async dueDateLists(req, res) {
+    try {
+      const limit = Math.min(parseInt(req.query.limit) || 8, 50);
+      const today    = moment().format('YYYY-MM-DD');
+      const in3Days  = moment().add(3, 'days').format('YYYY-MM-DD');
+
+      // Helper: query satu bucket
+      // Pakai raw query supaya bisa JOIN customer dalam 1 round-trip
+      async function fetchBucket(where, order = 'i.due_date ASC') {
+        const rows = await sequelize.query(
+          `SELECT
+              i.id               AS invoice_id,
+              i.invoice_number   AS invoice_number,
+              i.due_date         AS due_date,
+              i.total            AS total,
+              i.status           AS status,
+              i.last_wa_reminder_at AS last_wa_reminder_at,
+              c.id               AS customer_id,
+              c.customer_id      AS cid,
+              c.name             AS customer_name,
+              c.phone            AS customer_phone
+            FROM invoices i
+            JOIN customers c ON c.id = i.customer_id
+            WHERE i.status IN ('unpaid','overdue') AND ${where}
+            ORDER BY ${order}
+            LIMIT ${limit}`,
+          { replacements: { today, in3Days }, type: sequelize.QueryTypes.SELECT }
+        );
+        return rows.map(r => {
+          // hitung selisih hari (negatif = sudah lewat, 0 = hari ini, positif = akan datang)
+          const dueDt = new Date(r.due_date + 'T00:00:00');
+          const todayDt = new Date(today + 'T00:00:00');
+          const days = Math.round((dueDt - todayDt) / 86400000);
+          return {
+            invoice_id:     r.invoice_id,
+            invoice_number: r.invoice_number,
+            due_date:       r.due_date,
+            total:          parseFloat(r.total || 0),
+            status:         r.status,
+            last_wa_reminder_at: r.last_wa_reminder_at,
+            customer_id:    r.customer_id,
+            cid:            r.cid,
+            customer_name:  r.customer_name,
+            customer_phone: r.customer_phone,
+            days
+          };
+        });
+      }
+
+      const [due_today, due_3days, past_due, unpaid_all] = await Promise.all([
+        fetchBucket('i.due_date = :today', 'i.total DESC'),
+        fetchBucket('i.due_date > :today AND i.due_date <= :in3Days', 'i.due_date ASC, i.total DESC'),
+        fetchBucket('i.due_date < :today', 'i.due_date ASC, i.total DESC'),
+        fetchBucket('1=1', 'i.due_date ASC, i.total DESC'),
+      ]);
+
+      res.json({
+        success: true,
+        data: { due_today, due_3days, past_due, unpaid_all }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  /**
+   * GET /api/billing/daily-transactions
+   * ───────────────────────────────────────────────────────────────
+   * Pemasukan & pengeluaran HARIAN untuk chart. Default 7 hari
+   * terakhir; bisa ?days=14 atau ?days=30.
+   *
+   * Pemasukan: SUM(payments.amount) per payment_date (tanggal aktual
+   *            transaksi masuk — bukan per invoice period)
+   * Pengeluaran: SUM(keuangan.amount) per date untuk type='pengeluaran'
+   *
+   * Hari tanpa transaksi tetap di-return dengan nilai 0 supaya chart
+   * tidak punya "lubang" di sumbu X.
+   *
+   * Return:
+   *   {
+   *     days: [{ date:'2026-05-09', label:'9 Mei', income:..., expense:...,
+   *              income_count:..., expense_count:..., net:... }, ...],
+   *     totals: { income, expense, net, income_count, expense_count }
+   *   }
+   */
+  async dailyTransactions(req, res) {
+    try {
+      let days = parseInt(req.query.days) || 7;
+      days = Math.max(3, Math.min(days, 90));     // clamp 3..90
+      const today = moment().format('YYYY-MM-DD');
+      const start = moment().subtract(days - 1, 'days').format('YYYY-MM-DD');
+
+      // ─── Pemasukan harian (dari payments.payment_date) ───
+      const incomeRows = await sequelize.query(
+        `SELECT DATE(payment_date) AS d,
+                COALESCE(SUM(amount),0) AS total,
+                COUNT(*) AS cnt
+           FROM payments
+           WHERE payment_date BETWEEN :start AND :end
+           GROUP BY DATE(payment_date)`,
+        { replacements:{ start, end: today }, type: sequelize.QueryTypes.SELECT }
+      );
+
+      // ─── Pengeluaran harian (dari keuangan.date, type=pengeluaran) ───
+      const expenseRows = await sequelize.query(
+        `SELECT date AS d,
+                COALESCE(SUM(amount),0) AS total,
+                COUNT(*) AS cnt
+           FROM keuangan
+           WHERE type='pengeluaran' AND date BETWEEN :start AND :end
+           GROUP BY date`,
+        { replacements:{ start, end: today }, type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Index by date string for O(1) lookup
+      const incomeMap  = {};
+      incomeRows.forEach(r => {
+        const k = moment(r.d).format('YYYY-MM-DD');
+        incomeMap[k] = { total: parseFloat(r.total||0), cnt: parseInt(r.cnt||0) };
+      });
+      const expenseMap = {};
+      expenseRows.forEach(r => {
+        const k = moment(r.d).format('YYYY-MM-DD');
+        expenseMap[k] = { total: parseFloat(r.total||0), cnt: parseInt(r.cnt||0) };
+      });
+
+      // Fill all days dalam range, termasuk yang kosong
+      const ID_MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+      const ID_DOW    = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+
+      const result = [];
+      let totalIncome  = 0, totalExpense = 0;
+      let totalIncCnt  = 0, totalExpCnt  = 0;
+      for (let i = 0; i < days; i++) {
+        const d   = moment(start).add(i, 'days');
+        const key = d.format('YYYY-MM-DD');
+        const inc = incomeMap[key]  || { total:0, cnt:0 };
+        const exp = expenseMap[key] || { total:0, cnt:0 };
+        const dt  = d.toDate();
+        result.push({
+          date:           key,
+          label:          dt.getDate() + ' ' + ID_MONTHS[dt.getMonth()],
+          dow:            ID_DOW[dt.getDay()],
+          is_today:       (key === today),
+          income:         inc.total,
+          income_count:   inc.cnt,
+          expense:        exp.total,
+          expense_count:  exp.cnt,
+          net:            inc.total - exp.total
+        });
+        totalIncome  += inc.total;
+        totalExpense += exp.total;
+        totalIncCnt  += inc.cnt;
+        totalExpCnt  += exp.cnt;
+      }
+
+      res.json({
+        success: true,
+        data: {
+          range_days: days,
+          start, end: today,
+          days: result,
+          totals: {
+            income:        totalIncome,
+            expense:       totalExpense,
+            net:           totalIncome - totalExpense,
+            income_count:  totalIncCnt,
+            expense_count: totalExpCnt,
+          }
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  /**
+   * GET /api/billing/recent-transactions
+   * ───────────────────────────────────────────────────────────────
+   * Gabungan transaksi terbaru: pemasukan (dari payments) + pengeluaran
+   * (dari keuangan dengan type='pengeluaran'). Di-sort by date desc.
+   *
+   * Query:
+   *   ?type=all|income|expense   (default: all)
+   *   ?limit=N                   (default: 8, max 50)
+   *
+   * Return:
+   *   { items: [{ type:'income'|'expense', date, amount, label,
+   *               description, ref, method }], total: N }
+   *
+   * Strategi: ambil 2x limit dari masing-masing source (overshoot), merge,
+   * sort desc, lalu slice(limit). Tidak butuh pagination karena hanya
+   * dipakai untuk widget dashboard.
+   */
+  async recentTransactions(req, res) {
+    try {
+      const limit = Math.min(parseInt(req.query.limit) || 8, 50);
+      const type  = (req.query.type || 'all').toLowerCase();
+      const wantIncome  = (type === 'all' || type === 'income');
+      const wantExpense = (type === 'all' || type === 'expense');
+
+      const sliceN = Math.max(limit * 2, 20);   // overshoot supaya merge result tetap akurat
+
+      // ─── Pemasukan: dari payments + invoice + customer ───
+      let incomeItems = [];
+      if (wantIncome) {
+        const rows = await sequelize.query(
+          `SELECT p.id,
+                  p.payment_date   AS date,
+                  p.amount         AS amount,
+                  p.payment_method AS method,
+                  p.reference_number AS ref,
+                  i.invoice_number AS invoice_number,
+                  c.name           AS customer_name,
+                  c.customer_id    AS cid
+             FROM payments p
+             JOIN invoices i  ON p.invoice_id = i.id
+             JOIN customers c ON c.id         = i.customer_id
+             ORDER BY p.payment_date DESC, p.id DESC
+             LIMIT ${sliceN}`,
+          { type: sequelize.QueryTypes.SELECT }
+        );
+        incomeItems = rows.map(r => ({
+          type:        'income',
+          source_id:   r.id,
+          date:        r.date,
+          amount:      parseFloat(r.amount || 0),
+          label:       r.customer_name || '—',
+          description: r.invoice_number || ('TXN-' + String(r.id||'').padStart(4,'0')),
+          ref:         r.ref || r.invoice_number || '',
+          method:      r.method || '-',
+          cid:         r.cid || null,
+        }));
+      }
+
+      // ─── Pengeluaran: dari keuangan dengan type='pengeluaran' ───
+      let expenseItems = [];
+      if (wantExpense) {
+        const rows = await sequelize.query(
+          `SELECT id, date, amount, category, description, party_name, ref_number
+             FROM keuangan
+             WHERE type = 'pengeluaran'
+             ORDER BY date DESC, id DESC
+             LIMIT ${sliceN}`,
+          { type: sequelize.QueryTypes.SELECT }
+        );
+        expenseItems = rows.map(r => ({
+          type:        'expense',
+          source_id:   r.id,
+          date:        r.date,
+          amount:      parseFloat(r.amount || 0),
+          label:       r.party_name || r.category || 'Pengeluaran',
+          description: r.description || r.category || '',
+          ref:         r.ref_number || ('EXP-' + String(r.id||'').padStart(4,'0')),
+          method:      r.category || '-',
+          cid:         null,
+        }));
+      }
+
+      // Merge & sort by date desc (gunakan ISO string compare karena DATEONLY)
+      const merged = [...incomeItems, ...expenseItems].sort((a, b) => {
+        const da = a.date ? new Date(a.date).getTime() : 0;
+        const db = b.date ? new Date(b.date).getTime() : 0;
+        if (db !== da) return db - da;
+        return (b.source_id || 0) - (a.source_id || 0);
+      });
+
+      const items = merged.slice(0, limit);
+
+      res.json({
+        success: true,
+        data: {
+          items,
+          total: merged.length,
+          type,
+          limit,
+          income_count:  incomeItems.length,
+          expense_count: expenseItems.length,
+        }
       });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -566,16 +997,37 @@ class BillingController {
       const fmtRp   = n => 'Rp ' + Number(n).toLocaleString('id-ID');
       const c = invoice.customer;
       const periodeStr = (MONTHS[invoice.period_month]||invoice.period_month) + ' ' + invoice.period_year;
-      const companyName = process.env.COMPANY_NAME || process.env.APP_NAME || 'ISP Provider';
+      const companyName = await getCompanyName();
 
-      // ── Baca template dari DB sesuai status invoice ─────────────────
-      // Mapping: overdue → reminder_overdue, unpaid → reminder_due
-      // (Kalau mau, user bisa buat template H-N hari pakai reminder_before)
-      const templateCategory = invoice.status === 'overdue' ? 'reminder_overdue' : 'reminder_due';
-      const tpl = await WaTemplate.findOne({
+      // ── Baca template dari DB sesuai status invoice + relasi terhadap tanggal jatuh tempo
+      // Mapping:
+      //   - due_date < today       → reminder_overdue
+      //   - due_date = today       → reminder_due
+      //   - due_date > today       → reminder_before (fallback ke reminder_due jika belum dibuat)
+      // Admin bisa mengubah isi pesan masing-masing di halaman /wa/templates.
+      const todayStr = moment().format('YYYY-MM-DD');
+      const dueStr   = invoice.due_date ? moment(invoice.due_date).format('YYYY-MM-DD') : null;
+      let templateCategory;
+      if (invoice.status === 'overdue' || (dueStr && dueStr < todayStr)) {
+        templateCategory = 'reminder_overdue';
+      } else if (dueStr && dueStr > todayStr) {
+        templateCategory = 'reminder_before';
+      } else {
+        templateCategory = 'reminder_due';
+      }
+
+      // Cari template sesuai kategori — kalau kosong (mis. admin belum buat
+      // template reminder_before), fallback ke reminder_due agar tetap kirim.
+      let tpl = await WaTemplate.findOne({
         where: { category: templateCategory, is_active: true },
         order: [['updated_at', 'DESC']]
       });
+      if (!tpl && templateCategory === 'reminder_before') {
+        tpl = await WaTemplate.findOne({
+          where: { category: 'reminder_due', is_active: true },
+          order: [['updated_at', 'DESC']]
+        });
+      }
 
       let msg;
       if (tpl && (tpl.content || tpl.message)) {
@@ -618,13 +1070,231 @@ class BillingController {
       }
 
       await WAService.sendMessage(session.session_id, c.phone, msg, null);
+
+      // Track timestamp reminder terakhir di invoice (untuk badge di UI)
+      try {
+        invoice.last_wa_reminder_at = new Date();
+        await invoice.save();
+      } catch(_) { /* non-fatal */ }
+
+      // Log activity (untuk audit & mini activity log di dashboard)
+      try {
+        const { ActivityLog } = require('../models');
+        await ActivityLog.create({
+          user_id:     req.user?.id || null,
+          action:      'send_reminder',
+          module:      'billing',
+          description: `Kirim WA reminder ke ${c.name} (${invoice.invoice_number})`,
+          target_type: 'invoice',
+          target_id:   invoice.id
+        });
+      } catch(_) { /* non-fatal */ }
+
       res.json({
         success: true,
         message: `Reminder terkirim ke ${c.name} (${c.phone})`,
-        template_used: tpl ? tpl.name : '(default fallback)'
+        template_used: tpl ? tpl.name : '(default fallback)',
+        sent_at: new Date().toISOString()
       });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
   }
+
+  /**
+   * POST /api/billing/bulk-reminder
+   * ───────────────────────────────────────────────────────────────
+   * Kirim WA reminder ke banyak invoice sekaligus. Body:
+   *   { invoice_ids: [1, 2, 3, ...] }
+   *
+   * Strategi: jalankan sendReminder sequential dengan delay kecil antar
+   * pengiriman untuk hindari rate-limit Baileys / dianggap spam WhatsApp.
+   * Return per-invoice result supaya frontend bisa tampilkan progress
+   * akhir + list error.
+   *
+   * NOTE: untuk volume sangat besar (>50), idealnya dijadwalkan via queue,
+   * tapi untuk skala ISP biasa (puluhan invoice/hari), sequential cukup.
+   */
+  async bulkReminder(req, res) {
+    try {
+      const ids = Array.isArray(req.body?.invoice_ids) ? req.body.invoice_ids : [];
+      if (!ids.length) {
+        return res.status(400).json({ success: false, message: 'Pilih minimal 1 invoice' });
+      }
+      if (ids.length > 100) {
+        return res.status(400).json({ success: false, message: 'Maksimal 100 invoice per batch' });
+      }
+
+      const WAService = require('../services/WAService');
+      const { WaTemplate, WaSession } = require('../models');
+
+      // Cek session WA ready dulu — single point check, tidak per invoice
+      const session = await WaSession.findOne({ where: { status: 'connected' } });
+      if (!session) {
+        return res.status(400).json({ success: false, message: 'Tidak ada sesi WhatsApp yang terhubung' });
+      }
+
+      const results = [];
+      const todayStr = moment().format('YYYY-MM-DD');
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+      for (const id of ids) {
+        try {
+          const invoice = await Invoice.findByPk(id, {
+            include: [{ model: Customer, as: 'customer', include: [{ model: Package, as: 'package' }] }]
+          });
+          if (!invoice) {
+            results.push({ id, ok: false, error: 'Invoice tidak ditemukan' });
+            continue;
+          }
+          const c = invoice.customer;
+          if (!c || !c.phone) {
+            results.push({ id, ok: false, error: 'Nomor HP tidak tersedia', customer_name: c?.name });
+            continue;
+          }
+
+          // Pilih template berdasar kondisi due_date
+          const dueStr = invoice.due_date ? moment(invoice.due_date).format('YYYY-MM-DD') : null;
+          let cat;
+          if (invoice.status === 'overdue' || (dueStr && dueStr < todayStr)) cat = 'reminder_overdue';
+          else if (dueStr && dueStr > todayStr) cat = 'reminder_before';
+          else cat = 'reminder_due';
+
+          let tpl = await WaTemplate.findOne({ where: { category: cat, is_active: true }, order: [['updated_at','DESC']] });
+          if (!tpl && cat === 'reminder_before') {
+            tpl = await WaTemplate.findOne({ where: { category: 'reminder_due', is_active: true }, order: [['updated_at','DESC']] });
+          }
+
+          // Render placeholders (re-use logic dari sendReminder)
+          const MONTHS = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+          const fmtDt = s => s ? new Date(s+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}) : '–';
+          const fmtRpFn = n => 'Rp ' + Number(n||0).toLocaleString('id-ID');
+          const periodeStr = (MONTHS[invoice.period_month]||invoice.period_month) + ' ' + invoice.period_year;
+          const companyName = await getCompanyName();
+          const vars = {
+            nama:           c.name || '',
+            cid:            c.customer_id || '',
+            phone:          c.phone || '',
+            nohp:           c.phone || '',
+            alamat:         c.address || '-',
+            paket:          c.package?.name || '-',
+            harga_paket:    fmtRpFn(c.package?.price || invoice.total || 0),
+            jumlah:         fmtRpFn(invoice.total || 0),
+            invoice:        invoice.invoice_number || '',
+            periode:        periodeStr,
+            jatuh_tempo:    fmtDt(invoice.due_date),
+            status:         invoice.status === 'overdue' ? '⚠️ JATUH TEMPO' : 'segera jatuh tempo',
+            perusahaan:     companyName,
+            phone_cs:       process.env.COMPANY_PHONE || process.env.SUPPORT_PHONE || '-',
+          };
+          let msg;
+          if (tpl) {
+            msg = (tpl.content || '').replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? vars[k] : m));
+          } else {
+            msg = `*Reminder Tagihan*\n\nYth. *${vars.nama}*,\nTagihan ${vars.periode} sebesar *${vars.jumlah}* jatuh tempo pada *${vars.jatuh_tempo}*.\n\nMohon segera lakukan pembayaran agar layanan tetap aktif.\n_Terima kasih_ 🙏`;
+          }
+
+          await WAService.sendMessage(session.session_id, c.phone, msg, null);
+
+          // Track + log
+          try {
+            invoice.last_wa_reminder_at = new Date();
+            await invoice.save();
+            const { ActivityLog } = require('../models');
+            await ActivityLog.create({
+              user_id:     req.user?.id || null,
+              action:      'send_reminder_bulk',
+              module:      'billing',
+              description: `Bulk WA reminder ke ${c.name} (${invoice.invoice_number})`,
+              target_type: 'invoice',
+              target_id:   invoice.id
+            });
+          } catch(_) {}
+
+          results.push({ id, ok: true, customer_name: c.name, invoice_number: invoice.invoice_number });
+
+          // Delay 1.2 detik antar kirim — hindari rate-limit & spam detection
+          await sleep(1200);
+        } catch (err) {
+          results.push({ id, ok: false, error: err.message || 'Gagal mengirim' });
+        }
+      }
+
+      const okCount   = results.filter(r => r.ok).length;
+      const failCount = results.length - okCount;
+
+      res.json({
+        success: true,
+        message: `Selesai: ${okCount} berhasil, ${failCount} gagal`,
+        data: { ok_count: okCount, fail_count: failCount, results }
+      });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  }
+
+  /**
+   * POST /api/billing/invoices/:id/mark-paid
+   * ───────────────────────────────────────────────────────────────
+   * Tandai invoice lunas secara manual (untuk transfer offline yang
+   * tidak terdeteksi otomatis). Otomatis create Payment row supaya
+   * data konsisten dengan flow normal.
+   *
+   * Body: { method, reference_number, payment_date, notes }
+   *   - method: 'cash'|'transfer'|'qris'|'other'|... (default 'transfer')
+   *   - reference_number: opsional, mis. ID transfer
+   *   - payment_date: opsional, default today
+   *   - notes: opsional
+   */
+  async markPaid(req, res) {
+    try {
+      const invoice = await Invoice.findByPk(req.params.id, {
+        include: [{ model: Customer, as: 'customer' }]
+      });
+      if (!invoice) return res.status(404).json({ success: false, message: 'Invoice tidak ditemukan' });
+      if (invoice.status === 'paid') {
+        return res.status(400).json({ success: false, message: 'Invoice sudah berstatus lunas' });
+      }
+
+      const { method, reference_number, payment_date, notes } = req.body || {};
+      const payDate = payment_date || moment().format('YYYY-MM-DD');
+
+      // Create payment row
+      const payment = await Payment.create({
+        invoice_id:       invoice.id,
+        amount:           invoice.total,
+        payment_date:     payDate,
+        payment_method:   (method || 'transfer').toLowerCase(),
+        reference_number: reference_number || null,
+        notes:            notes || `Pelunasan manual oleh ${req.user?.name || 'admin'}`,
+      });
+
+      // Update invoice
+      invoice.status    = 'paid';
+      invoice.paid_date = payDate;
+      await invoice.save();
+
+      // Log activity
+      try {
+        const { ActivityLog } = require('../models');
+        await ActivityLog.create({
+          user_id:     req.user?.id || null,
+          action:      'mark_paid',
+          module:      'billing',
+          description: `Tandai lunas invoice ${invoice.invoice_number} (${invoice.customer?.name || ''}) — Rp ${Number(invoice.total).toLocaleString('id-ID')}`,
+          target_type: 'invoice',
+          target_id:   invoice.id
+        });
+      } catch(_) {}
+
+      res.json({
+        success: true,
+        message: `Invoice ${invoice.invoice_number} berhasil ditandai lunas`,
+        data: { invoice_id: invoice.id, payment_id: payment.id }
+      });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  }
+
   // Customers with unpaid invoices
   async unpaidCustomers(req, res) {
     try {
@@ -641,14 +1311,6 @@ class BillingController {
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
   }
 
-  // Total outstanding amount
-  async totalOutstanding(req, res) {
-    try {
-      const { Op } = require('sequelize');
-      const total = await Invoice.sum('total', { where: { status: { [Op.in]: ['unpaid','overdue'] } } }) || 0;
-      res.json({ success: true, data: { total } });
-    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
-  }
   // Daftar customer dengan invoice unpaid
   async unpaidCustomers(req, res) {
     try {
@@ -667,17 +1329,42 @@ class BillingController {
   }
 
   // Total outstanding (jumlah tagihan belum lunas)
+  // Mengembalikan:
+  //   - total_amount  : SUM(total) dari semua invoice unpaid/overdue
+  //   - customer_count: jumlah PELANGGAN UNIK yang punya invoice unpaid/overdue
+  //   - total         : alias backward-compat untuk total_amount
+  // Frontend (dashboard.js) membaca total_amount & customer_count.
   async totalOutstanding(req, res) {
     try {
       const { Invoice } = require('../models');
       const { fn, col } = require('sequelize');
-      const row = await Invoice.findOne({
-        attributes: [[fn('COALESCE', fn('SUM', col('total')), 0), 'total']],
+
+      const sumRow = await Invoice.findOne({
+        attributes: [[fn('COALESCE', fn('SUM', col('total')), 0), 'total_amount']],
         where: { status: { [Op.in]: ['unpaid','overdue'] } },
         raw: true
       });
-      res.json({ success: true, data: { total: parseFloat(row?.total || 0) } });
-    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+
+      const customerRow = await Invoice.findOne({
+        attributes: [[fn('COUNT', fn('DISTINCT', col('customer_id'))), 'customer_count']],
+        where: { status: { [Op.in]: ['unpaid','overdue'] } },
+        raw: true
+      });
+
+      const total_amount   = parseFloat(sumRow?.total_amount || 0);
+      const customer_count = parseInt(customerRow?.customer_count || 0);
+
+      res.json({
+        success: true,
+        data: {
+          total_amount,
+          customer_count,
+          total: total_amount   // backward-compat untuk caller lama
+        }
+      });
+    } catch(e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 
   // ════════════════════════════════════════════════════════════════

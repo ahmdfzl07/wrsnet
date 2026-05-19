@@ -31,6 +31,7 @@ const DemoController = require('../controllers/DemoController');
 const { Op } = require('sequelize');
 const logger = require('../utils/logger');
 const ConfigCrypto = require('../utils/ConfigCrypto');
+const { getCompanyName } = require('../utils/companyInfo');
 
 // Models yang dibutuhkan
 const { QueueHistory, Invoice, Customer, TrafficData, DeviceLog } = require('../models');
@@ -581,7 +582,7 @@ class CronService {
         const period = PERIODS[pk];
         if (!period) continue;
 
-        const appName = process.env.COMPANY_NAME || process.env.APP_NAME || 'ISP Provider';
+        const appName = await getCompanyName();
         const msg     = await buildReportMessage(sequelize, period.from, period.to, appName, 'Laporan ' + period.label, sections);
 
         let sent = 0;

@@ -50,13 +50,12 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // Render error page for web requests
- res.status(statusCode).render('pages/error', {
-  title: `Error ${statusCode}`,
-  statusCode,
-  message,
-  user: req.user || null,
-  appName: 'ISPNET'
-});
+  res.status(statusCode).render('pages/error', {
+    title: `Error ${statusCode}`,
+    statusCode,
+    message,
+    user: req.user || null
+  });
 };
 
 // 404 handler
@@ -65,12 +64,11 @@ const notFoundHandler = (req, res, next) => {
     return res.status(404).json({ success: false, message: 'Route not found' });
   }
   res.status(404).render('pages/error', {
-  title: 'Page Not Found',
-  statusCode: 404,
-  message: 'The page you are looking for does not exist.',
-  user: req.user || null,
-  appName: 'ISPNET'
-});
+    title: 'Page Not Found',
+    statusCode: 404,
+    message: 'The page you are looking for does not exist.',
+    user: req.user || null
+  });
 };
 
 module.exports = { errorHandler, notFoundHandler };

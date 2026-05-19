@@ -3,12 +3,82 @@
 let _custPage   = 1;
 let _custEditId = null;
 let _nextAutoId = '';
+// Flag: true kalau user sudah mengetik manual di field PPPoE Username,
+// supaya auto-generate dari nama TIDAK menimpa input manual.
+// Direset ke false setiap kali openAddCustomer() / _clearForm() dipanggil.
+let _pppoeManuallyEdited = false;
+// Saat editCustomer() load data, simpan pppoe_username asli di sini.
+// Dipakai oleh saveCustomer() untuk deteksi apakah user mengubah username
+// → kalau berubah, tampilkan modal konfirmasi sync ke router.
+// Direset ke '' setiap kali openAddCustomer() (tidak relevan di tambah baru).
+let _originalPppoeUsername = '';
 const AVATAR_BG = ['#2563eb','#0891b2','#059669','#d97706','#dc2626','#0284c7','#16a34a','#ea580c','#0369a1','#0d9488'];
+
+// ── PPPoE Username slugify ────────────────────────────────────
+// Bersihkan NAMA CUSTOMER jadi username PPPoE untuk AUTO-GENERATE.
+// Hasil-nya bersih dan predictable — hanya huruf+angka:
+//   - normalisasi diakritik (é → e, ñ → n, dll)
+//   - lowercase
+//   - hanya huruf a-z dan angka 0-9 (semua karakter lain di-drop, termasuk spasi)
+//   - max 32 char (cukup lega untuk MikroTik secret)
+//
+// CATATAN: function ini HANYA dipakai untuk auto-generate dari Nama.
+// Untuk input MANUAL user di field PPPoE (boleh pakai @, ., -, _),
+// JANGAN sanitize via slugify — biarkan user ketik bebas. Format
+// realm-style seperti "avinda@net.id" valid dan didukung MikroTik.
+//
+// Contoh: "Budi Santoso"      → "budisantoso"
+//         "Ahmad Yáñez 2"     → "ahmadyanez2"
+//         "PT. Maju Jaya"     → "ptmajujaya"
+function _slugifyForPppoe(name) {
+  if (!name) return '';
+  let s = String(name).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  s = s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return s.slice(0, 32);
+}
+
+// ── PPPoE Username slot mover ─────────────────────────────────
+// Field #custPPPoE punya dua "rumah" di EJS:
+//   - #custPPPoEAddSlot: di dalam pppoeFormBox (default position, untuk mode tambah baru)
+//   - #custPPPoEEditSlot: di grid atas (untuk mode edit, supaya tetap terlihat saat pppoeCreateBox hidden)
+//
+// Ada SATU element <input id="custPPPoE">. Helper di bawah ini memindahkan
+// element itu antar dua slot sesuai mode. Karena cuma satu element, tidak
+// perlu sync value antara dua field.
+function _movePppoeToEditSlot() {
+  const input = document.getElementById('custPPPoE');
+  const editSlot = document.getElementById('custPPPoEEditSlot');
+  const addSlot = document.getElementById('custPPPoEAddSlot');
+  if (!input || !editSlot) return;
+  // Tampilkan edit slot, append element input ke sana (kalau belum)
+  editSlot.style.display = '';
+  if (input.parentElement !== editSlot) {
+    editSlot.appendChild(input);
+  }
+  if (addSlot) addSlot.style.display = 'none';
+}
+
+function _movePppoeToAddSlot() {
+  const input = document.getElementById('custPPPoE');
+  const editSlot = document.getElementById('custPPPoEEditSlot');
+  const addSlot = document.getElementById('custPPPoEAddSlot');
+  if (!input || !addSlot) return;
+  // Kembalikan element input ke posisi default-nya di pppoeFormBox
+  addSlot.style.display = '';
+  if (input.parentElement !== addSlot) {
+    addSlot.appendChild(input);
+  }
+  if (editSlot) editSlot.style.display = 'none';
+}
 
 // ── EXPOSE ────────────────────────────────────────────────────
 window.openAddCustomer = async function () {
   _custEditId = null;
+  _pppoeManuallyEdited = false; // reset flag → auto-fill PPPoE dari nama aktif
+  _originalPppoeUsername = '';   // tidak relevan di tambah baru
   _setText('customerModalTitle', 'Tambah Customer');
+  // Pindahkan field PPPoE ke posisi mode Tambah (di dalam pppoeFormBox)
+  _movePppoeToAddSlot();
   _clearForm();
   // Set default aktivasi = hari ini
   const today = new Date().toISOString().slice(0, 10);
@@ -53,6 +123,9 @@ window.editCustomer = async function (id) {
   if (!data?.success) { App.showToast('Gagal memuat data', 'error'); return; }
   const c = data.data;
   _custEditId = c.id;
+  // Di mode edit: anggap PPPoE username sudah "manual" supaya auto-generate
+  // dari nama TIDAK menimpa username yang sudah ada di customer ini.
+  _pppoeManuallyEdited = true;
   _setText('customerModalTitle', 'Edit Customer');
   // Hide checkbox WA welcome di mode edit (hanya relevan untuk customer baru)
   const waBox = document.getElementById('waWelcomeBox');
@@ -64,6 +137,9 @@ window.editCustomer = async function (id) {
   if (cbPppoe) cbPppoe.checked = false;
   const ppForm = document.getElementById('pppoeFormBox');
   if (ppForm) ppForm.style.display = 'none';
+  // Pindahkan field PPPoE Username ke slot atas (di grid utama) supaya tetap
+  // bisa di-edit user — karena pppoeCreateBox tertutup di mode edit.
+  _movePppoeToEditSlot();
 
   _setVal('custName',        c.name            || '');
   _setVal('custPhone',       c.phone           || '');
@@ -73,6 +149,8 @@ window.editCustomer = async function (id) {
   _setVal('custDueDate',     c.due_date        || '');
   _setVal('custInstallDate', c.installation_date || '');
   _setVal('custPPPoE',       c.pppoe_username  || '');
+  // Simpan value asli untuk deteksi perubahan di saveCustomer()
+  _originalPppoeUsername = String(c.pppoe_username || '').trim();
   _setVal('custOntSn',       c.ont_sn          || '');
   _setVal('custStaticIP',    c.static_ip        || '');
   // Set mikrotik dropdown
@@ -102,18 +180,158 @@ window.toggleIsolate = async function (id, action) {
   else App.showToast(data?.message || 'Gagal', 'error');
 };
 
+// ─────────────────────────────────────────────────────────────────────
+// Modal konfirmasi hapus customer dengan opsi sync ke router MikroTik.
+//
+// Dipanggil oleh deleteCustomer(). Return Promise<'sync' | 'db_only' | 'cancel'>:
+//   - 'sync'    : hapus customer di FLAYNET + hapus secret PPPoE di router
+//   - 'db_only' : hapus customer di FLAYNET saja (secret router tidak disentuh)
+//   - 'cancel'  : batalkan, tidak menghapus apa-apa
+//
+// Param `customer` adalah object minimal { id, name, pppoe_username, mikrotik_id, mikrotik_name }.
+// Kalau customer tidak punya pppoe_username + mikrotik_id, tombol "sync" di-disable.
+// ─────────────────────────────────────────────────────────────────────
+function _confirmCustomerDelete(customer) {
+  return new Promise((resolve) => {
+    const hasPppoe = !!(customer.pppoe_username && String(customer.pppoe_username).trim());
+    const hasRouter = !!customer.mikrotik_id;
+    const canSync = hasPppoe && hasRouter;
+
+    // Build reason kalau tidak bisa sync
+    let syncDisabledReason = '';
+    if (!hasPppoe && !hasRouter) syncDisabledReason = 'Customer tidak punya PPPoE username & router';
+    else if (!hasPppoe)          syncDisabledReason = 'Customer tidak punya PPPoE username';
+    else if (!hasRouter)         syncDisabledReason = 'Customer tidak punya router MikroTik terhubung';
+
+    const overlay = document.createElement('div');
+    overlay.id = '__custDeleteModal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#fff;border-radius:14px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;';
+    box.innerHTML = `
+      <div style="padding:18px 22px 14px;border-bottom:1px solid #f1f5f9;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <svg width="22" height="22" fill="none" stroke="#dc2626" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+          <div style="font-size:15px;font-weight:700;color:#0f172a;">Hapus Customer</div>
+        </div>
+      </div>
+      <div style="padding:18px 22px;font-size:13px;color:#334155;line-height:1.6;">
+        <div style="margin-bottom:10px;">Anda akan menghapus customer:</div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:14px;">
+          <div style="font-weight:600;color:#0f172a;font-size:13.5px;">${_esc(customer.name)}</div>
+          ${hasPppoe ? `<div style="font-size:12px;color:#64748b;font-family:'DM Mono',monospace;margin-top:3px;">PPPoE: ${_esc(customer.pppoe_username)}</div>` : ''}
+          ${hasRouter ? `<div style="font-size:11.5px;color:#64748b;margin-top:2px;">Router: ${customer.mikrotik_name ? _esc(customer.mikrotik_name) : `<span style="color:#94a3b8;">ID #${_esc(customer.mikrotik_id)}</span>`}</div>` : ''}
+        </div>
+        ${canSync ? `
+          <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:12px;color:#92400e;line-height:1.5;margin-bottom:6px;">
+            <strong>Apa yang ingin Anda lakukan?</strong><br>
+            Tanpa hapus secret di router, customer mungkin masih bisa login PPPoE meski sudah dihapus di FLAYNET.
+          </div>` : `
+          <div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:10px 12px;font-size:12px;color:#475569;line-height:1.5;margin-bottom:6px;">
+            ${syncDisabledReason}, jadi tidak ada secret di router yang perlu dihapus.
+          </div>`}
+      </div>
+      <div style="padding:14px 22px;background:#fafbfc;border-top:1px solid #f1f5f9;display:flex;flex-direction:column;gap:8px;">
+        <button id="__custDelSync" ${canSync ? '' : 'disabled'}
+          style="background:${canSync ? '#dc2626' : '#cbd5e1'};color:#fff;border:none;border-radius:8px;padding:11px 14px;font-size:13px;font-weight:600;cursor:${canSync ? 'pointer' : 'not-allowed'};text-align:left;line-height:1.4;opacity:${canSync ? 1 : 0.6};">
+          <div>✗ Hapus customer &amp; secret di router MikroTik</div>
+          <div style="font-size:11px;font-weight:400;opacity:.9;margin-top:2px;">${canSync ? 'Sync penuh. Customer langsung disconnect, tidak bisa login lagi.' : syncDisabledReason}</div>
+        </button>
+        <button id="__custDelDbOnly" style="background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:8px;padding:11px 14px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;line-height:1.4;">
+          <div>Hapus dari database saja (tanpa sentuh router)</div>
+          <div style="font-size:11px;font-weight:400;color:#64748b;margin-top:2px;">${hasPppoe ? 'Pilih ini kalau Anda sudah hapus secret manual via Winbox.' : 'Hanya hapus record di database FLAYNET.'}</div>
+        </button>
+        <button id="__custDelCancel" style="background:#fff;color:#64748b;border:1px solid #e2e8f0;border-radius:8px;padding:9px 14px;font-size:12.5px;font-weight:500;cursor:pointer;margin-top:2px;">
+          Batal
+        </button>
+      </div>
+    `;
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    const cleanup = () => { try { document.body.removeChild(overlay); } catch (e) {} };
+    const syncBtn = document.getElementById('__custDelSync');
+    if (canSync) syncBtn.onclick = () => { cleanup(); resolve('sync'); };
+    document.getElementById('__custDelDbOnly').onclick = () => { cleanup(); resolve('db_only'); };
+    document.getElementById('__custDelCancel').onclick = () => { cleanup(); resolve('cancel'); };
+    const escHandler = (e) => {
+      if (e.key === 'Escape') { cleanup(); document.removeEventListener('keydown', escHandler); resolve('cancel'); }
+    };
+    document.addEventListener('keydown', escHandler);
+  });
+}
+
 window.deleteCustomer = async function (id, name) {
-  showConfirmModal(
-    'Hapus Customer',
-    'Hapus customer <strong>' + _esc(name) + '</strong>?<br><small style="color:#ef4444">Tindakan ini tidak dapat dibatalkan.</small>',
-    'trash',
-    '#ef4444',
-    async function() {
-      const data = await App.api('/customers/' + id, { method:'DELETE' });
-      if (data && data.success) { loadCustomers(); loadCustomerStats(); App.showToast('Customer dihapus', 'success'); }
-      else App.showToast((data && data.message) || 'Gagal menghapus', 'error');
+  // Fetch detail customer dulu untuk dapat pppoe_username + mikrotik_id
+  // (info ini dipakai modal untuk putuskan apakah opsi sync available)
+  let detail = { id, name, pppoe_username: null, mikrotik_id: null, mikrotik_name: null };
+  try {
+    const res = await App.api('/customers/' + id);
+    if (res?.success && res.data) {
+      const c = res.data;
+      detail = {
+        id,
+        name: c.name || name,
+        pppoe_username: c.pppoe_username || null,
+        mikrotik_id: c.mikrotik_id || null,
+        // Coba ambil nama dari embedded mikrotik object (kalau backend show() versi
+        // terbaru di-deploy). Fallback: null → akan di-fetch via /devices/:id di bawah.
+        mikrotik_name: c.mikrotik?.name || c.mikrotik?.host || null,
+      };
+
+      // FALLBACK: kalau customer punya mikrotik_id tapi nama router tidak ada
+      // di response (backend versi lama, atau Device sudah dihapus), coba fetch
+      // langsung via endpoint /devices/:id. Ini bikin display tetap ramah user
+      // meski deployment belum sinkron.
+      if (detail.mikrotik_id && !detail.mikrotik_name) {
+        try {
+          const dres = await App.api('/devices/' + detail.mikrotik_id);
+          if (dres?.success && dres.data) {
+            detail.mikrotik_name = dres.data.name || dres.data.host || null;
+          }
+        } catch (e2) {
+          console.warn('[deleteCustomer] Gagal fetch device detail:', e2.message);
+        }
+      }
     }
-  );
+  } catch (e) {
+    console.warn('[deleteCustomer] Gagal fetch detail:', e.message, '— lanjut dengan info minimal');
+  }
+
+  // Tampilkan modal konfirmasi
+  const choice = await _confirmCustomerDelete(detail);
+  if (choice === 'cancel') return;
+
+  // Panggil DELETE endpoint dengan flag sesuai pilihan
+  const url = '/customers/' + id;
+  const data = await App.api(url, {
+    method: 'DELETE',
+    body: JSON.stringify({ delete_router_secret: (choice === 'sync') })
+  });
+
+  if (data && data.success) {
+    loadCustomers();
+    loadCustomerStats();
+    // Toast informatif tergantung status router
+    let toastMsg = 'Customer dihapus';
+    let toastType = 'success';
+    if (choice === 'sync') {
+      if (data.router_status === 'deleted')   toastMsg = `Customer & secret di router dihapus (${detail.pppoe_username})`;
+      else if (data.router_status === 'not_found') {
+        toastMsg = `Customer dihapus. Secret di router sudah tidak ada (mungkin sudah dihapus manual sebelumnya).`;
+        toastType = 'info';
+      }
+    } else {
+      toastMsg = 'Customer dihapus dari database (router tidak disentuh)';
+      toastType = 'info';
+    }
+    App.showToast(toastMsg, toastType);
+  } else {
+    App.showToast((data && data.message) || 'Gagal menghapus', 'error');
+  }
 };
 
 window.syncDueDates = async function() {
@@ -417,6 +635,78 @@ async function loadPackages() {
 
 // ── SAVE ─────────────────────────────────────────────────────
 let _custSaving = false;  // re-entry guard — cegah double-submit dari double-binding/dbl-click
+
+// ─────────────────────────────────────────────────────────────────────
+// Modal konfirmasi PPPoE username rename.
+// Dipanggil di mode EDIT saat user mengubah pppoe_username dari value asli.
+//
+// Return Promise<'sync' | 'db_only' | 'cancel'>:
+//   - 'sync'    : update DB + rename secret di router MikroTik
+//   - 'db_only' : update DB saja (user sudah rename manual di Winbox, dll)
+//   - 'cancel'  : batalkan save, kembali ke form
+//
+// Pakai overlay HTML inline (tidak perlu modal terpisah di EJS).
+// ─────────────────────────────────────────────────────────────────────
+function _confirmPppoeRename(oldName, newName) {
+  return new Promise((resolve) => {
+    // Build modal overlay
+    const overlay = document.createElement('div');
+    overlay.id = '__pppoeRenameModal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#fff;border-radius:14px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;';
+    box.innerHTML = `
+      <div style="padding:18px 22px 14px;border-bottom:1px solid #f1f5f9;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <svg width="22" height="22" fill="none" stroke="#d97706" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+          </svg>
+          <div style="font-size:15px;font-weight:700;color:#0f172a;">PPPoE Username Berubah</div>
+        </div>
+      </div>
+      <div style="padding:18px 22px;font-size:13px;color:#334155;line-height:1.6;">
+        <div style="margin-bottom:12px;">Anda mengubah PPPoE username:</div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-family:'DM Mono',monospace;font-size:12.5px;margin-bottom:14px;">
+          <div style="color:#64748b;"><span style="color:#94a3b8;">lama:</span> ${_esc(oldName) || '<i style="font-style:italic">(kosong)</i>'}</div>
+          <div style="color:#0f172a;font-weight:600;margin-top:4px;"><span style="color:#94a3b8;font-weight:400;">baru:</span> ${_esc(newName)}</div>
+        </div>
+        <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:12px;color:#92400e;line-height:1.5;margin-bottom:6px;">
+          <strong>Apa yang ingin Anda lakukan?</strong><br>
+          Tanpa sync ke router, data di FLAYNET dan MikroTik akan tidak konsisten.
+        </div>
+      </div>
+      <div style="padding:14px 22px;background:#fafbfc;border-top:1px solid #f1f5f9;display:flex;flex-direction:column;gap:8px;">
+        <button id="__ppRenameSync" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:11px 14px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;line-height:1.4;">
+          <div>✓ Update DB &amp; rename di router MikroTik</div>
+          <div style="font-size:11px;font-weight:400;opacity:.85;margin-top:2px;">Sinkron otomatis. Customer mungkin disconnect sementara.</div>
+        </button>
+        <button id="__ppRenameDbOnly" style="background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:8px;padding:11px 14px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;line-height:1.4;">
+          <div>Update database saja (tanpa sentuh router)</div>
+          <div style="font-size:11px;font-weight:400;color:#64748b;margin-top:2px;">Pilih ini kalau Anda sudah rename manual di Winbox/router.</div>
+        </button>
+        <button id="__ppRenameCancel" style="background:#fff;color:#64748b;border:1px solid #e2e8f0;border-radius:8px;padding:9px 14px;font-size:12.5px;font-weight:500;cursor:pointer;margin-top:2px;">
+          Batal — kembali ke form
+        </button>
+      </div>
+    `;
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    const cleanup = () => { try { document.body.removeChild(overlay); } catch (e) {} };
+    document.getElementById('__ppRenameSync').onclick    = () => { cleanup(); resolve('sync'); };
+    document.getElementById('__ppRenameDbOnly').onclick  = () => { cleanup(); resolve('db_only'); };
+    document.getElementById('__ppRenameCancel').onclick  = () => { cleanup(); resolve('cancel'); };
+    // ESC = cancel
+    const escHandler = (e) => {
+      if (e.key === 'Escape') { cleanup(); document.removeEventListener('keydown', escHandler); resolve('cancel'); }
+    };
+    document.addEventListener('keydown', escHandler);
+  });
+}
+
+// Helper escape HTML untuk modal di atas — pakai _esc yang sudah ada di file ini.
+
 async function saveCustomer() {
   if (_custSaving) {
     console.warn('[Customer] saveCustomer dipanggil saat masih in-flight, skip');
@@ -520,6 +810,56 @@ async function _saveCustomerInner() {
     && !!document.getElementById('custSendWaWelcome')?.checked
     && !!phone.trim();
 
+  // ═══ STEP 2a: Intercept PPPoE username rename di mode EDIT ═══
+  // Kalau user mengubah pppoe_username dari value aslinya, butuh konfirmasi
+  // apakah harus sync ke router MikroTik atau hanya update DB. Hal ini supaya
+  // tidak terjadi desync silent antara DB FLAYNET dan secret di router.
+  //
+  // Skip modal kalau:
+  //   - Mode tambah baru (bukan edit)
+  //   - Value tidak berubah dari original
+  //   - Original kosong (user isi pertama kali → tidak ada secret lama untuk rename,
+  //     cukup catat di DB via PUT generic biasa)
+  const currentPppoe = (document.getElementById('custPPPoE')?.value || '').trim();
+  let pppoeRenameHandled = false; // kalau true → jangan kirim pppoe_username di body PUT
+
+  if (_custEditId && _originalPppoeUsername && currentPppoe !== _originalPppoeUsername) {
+    // Show modal konfirmasi
+    const choice = await _confirmPppoeRename(_originalPppoeUsername, currentPppoe);
+
+    if (choice === 'cancel') {
+      btn.disabled = false; btn.textContent = 'Simpan Customer';
+      return; // user batalkan — tidak save apa-apa
+    }
+
+    // User pilih 'sync' atau 'db_only' — panggil endpoint khusus
+    btn.textContent = choice === 'sync' ? 'Sync ke router...' : 'Update database...';
+    try {
+      const renameRes = await App.api(`/customers/${_custEditId}/rename-pppoe`, {
+        method: 'POST',
+        body: JSON.stringify({
+          new_username:   currentPppoe,
+          sync_to_router: (choice === 'sync')
+        })
+      });
+      if (!renameRes?.success) {
+        App.showToast('Rename PPPoE gagal: ' + (renameRes?.message || 'Unknown error'), 'error');
+        btn.disabled = false; btn.textContent = 'Simpan Customer';
+        return;
+      }
+      // Update value original supaya tidak ditampilkan modal lagi kalau save dilanjut
+      _originalPppoeUsername = currentPppoe;
+      pppoeRenameHandled = true;
+
+      // Toast info hasil rename (akan muncul sebelum toast main success di akhir)
+      App.showToast(renameRes.message, choice === 'sync' ? 'success' : 'info');
+    } catch (err) {
+      App.showToast('Rename PPPoE error: ' + err.message, 'error');
+      btn.disabled = false; btn.textContent = 'Simpan Customer';
+      return;
+    }
+  }
+
   const body = {
     name,
     customer_id:      custId || undefined,
@@ -536,6 +876,11 @@ async function _saveCustomerInner() {
     status:           document.getElementById('custStatus')?.value   || 'active',
   };
   if (sendWA) body.send_wa_welcome = true;
+  // Kalau PPPoE rename sudah di-handle oleh endpoint khusus di atas,
+  // hapus field dari body supaya tidak overwrite (endpoint khusus sudah update DB).
+  if (pppoeRenameHandled) {
+    delete body.pppoe_username;
+  }
 
   const url    = _custEditId ? '/customers/' + _custEditId : '/customers';
   const method = _custEditId ? 'PUT' : 'POST';
@@ -671,6 +1016,9 @@ function _clearForm() {
   _setVal('custPackage', ''); _setVal('custDueDate', ''); _setVal('custStatus', 'active');
   const mkSel2 = document.getElementById('custMikrotikId');
   if (mkSel2) mkSel2.value = '';
+
+  // Reset flag manual-edit PPPoE → auto-fill dari nama aktif kembali
+  _pppoeManuallyEdited = false;
 
   // Reset PPPoE creation panel ke state default
   const cbPppoe = document.getElementById('custCreatePppoe');
@@ -875,9 +1223,31 @@ window.generatePppoePassword = function() {
         if (profSel) profSel.innerHTML = '<option value="">— Pilih router dulu —</option>';
         const hint = document.getElementById('pppoeFormHint');
         if (hint) { hint.style.display = 'none'; hint.innerHTML = ''; }
+
+        // Auto-fill PPPoE Username dari nama (hanya di mode TAMBAH baru,
+        // dan kalau user belum edit manual field PPPoE).
+        // Berguna untuk skenario: user sudah ketik nama dulu, lalu baru
+        // centang "Buat Akun PPPoE" — field auto-terisi langsung.
+        if (!_custEditId && !_pppoeManuallyEdited) {
+          const nameEl  = document.getElementById('custName');
+          const pppoeEl = document.getElementById('custPPPoE');
+          if (nameEl && pppoeEl && nameEl.value.trim()) {
+            pppoeEl.value = _slugifyForPppoe(nameEl.value);
+          }
+        }
       } else {
         const hint = document.getElementById('pppoeFormHint');
         if (hint) { hint.style.display = 'none'; hint.innerHTML = ''; }
+
+        // Saat uncheck: clear field PPPoE Username supaya tidak ikut ter-submit
+        // (intent user = tidak buat akun PPPoE, jadi tidak set username di DB).
+        // Hanya di mode TAMBAH baru — di mode edit field ini hidden tapi tetap
+        // perlu pertahankan value asli dari DB.
+        if (!_custEditId) {
+          const pppoeEl = document.getElementById('custPPPoE');
+          if (pppoeEl) pppoeEl.value = '';
+          _pppoeManuallyEdited = false; // reset flag → auto-fill aktif lagi kalau dicentang ulang
+        }
       }
       return;
     }
@@ -918,6 +1288,53 @@ window.generatePppoePassword = function() {
     }
   });
 })();
+
+// ─────────────────────────────────────────────────────────────────────
+// AUTO-GENERATE PPPoE Username dari Nama Customer
+// ─────────────────────────────────────────────────────────────────────
+// Saat user mengetik nama di field `custName`, field `custPPPoE` ikut
+// terisi otomatis dengan versi slugified (huruf+angka, tanpa spasi).
+//
+// Aturan:
+//   1. Hanya jalan di mode TAMBAH baru (_custEditId == null). Saat edit,
+//      username yang sudah ada tidak ditimpa.
+//   2. Tidak menimpa kalau user sudah pernah mengetik manual di custPPPoE
+//      (di-track oleh flag `_pppoeManuallyEdited`).
+//   3. Kalau user mengosongkan field PPPoE setelah edit manual, flag
+//      direset → auto-fill aktif kembali (user bisa "minta generate ulang"
+//      dengan cara mengosongkan field).
+//
+// Pakai event delegation pada document supaya berfungsi terlepas dari
+// urutan load script vs. DOMContentLoaded (konsisten dengan pola
+// bindPppoeHandlers di atas).
+// ─────────────────────────────────────────────────────────────────────
+(function bindPppoeAutoGen() {
+  document.addEventListener('input', function(e) {
+    const t = e.target;
+    if (!t || !t.id) return;
+
+    // (A) Ketika user mengetik di field Nama → propagate ke custPPPoE
+    if (t.id === 'custName') {
+      if (_custEditId) return;              // skip di mode edit
+      if (_pppoeManuallyEdited) return;     // skip kalau user sudah edit manual
+
+      const pppoeEl = document.getElementById('custPPPoE');
+      if (!pppoeEl) return;
+      pppoeEl.value = _slugifyForPppoe(t.value);
+      return;
+    }
+
+    // (B) Ketika user mengetik manual di field PPPoE → set flag
+    //     supaya auto-fill berhenti menimpa.
+    //     Kalau user mengosongkan field, reset flag supaya auto-fill
+    //     kembali aktif (re-generate dari nama).
+    if (t.id === 'custPPPoE') {
+      _pppoeManuallyEdited = !!(t.value && t.value.trim());
+      return;
+    }
+  });
+})();
+
 // ═══════════════════════════════════════════════════════════════════════
 // PORTAL CREDENTIALS — admin mengubah login ID & password Customer Portal
 // (hanya tampil saat modal EDIT customer, di-injeksi oleh editCustomer())

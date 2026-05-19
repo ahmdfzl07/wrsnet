@@ -475,6 +475,47 @@ class DashboardController {
         }]
       });
 
+      // List ticket yang open (open / in_progress / pending) untuk
+      // ditampilkan di card Ticket Statistics dashboard.
+      // Dibatasi 10 terbaru, di-order by priority (critical/high dulu)
+      // lalu createdAt DESC, sehingga ticket yang urgent muncul di atas.
+      const openTicketsRows = await Ticket.findAll({
+        where: { status: { [Op.in]: ['open', 'in_progress', 'pending'] } },
+        limit: 10,
+        order: [
+          // FIELD() di MySQL → custom enum ordering: critical > high > medium > low
+          [sequelize.literal(`FIELD(priority, 'critical', 'high', 'medium', 'low')`), 'ASC'],
+          ['created_at', 'DESC']
+        ],
+        include: [{
+          model: Customer,
+          as: 'customer',
+          attributes: ['name', 'customer_id'],
+          required: false
+        }],
+        attributes: [
+          'id', 'ticket_number', 'title', 'type',
+          'priority', 'status', 'created_at', 'due_at'
+        ]
+      });
+
+      // Bentuk ulang menjadi shape ringan (hilangkan nested-yang-tidak-perlu)
+      const openTicketsList = openTicketsRows.map(t => {
+        const plain = t.get ? t.get({ plain: true }) : t;
+        return {
+          id:            plain.id,
+          ticket_number: plain.ticket_number,
+          title:         plain.title,
+          type:          plain.type,
+          priority:      plain.priority,
+          status:        plain.status,
+          created_at:    plain.created_at || plain.createdAt,
+          due_at:        plain.due_at,
+          customer_name: plain.customer?.name || null,
+          customer_id:   plain.customer?.customer_id || null
+        };
+      });
+
       res.json({
         success: true,
         data: {
@@ -488,6 +529,7 @@ class DashboardController {
           by_type: byType,
           by_priority: byPriority,
           critical_tickets: criticalTickets,
+          open_tickets_list: openTicketsList,
           period
         }
       });
@@ -498,9 +540,32 @@ class DashboardController {
   }
 
   // ─── BANDWIDTH USAGE TRENDS ──────────────────────────────────
+  // Query params:
+  //   - period:    'realtime' (1h, per minute) | 'daily' (30d, per hour) | 'weekly' (7d, per day)
+  //   - device_id: optional, filter ke device tertentu (MikroTik). Tanpa ini = semua device.
+  //   - interface: optional, filter ke interface_name tertentu (mis. 'ether1','sfp1','VLAN_DDCUP').
+  //                Tanpa ini = aggregate SEMUA interface di device yang dipilih.
   async bandwidthTrends(req, res) {
     try {
       const period = req.query.period || 'daily'; // 'realtime' | 'daily' | 'weekly'
+
+      // Filter device & interface (opsional)
+      const deviceId  = req.query.device_id ? parseInt(req.query.device_id) : null;
+      const ifaceName = req.query.interface ? String(req.query.interface).trim() : '';
+
+      // Build WHERE clause replacements dynamically.
+      // Pakai sequelize replacement positional (?) karena query raw SQL.
+      const extraWhere   = [];
+      const extraValues  = [];
+      if (deviceId && Number.isFinite(deviceId) && deviceId > 0) {
+        extraWhere.push('device_id = ?');
+        extraValues.push(deviceId);
+      }
+      if (ifaceName) {
+        extraWhere.push('interface_name = ?');
+        extraValues.push(ifaceName);
+      }
+      const extraWhereSql = extraWhere.length ? (' AND ' + extraWhere.join(' AND ')) : '';
 
       // ── MODE: Realtime (1 jam terakhir, per menit) ──
       if (period === 'realtime') {
@@ -515,11 +580,11 @@ class DashboardController {
             MAX(tx_rate) / 1000000 AS peak_upload_mbps,
             SUM(rx_bytes + tx_bytes) / 1073741824 AS total_gb
           FROM traffic_data
-          WHERE recorded_at >= ?
+          WHERE recorded_at >= ?${extraWhereSql}
           GROUP BY bucket
           ORDER BY bucket DESC
         `, {
-          replacements: [startDate],
+          replacements: [startDate, ...extraValues],
           type: sequelize.QueryTypes.SELECT
         });
 
@@ -534,7 +599,12 @@ class DashboardController {
           total_gb: parseFloat(r.total_gb || 0).toFixed(2)
         }));
 
-        return res.json({ success: true, data: groupedData, period });
+        return res.json({
+          success: true,
+          data: groupedData,
+          period,
+          filter: { device_id: deviceId, interface: ifaceName || null }
+        });
       }
 
       // ── MODE: Daily / Weekly ──
@@ -553,11 +623,11 @@ class DashboardController {
           MAX(tx_rate) / 1000000 as peak_upload_mbps,
           SUM(rx_bytes + tx_bytes) / 1073741824 as total_gb
         FROM traffic_data
-        WHERE recorded_at >= ?
+        WHERE recorded_at >= ?${extraWhereSql}
         GROUP BY DATE(recorded_at), HOUR(recorded_at)
         ORDER BY date DESC, hour DESC
       `, {
-        replacements: [startDate],
+        replacements: [startDate, ...extraValues],
         type: sequelize.QueryTypes.SELECT
       });
 
@@ -611,10 +681,60 @@ class DashboardController {
       res.json({
         success: true,
         data: groupedData,
-        period
+        period,
+        filter: { device_id: deviceId, interface: ifaceName || null }
       });
     } catch (error) {
       console.error('Error fetching bandwidth trends:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  // ─── BANDWIDTH INTERFACES LIST ───────────────────────────────
+  // Mengembalikan daftar nama interface yang ADA datanya di traffic_data
+  // untuk device tertentu (atau semua device jika device_id tidak dikirim).
+  // Dipakai oleh dropdown "Pilih interface" di Bandwidth Trends.
+  //
+  // Query params:
+  //   - device_id: opsional, MikroTik device id
+  //   - days: opsional (default 30), batasi lookback agar query cepat
+  async bandwidthInterfaces(req, res) {
+    try {
+      const deviceId = req.query.device_id ? parseInt(req.query.device_id) : null;
+      const days     = req.query.days ? parseInt(req.query.days) : 30;
+      const startDate = moment().subtract(days, 'days').toDate();
+
+      const extraWhere  = [];
+      const extraValues = [];
+      if (deviceId && Number.isFinite(deviceId) && deviceId > 0) {
+        extraWhere.push('device_id = ?');
+        extraValues.push(deviceId);
+      }
+      const extraWhereSql = extraWhere.length ? (' AND ' + extraWhere.join(' AND ')) : '';
+
+      const rows = await sequelize.query(`
+        SELECT interface_name, COUNT(*) AS rows_count, MAX(recorded_at) AS last_seen
+        FROM traffic_data
+        WHERE recorded_at >= ?${extraWhereSql}
+        GROUP BY interface_name
+        ORDER BY rows_count DESC
+        LIMIT 50
+      `, {
+        replacements: [startDate, ...extraValues],
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      const data = rows
+        .filter(r => r.interface_name)
+        .map(r => ({
+          name: r.interface_name,
+          rows: parseInt(r.rows_count),
+          last_seen: r.last_seen
+        }));
+
+      res.json({ success: true, data, device_id: deviceId });
+    } catch (error) {
+      console.error('Error fetching bandwidth interfaces:', error);
       res.status(500).json({ success: false, message: error.message });
     }
   }
