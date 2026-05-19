@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
+  <link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
   <style>
@@ -388,7 +392,58 @@
         <div><label class="flbl">Router MikroTik <span style="font-size:10px;color:#0891b2;font-weight:600">(isolir)</span></label>
           <select class="finput" id="custMikrotikId"><option value="">— Pilih router —</option></select>
         </div>
-        <div style="grid-column:1/-1"><label class="flbl">Alamat</label><textarea class="finput" id="custAddress" rows="2" placeholder="Alamat lengkap"></textarea></div>
+<div style="grid-column:1/-1; border-top:1px solid #e2e8f0; margin-top:10px; padding-top:10px;">
+  <strong style="font-size:13px; color:#334155;">Informasi Wilayah & Lokasi Pelanggan</strong>
+</div>
+
+<div>
+  <label class="flbl">Nama Lokasi / Cluster</label>
+  <input type="text" class="finput" id="custLocationName" placeholder="Contoh: Perum Grand Residen">
+</div>
+
+<div><label class="flbl">Kode Lokasi</label>
+  <input type="text" class="finput" id="custKodeLokasi" readonly>
+</div>
+
+<div><label class="flbl">Provinsi</label>
+  <select id="custProvinsi" class="finput">
+  <option value=""> Pilih Provinsi</option>
+</select>
+</div>
+<div><label class="flbl">Kabupaten</label>
+  <select class="finput" id="custKabupaten" onchange="loadKecamatan(this.value)">
+    <option value="">Pilih Kabupaten</option>
+  </select>
+</div>
+
+<div><label class="flbl">Kecamatan</label>
+  <select class="finput" id="custKecamatan" onchange="loadKelurahan(this.value)">
+    <option value="">Pilih Kecamatan</option>
+  </select>
+</div>
+
+<div><label class="flbl">Kelurahan</label>
+  <select class="finput" id="custKelurahan">
+    <option value="">Pilih Kelurahan</option>
+  </select>
+</div>
+
+<div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+   <div><label class="flbl">RT</label>
+  <input type="text" class="finput" id="custRt" placeholder="001">
+</div>
+   <div><label class="flbl">RW</label>
+  <input type="text" class="finput" id="custRw" placeholder="002">
+</div>
+
+  </div>
+</div>
+
+<div style="grid-column:1/-1">
+  <label class="flbl">Alamat Lengkap (Jalan, No. Rumah, dll)</label>
+  <textarea class="finput" id="custAddress" rows="2" placeholder="Nama jalan, nomor rumah, detail patokan..."></textarea>
+</div>
         <div><label class="flbl">Latitude <span style="font-size:10px;font-weight:400;text-transform:none;color:var(--d-muted)">— koordinat peta</span></label><input type="text" class="finput" id="custLatitude" placeholder="-6.12345678" style="font-family:'DM Mono',monospace"></div>
         <div><label class="flbl">Longitude <span style="font-size:10px;font-weight:400;text-transform:none;color:var(--d-muted)">— koordinat peta</span></label><input type="text" class="finput" id="custLongitude" placeholder="106.12345678" style="font-family:'DM Mono',monospace"></div>
       </div>
@@ -612,9 +667,53 @@ window.custCardClick = function(el) {
 };
 
 /* Modal open/close shim — customers.js already handles openAddCustomer/closeModal */
-window.saveCustomerBtn = function() {
-  const btn = document.getElementById('saveCustomerBtn');
-  if (typeof saveCustomer === 'function') saveCustomer();
+window.saveCustomerBtn = async function () {
+  const btn = document.getElementById("saveCustomerBtn");
+
+  btn.disabled = true;
+  btn.innerText = "Menyimpan...";
+
+  try {
+    const body = {
+      name: document.getElementById("custName").value,
+      phone: document.getElementById("custPhone").value,
+      address: document.getElementById("custAddress").value,
+
+      province: document.getElementById("custProvinsi").selectedOptions[0]?.text || "",
+      province_id: document.getElementById("custProvinsi").value || "",
+
+      kabupaten: document.getElementById("custKabupaten").selectedOptions[0]?.text || "",
+      kabupaten_id: document.getElementById("custKabupaten").value || "",
+
+      kecamatan: document.getElementById("custKecamatan").selectedOptions[0]?.text || "",
+      kecamatan_id: document.getElementById("custKecamatan").value || "",
+
+      kelurahan: document.getElementById("custKelurahan").selectedOptions[0]?.text || "",
+      kelurahan_id: document.getElementById("custKelurahan").value || "",
+    };
+
+    const res = await fetch("/api/customers", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      closeModal();
+      loadCustomers();
+    } else {
+      alert(result.message);
+    }
+  } catch (err) {
+    console.error(err);
+  }
+
+  btn.disabled = false;
+  btn.innerText = "Simpan";
 };
 
 /* ── Customer name link → profile page ── */
@@ -1281,6 +1380,216 @@ function showImportResult(summary, errors, generatedIds) {
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+
+const API =
+  window.location.origin +
+  "/api/wilayah";
+
+let kabupatenSelect;
+let kecamatanSelect;
+let kelurahanSelect;
+
+
+async function loadKabupaten(
+  provinsiId
+) {
+
+  const res = await fetch(
+    `${API}/kabupaten/${provinsiId}`
+  );
+
+  const data = await res.json();
+
+  const kabupaten =
+    document.getElementById(
+      "custKabupaten"
+    );
+
+  kabupaten.innerHTML =
+    '<option value="">Pilih Kabupaten</option>';
+
+  data.forEach(item => {
+
+    kabupaten.innerHTML += `
+      <option value="${item.id}">
+        ${item.name}
+      </option>
+    `;
+  });
+
+  if (kabupatenSelect) {
+    kabupatenSelect.destroy();
+  }
+
+  kabupatenSelect =
+    new TomSelect(
+      "#custKabupaten",
+      {
+        create: false,
+
+        sortField: {
+          field: "text",
+          direction: "asc",
+        },
+
+        onChange(value) {
+
+          if (value) {
+            loadKecamatan(value);
+          }
+        },
+      }
+    );
+}
+
+async function loadKecamatan(
+  kabupatenId
+) {
+
+  const res = await fetch(
+    `${API}/kecamatan/${kabupatenId}`
+  );
+
+  const data = await res.json();
+
+  const kecamatan =
+    document.getElementById(
+      "custKecamatan"
+    );
+
+  kecamatan.innerHTML =
+    '<option value="">Pilih Kecamatan</option>';
+
+  data.forEach(item => {
+
+    kecamatan.innerHTML += `
+      <option value="${item.id}">
+        ${item.name}
+      </option>
+    `;
+  });
+
+  if (kecamatanSelect) {
+    kecamatanSelect.destroy();
+  }
+
+  kecamatanSelect =
+    new TomSelect(
+      "#custKecamatan",
+      {
+        create: false,
+
+        onChange(value) {
+
+          if (value) {
+            loadKelurahan(value);
+          }
+        },
+      }
+    );
+}
+
+
+async function loadKelurahan(
+  kecamatanId
+) {
+
+  const res = await fetch(
+    `${API}/kelurahan/${kecamatanId}`
+  );
+
+  const data = await res.json();
+
+  const kelurahan =
+    document.getElementById(
+      "custKelurahan"
+    );
+
+  kelurahan.innerHTML =
+    '<option value="">Pilih Kelurahan</option>';
+
+  data.forEach(item => {
+
+    kelurahan.innerHTML += `
+      <option
+        value="${item.id}"
+        data-code="${item.id}"
+      >
+        ${item.name}
+      </option>
+    `;
+  });
+
+  if (kelurahanSelect) {
+    kelurahanSelect.destroy();
+  }
+
+  kelurahanSelect =
+    new TomSelect(
+      "#custKelurahan",
+      {
+        create: false,
+
+        onChange(value) {
+
+          const select =
+            document.getElementById(
+              "custKelurahan"
+            );
+
+          const code =
+            select.options[
+              select.selectedIndex
+            ]?.dataset?.code;
+
+          document.getElementById(
+            "custKodeLokasi"
+          ).value = code || "";
+        },
+      }
+    );
+}
+
+async function loadProvinsi() {
+
+  const res = await fetch(
+    "/api/wilayah/provinsi"
+  );
+
+  const data = await res.json();
+
+  const provinsi =
+    document.getElementById(
+      "custProvinsi"
+    );
+
+  provinsi.innerHTML =
+    '<option value="">Pilih Provinsi</option>';
+
+  data.forEach(item => {
+
+    provinsi.innerHTML += `
+      <option value="${item.id}">
+        ${item.name}
+      </option>
+    `;
+  });
+
+  new TomSelect(
+    "#custProvinsi",
+    {
+      onChange(value) {
+
+        if (value) {
+          loadKabupaten(value);
+        }
+      },
+    }
+  );
+}
+
+
+loadProvinsi();
 </script>
 
 </body>
