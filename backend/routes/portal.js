@@ -5,6 +5,8 @@ const express = require("express");
 const router = express.Router();
 const { portalAuth } = require("../middleware/portalAuth");
 const PortalCtrl = require("../controllers/CustomerPortalController");
+const db = require("../models");
+const { LiveMessage } = db;
 
 // ── Public pages ──────────────────────────────────────────────
 router.get("/login", (req, res) =>
@@ -34,23 +36,6 @@ router.get("/dashboard", portalAuth, (req, res) =>
 );
 
 // Payment result pages (render halaman dedicated, bukan dashboard)
-router.get("/payment/finish", (req, res) =>
-  res.render("portal/payment-result", {
-    title: "Status Pembayaran",
-    layout: false,
-    status: "finish",
-    invoiceId: req.query.invoice || "",
-  }),
-);
-
-router.get("/payment/pending", (req, res) =>
-  res.render("portal/payment-result", {
-    title: "Pembayaran Pending",
-    layout: false,
-    status: "pending",
-    invoiceId: req.query.invoice || "",
-  }),
-);
 router.get("/payment/finish", (req, res) =>
   res.render("portal/payment-result", {
     title: "Status Pembayaran",
@@ -112,5 +97,100 @@ router.post("/webhook/xendit", PortalCtrl.xenditNotif);
 // Duitku kirim callback sebagai application/x-www-form-urlencoded.
 // Express sudah pasang urlencoded() global di server.js, jadi cukup register handler.
 router.post("/webhook/duitku", PortalCtrl.duitkuNotif);
+
+const { Op } = require("sequelize");
+
+// router.get("/api/chat/:room", portalAuth, async (req, res) => {
+//   try {
+//     const room = req.params.room;
+
+//     const { LiveMessage } = require("../models");
+
+//     const messages = await LiveMessage.findAll({
+//       where: {
+//         room: room,
+//       },
+//       order: [["created_at", "ASC"]],
+//     });
+
+//     res.json(messages);
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json([]);
+//   }
+// });
+
+// router.get("/api/chat-rooms", portalAuth, async (req, res) => {
+//   try {
+//     const { LiveMessage } = require("../models");
+//     const { fn, col } = require("sequelize");
+
+//     const rooms = await LiveMessage.findAll({
+//       attributes: ["room", [fn("MAX", col("created_at")), "last_time"]],
+//       group: ["room"],
+//       order: [[fn("MAX", col("created_at")), "DESC"]],
+//     });
+
+//     res.json(rooms);
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json([]);
+//   }
+// });
+
+router.get("/api/chat-rooms", portalAuth, async (req, res) => {
+  const { LiveMessage, Sequelize } = require("../models");
+  const { fn, col } = Sequelize;
+
+  const rooms = await LiveMessage.findAll({
+    attributes: [
+      "room",
+      "name",
+      [fn("SUM", Sequelize.literal("is_read = 0")), "unread"],
+      [fn("MAX", col("created_at")), "last_time"],
+    ],
+    group: ["room"],
+    order: [[fn("MAX", col("created_at")), "DESC"]],
+  });
+
+  res.json(rooms);
+});
+
+router.get("/api/chat/:room", portalAuth, async (req, res) => {
+  try {
+    const room = req.params.room;
+
+    const { LiveMessage } = require("../models");
+
+    const messages = await LiveMessage.findAll({
+      where: { room },
+      order: [["created_at", "ASC"]],
+    });
+
+    res.json(messages);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json([]);
+  }
+});
+router.post("/api/chat/read", portalAuth, async (req, res) => {
+  try {
+    const { room } = req.body;
+
+    await LiveMessage.update(
+      { is_read: true },
+      {
+        where: {
+          room,
+          is_read: false,
+        },
+      },
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+});
 
 module.exports = router;
