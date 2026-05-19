@@ -32,31 +32,42 @@ module.exports = (io) => {
     const db = require("../models");
     const LiveMessage = db.LiveMessage;
 
+    // SocketHandler.js
+
     socket.on("chat:join", (room) => {
       if (!room) return;
 
       socket.join(room);
 
-      logger.debug(
-        `Socket ${socket.id} joined room: ${room} (user: ${socket.userId})`,
-      );
+      logger.debug(`Join room: ${room}`);
+    });
+
+    socket.on("chat:leave", (room) => {
+      if (!room) return;
+
+      socket.leave(room);
     });
 
     socket.on("chat:send", async (data) => {
-      const { room, user_id, message } = data;
+      const { room, name, user_id, type, message } = data;
 
       const saved = await LiveMessage.create({
         room,
-        // user_id: socket.userId,
+        name,
         user_id,
+        type,
         message,
+        is_read: false,
       });
 
       const payload = {
         id: saved.id,
         room,
+        name,
         user_id,
+        type,
         message,
+        is_read: saved.is_read,
         created_at: saved.created_at,
       };
 
