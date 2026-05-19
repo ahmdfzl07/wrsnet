@@ -5,6 +5,7 @@
 const { WaTemplate, ReminderSetting, AppSetting, Invoice, Payment, Customer, Package, WaSession, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const moment = require('moment');
+const { getCompanyName } = require('../utils/companyInfo');
 
 const MONTHS = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
@@ -109,7 +110,7 @@ const templates = {
         due_date_baru:  fmtID(now.clone().add(30,'days')),
 
         // ── Identitas ISP / perusahaan ────────────────────────────────
-        perusahaan:     process.env.COMPANY_NAME || process.env.APP_NAME || 'ISP Provider',
+        perusahaan:     await getCompanyName(),
         phone_cs:       process.env.COMPANY_PHONE || process.env.SUPPORT_PHONE || '0800-1234-5678',
         pppoe_user:     'budi.santoso',
         static_ip:      '10.10.10.42'
@@ -229,7 +230,7 @@ const reminder = {
         );
 
         const MONTHS = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-        const companyName = process.env.COMPANY_NAME || process.env.APP_NAME || 'ISP Provider';
+        const companyName = await getCompanyName();
 
         for (const cust of customers) {
           // Render template dengan placeholder lengkap (sinkron dengan
@@ -319,7 +320,7 @@ const reminder = {
       );
 
       const MONTHS = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-      const companyName = process.env.COMPANY_NAME || process.env.APP_NAME || 'ISP Provider';
+      const companyName = await getCompanyName();
       const sample = sampleRows[0];
 
       let vars;
@@ -417,7 +418,7 @@ const report = {
       const sections = JSON.parse(req.query.sections || '{}');
       const { dateFrom, dateTo, label } = resolveRange(range, from, to);
       const data = await buildReportData(dateFrom, dateTo);
-      const appName = process.env.COMPANY_NAME || process.env.APP_NAME || 'ISP Provider';
+      const appName = await getCompanyName();
       // Load custom template if exists
       const { AppSetting } = require('../models');
       const tplRow = await AppSetting.findOne({ where: { key: 'report_template' } }).catch(() => null);
@@ -444,7 +445,7 @@ const report = {
 
       const { dateFrom, dateTo, label } = resolveRange(range);
       const data = await buildReportData(dateFrom, dateTo);
-      const appName = process.env.COMPANY_NAME || process.env.APP_NAME || 'ISP Provider';
+      const appName = await getCompanyName();
       const tplRowS = await AppSetting.findOne({ where: { key: 'report_template' } }).catch(() => null);
       const customTplS = tplRowS?.value || '';
       const message = customTplS

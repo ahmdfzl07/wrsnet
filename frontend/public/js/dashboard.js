@@ -9,6 +9,11 @@ let currentRange = '2s';       // '2s' | '1m' | '5m'
 let pollIntervalMs = 2000;     // default 2 detik
 let trafficTimerRef = null;
 
+// Interface yang dipilih user di dropdown Activity Chart.
+// Nilai '__all__' (default) = aggregate semua running interfaces.
+// Selain itu = nama interface tunggal yang akan dimonitor.
+let selectedActivityIface = '__all__';
+
 // MikroTik device selector — pakai shared util (window.MikrotikSelector)
 // Helper: append ?device_id=N ke URL (delegate ke shared util)
 function withDevice(url) {
@@ -42,15 +47,24 @@ document.addEventListener('DOMContentLoaded', () => {
           ], false);
         }
         monitoredInterfaces = [];
-        loadDashboardData();
+        selectedActivityIface = '__all__';
+        loadDashboardData().then(() => {
+          // Setelah list interface re-loaded untuk device baru, refresh dropdown
+          rebuildActivityIfaceDropdown();
+        });
         pollRealtimeTraffic();
       }
     });
   }
 
+  // Init Activity Chart interface selector
+  initActivityIfaceSelector();
+
   waitForApex(() => {
     initActivityChart();
-    loadDashboardData();
+    loadDashboardData().then(() => {
+      rebuildActivityIfaceDropdown();
+    });
     loadDevices();
     loadBillingStats();
     initRefresh();
@@ -63,6 +77,50 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+
+// ─── ACTIVITY CHART INTERFACE SELECTOR ───────────────────────
+function initActivityIfaceSelector() {
+  const sel = document.getElementById('activityChartIface');
+  if (!sel) return;
+  sel.addEventListener('change', () => {
+    selectedActivityIface = sel.value || '__all__';
+    // Reset series + restart polling untuk dataset bersih
+    rxSeries.length = 0; txSeries.length = 0;
+    if (activityChart) {
+      activityChart.updateSeries([
+        { name: 'RX', data: [] },
+        { name: 'TX', data: [] }
+      ], false);
+    }
+    updateChartStats();
+    pollRealtimeTraffic();
+  });
+}
+
+// Populate dropdown dengan list interface running dari device aktif.
+// Dipanggil setelah loadDashboardData / initInterfaceList selesai.
+function rebuildActivityIfaceDropdown() {
+  const sel = document.getElementById('activityChartIface');
+  if (!sel) return;
+
+  const previous = selectedActivityIface;
+
+  // Build options. Default "All Interfaces" → aggregate.
+  let html = '<option value="__all__">All Interfaces</option>';
+  monitoredInterfaces.forEach(name => {
+    html += `<option value="${escHtml(name)}">${escHtml(name)}</option>`;
+  });
+  sel.innerHTML = html;
+
+  // Restore selection jika masih ada, kalau tidak fallback ke __all__
+  if (previous && previous !== '__all__' && monitoredInterfaces.includes(previous)) {
+    sel.value = previous;
+    selectedActivityIface = previous;
+  } else {
+    sel.value = '__all__';
+    selectedActivityIface = '__all__';
+  }
+}
 
 function startTrafficTimer() {
   stopTrafficTimer();
@@ -133,9 +191,11 @@ async function loadDashboardData() {
   if (d.interfaces?.length) {
     monitoredInterfaces = d.interfaces.map(i => i.name);
     renderTrafficList(d.interfaces);
+    rebuildActivityIfaceDropdown();
   } else {
     // Inisialisasi list interface dari /interfaces
     await initInterfaceList();
+    rebuildActivityIfaceDropdown();
   }
 }
 
@@ -180,26 +240,43 @@ async function pollRealtimeTraffic() {
     if (!data?.success || !data.data?.length) return;
 
     let totalRxBps = 0, totalTxBps = 0;
+    let chartRxBps = 0, chartTxBps = 0;
     const ifaceData = [];
 
     data.data.forEach(s => {
       const rxMbps = (s.rxBitsPerSecond / 1_000_000);
       const txMbps = (s.txBitsPerSecond / 1_000_000);
+
+      // Total selalu aggregate semua interface (untuk card "Total Bandwidth"
+      // dan sidebar bandwidth bar — angka aggregate tetap relevan terlepas
+      // dari interface mana yang dipilih user di Activity Chart).
       totalRxBps += s.rxBitsPerSecond;
       totalTxBps += s.txBitsPerSecond;
+
+      // Chart series tergantung pilihan user:
+      //   '__all__'           → aggregate semua interface (sum)
+      //   <nama interface>    → hanya interface tersebut
+      if (selectedActivityIface === '__all__') {
+        chartRxBps += s.rxBitsPerSecond;
+        chartTxBps += s.txBitsPerSecond;
+      } else if (s.name === selectedActivityIface) {
+        chartRxBps = s.rxBitsPerSecond;
+        chartTxBps = s.txBitsPerSecond;
+      }
+
       ifaceData.push({ name: s.name, rxMbps, txMbps });
 
       // Update baris di traffic list
       updateIfaceRow(s.name, rxMbps, txMbps);
     });
 
-    // Update activity chart
-    pushChartPoint(totalRxBps / 1_000_000, totalTxBps / 1_000_000);
+    // Update activity chart sesuai filter user
+    pushChartPoint(chartRxBps / 1_000_000, chartTxBps / 1_000_000);
 
-    // Update total bandwidth card
+    // Update total bandwidth card (selalu aggregate)
     setText('totalBandwidth', (totalRxBps / 1_000_000).toFixed(1));
 
-    // Update sidebar bandwidth bar
+    // Update sidebar bandwidth bar (selalu aggregate)
     updateBandwidthBar(totalRxBps / 1_000_000);
 
   } catch (e) { /* silent */ }
@@ -451,27 +528,27 @@ async function loadTotalOutstanding() {
   try {
     const data = await App.api('/billing/total-outstanding');
     if (!data?.success) return;
-    
-    const totalAmount = data.data.total_amount || 0;
-    const customerCount = data.data.customer_count || 0;
-    
+
+    // Backend mengembalikan total_amount + customer_count (preferred),
+    // dengan fallback `total` untuk backward-compat.
+    const totalAmount   = (data.data.total_amount != null)
+      ? Number(data.data.total_amount)
+      : Number(data.data.total || 0);
+    const customerCount = Number(data.data.customer_count || 0);
+
     // Update total outstanding
     const totalEl = document.getElementById('totalOutstanding');
     if (totalEl) {
-      totalEl.textContent = App.formatCurrency 
-        ? App.formatCurrency(totalAmount) 
+      totalEl.textContent = App.formatCurrency
+        ? App.formatCurrency(totalAmount)
         : `Rp ${totalAmount.toLocaleString('id-ID')}`;
-      
-      // Add visual indicator based on amount
-      if (totalAmount > 5000000) {
-        totalEl.style.color = '#ef4444'; // Red if > 5 juta
-      } else if (totalAmount > 2000000) {
-        totalEl.style.color = '#f59e0b'; // Orange if > 2 juta
-      } else {
-        totalEl.style.color = '#10b981'; // Green
-      }
+
+      // Warna konsisten: hijau jika Rp 0 (tidak ada tunggakan),
+      // selain itu pakai warna default kotak (orange/amber).
+      // Tidak lagi berubah-ubah berdasar amount, agar visual stabil.
+      totalEl.style.color = totalAmount > 0 ? '' : '#10b981';
     }
-    
+
     // Update customer count detail
     const detailEl = document.getElementById('outstandingDetail');
     if (detailEl) {

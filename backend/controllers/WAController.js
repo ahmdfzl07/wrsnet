@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const WAService = require('../services/WAService');
 const logger    = require('../utils/logger');
 const moment    = require('moment');
+const { getCompanyName } = require('../utils/companyInfo');
 
 class WAController {
 
@@ -669,7 +670,7 @@ async function _sendInvoiceReminders(session_id, daysBefore, io) {
   // Placeholder yang didukung: {nama} {invoice} {paket} {periode} {jumlah} {jatuh_tempo} {status} {perusahaan}
   const tplOverdue = await WaTemplate.findOne({ where: { category: 'reminder_overdue', is_active: true }, order: [['updated_at','DESC']] });
   const tplDue     = await WaTemplate.findOne({ where: { category: 'reminder_due',     is_active: true }, order: [['updated_at','DESC']] });
-  const companyName = process.env.COMPANY_NAME || process.env.APP_NAME || 'DIGSnet';
+  const companyName = await getCompanyName();
   const MONTHS = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
   let sent = 0, skipped = 0;
 

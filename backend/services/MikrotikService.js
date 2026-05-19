@@ -358,7 +358,66 @@ class MikrotikService {
     }));
   }
 
-  async disconnectPPPoE(id) { return this.post(`/ppp/active/${encodeURIComponent(id)}/remove`, {}); }
+  // Disconnect (kick) sesi PPP aktif berdasarkan internal ID (mis. "*80000002").
+  //
+  // RouterOS v7 REST API tidak konsisten antar-build untuk perintah `remove`
+  // pada `/ppp/active`. Kita ikuti pola yang sudah teruji pada deletePPPoESecret:
+  // coba beberapa bentuk RPC + DELETE, lalu verifikasi via list-scan.
+  //
+  // Catatan: ID seperti "*80000002" boleh berisi karakter `*`. encodeURIComponent
+  // mengubahnya jadi "%2A", dan beberapa build merespons dengan
+  // "no such command prefix". Strategi 2 (numbers=<id raw>) terbukti paling
+  // kompatibel karena mirror perintah CLI `/ppp/active remove numbers=<id>`.
+  async disconnectPPPoE(id) {
+    const encId = encodeURIComponent(id);
+
+    const verifyGone = async () => {
+      try {
+        const all = await this.get('/ppp/active');
+        if (!Array.isArray(all)) return true;
+        return !all.some(r => r['.id'] === id);
+      } catch (e) {
+        return false;
+      }
+    };
+
+    const attempts = [
+      // Strategy 1: CLI-style remove via collection endpoint, raw id di body.
+      //   Mirror: `/ppp/active remove numbers=*XXX`. Paling kompatibel.
+      { label: 'POST /remove numbers',
+        run: () => this.request('POST', `/ppp/active/remove`, { numbers: id }) },
+
+      // Strategy 2: RPC-style POST /<path>/<id>/remove (id encoded).
+      { label: 'POST .id/remove',
+        run: () => this.request('POST', `/ppp/active/${encId}/remove`, null) },
+
+      // Strategy 3: HTTP DELETE /<path>/<id>.
+      { label: 'HTTP DELETE',
+        run: () => this.request('DELETE', `/ppp/active/${encId}`) },
+    ];
+
+    let lastErr = null;
+    for (const a of attempts) {
+      try {
+        await a.run();
+      } catch (e) {
+        lastErr = e;
+        // Lanjut verifikasi — error transient (ECONNRESET) bisa terjadi
+        // padahal session sudah ter-disconnect.
+      }
+      if (await verifyGone()) {
+        logger.info(`[MT] disconnectPPPoE id=${id} succeeded via: ${a.label}`);
+        return { success: true };
+      }
+      logger.warn(`[MT] disconnectPPPoE id=${id} attempt "${a.label}" did not remove session; trying next`);
+    }
+
+    throw new Error(
+      lastErr
+        ? `MikroTik: disconnect accepted but session still active (${lastErr.message})`
+        : 'MikroTik: disconnect accepted but session still active'
+    );
+  }
 
   // ── PPPoE Secrets CRUD ─────────────────────────────────────
   async createPPPoESecret(data) {

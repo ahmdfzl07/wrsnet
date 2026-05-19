@@ -2,6 +2,7 @@
 <% if (typeof user !== 'undefined' && user && user.role && user.role.name === 'demo') { %>
   <%- include('./demo-banner') %>
 <% } %>
+<% const isFinanceUser = (typeof user !== 'undefined') && user && user.role && user.role.name === 'finance'; %>
 <!-- Top Navigation Bar -->
 <header class="topbar">
   <div class="topbar-left">
@@ -23,117 +24,6 @@
       <div class="global-search-dropdown" id="globalSearchDropdown"></div>
     </div>
     <div class="topbar-actions">
-      <!-- CHAT PANEL -->
-      <div class="chat-wrap">
-
-        <button class="topbar-btn" onclick="toggleChatPanel()" style="position:relative;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-          </svg>
-
-          <span id="chatBadge" style="
-            display:none;
-            position:absolute;
-            top:-5px;
-            right:-5px;
-            background:red;
-            color:white;
-            font-size:10px;
-            padding:2px 6px;
-            border-radius:10px;
-          ">0</span>
-        </button>
-
-        <div id="chatPanel" style="
-          display:none;
-          position:absolute;
-          right:0;
-          top:40px;
-          width:300px;
-          background:white;
-          border:1px solid #ddd;
-          border-radius:8px;
-          box-shadow:0 4px 12px rgba(0,0,0,0.1);
-          z-index:999;
-        ">
-
-          <div style="padding:10px;border-bottom:1px solid #eee;font-weight:600;">
-            Chat Customer
-          </div>
-
-          <div id="chatRoomList" style="max-height:350px;overflow:auto;">
-            <div style="padding:10px;text-align:center;color:#888;">
-              Tidak ada chat
-            </div>
-          </div>
-
-        </div>
-
-      </div>
-
-      <!-- CHAT AREA -->
-      <div id="chatContainer" style="
-        position:fixed;
-        bottom:0;
-        right:20px;
-        width:300px;
-        background:white;
-        border:1px solid #ddd;
-        border-radius:10px 10px 0 0;
-        box-shadow:0 -2px 10px rgba(0,0,0,0.1);
-        display:none;
-        z-index:999;
-      ">
-
-        <div id="chatTitle" style="
-          padding:10px;
-          border-bottom:1px solid #eee;
-          font-weight:600;
-          background:#f9fafb;
-          display:flex;
-          justify-content:space-between;
-          align-items:center;
-        ">
-
-          <span id="chatTitleText">Chat</span>
-
-          <button onclick="closeChat()" style="
-            background:none;
-            border:none;
-            cursor:pointer;
-            font-size:16px;
-            line-height:1;
-            color:#666;
-          ">
-            ✕
-          </button>
-
-        </div>
-
-        <div id="chatBox" style="
-          height:250px;
-          overflow-y:auto;
-          padding:10px;
-          background:#f3f4f6;
-        "></div>
-
-        <div style="display:flex;border-top:1px solid #eee;">
-          <input id="chatInput" placeholder="Ketik pesan..." style="
-            flex:1;
-            border:none;
-            padding:10px;
-            outline:none;
-          ">
-          <button onclick="sendChat()" style="
-            background:#4f46e5;
-            color:white;
-            border:none;
-            padding:10px;
-            cursor:pointer;
-          ">Kirim</button>
-        </div>
-
-      </div>
 
       <!-- Notification Bell -->
       <div class="notif-wrap" id="notifWrap">
@@ -351,284 +241,6 @@
 </style>
 
 <div class="notification-dropdown" id="notifDropdown" style="display:none"></div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script>
-const socket = io("http://localhost:3001", {
-  auth: {
-    token: localStorage.getItem("token")
-  }
-});
-
-let UNREAD = {};
-const user = JSON.parse(localStorage.getItem("user") || "{}");
-const customer = JSON.parse(localStorage.getItem("portal_customer") || "{}");
-
-const USER_ID = user?.id ?? null;
-const USER_NAME = user?.name ?? null;
-const CUSTOMER_ID = customer?.id ?? null;
-
-const TYPE = "admin";
-
-const MY_ID = CUSTOMER_ID ?? USER_ID;
-
-let CURRENT_ROOM = null;
-function toggleChatPanel() {
-  const panel = document.getElementById("chatPanel");
-
-  panel.style.display =
-    panel.style.display === "none" ? "block" : "none";
-
-  if (panel.style.display === "block") {
-    loadChatRooms();
-  }
-}
-function loadChatRooms() {
-  fetch("/portal/api/chat-rooms")
-    .then(res => res.json())
-    .then(data => {
-      const list = document.getElementById("chatRoomList");
-      list.innerHTML = "";
-
-      updateChatBadge(data);
-
-      if (!data.length) {
-        list.innerHTML = "<p style='padding:10px;'>Tidak ada chat</p>";
-        return;
-      }
-
-      data.forEach(room => {
-        const unread = parseInt(room.unread) || 0;
-
-        const div = document.createElement("div");
-        div.style.padding = "10px";
-        div.style.borderBottom = "1px solid #eee";
-        div.style.cursor = "pointer";
-        div.style.display = "flex";
-        div.style.justifyContent = "space-between";
-
-        div.innerHTML = `
-          <div>
-            <b>${room.name}</b>
-          </div>
-          ${unread > 0 ? `<span style="
-            background:red;
-            color:white;
-            font-size:10px;
-            padding:2px 6px;
-            border-radius:10px;
-          ">${unread}</span>` : ""}
-        `;
-
-        div.onclick = () => openChatRoom(room.room, room.name);
-
-        list.appendChild(div);
-      });
-    });
-}
-function openChatRoom(room, name) {
-  if (CURRENT_ROOM) {
-    socket.emit("chat:leave", CURRENT_ROOM);
-  }
-
-  CURRENT_ROOM = room;
-
-  socket.emit("chat:join", CURRENT_ROOM);
-
-  document.getElementById("chatPanel").style.display = "none";
-  document.getElementById("chatContainer").style.display = "block";
-
-  const customerCode = room.replace("customer_", "");
-
-  document.getElementById("chatTitleText").innerText = name;
-
-  fetch("/portal/api/chat/read", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ room }),
-  });
-
-  loadChatRoom(room);
-}
-function loadChatRoom(room) {
-  const box = document.getElementById("chatBox");
-
-  if (!box) {
-    console.error("chatBox tidak ditemukan!");
-    return;
-  }
-
-  fetch(`/portal/api/chat/${room}`)
-    .then(res => res.json())
-    .then(data => {
-      box.innerHTML = "";
-
-      data.forEach(renderMessage);
-      scrollBottom();
-    });
-}
-socket.on("chat:receive", (data) => {
-  if (data.room === CURRENT_ROOM) {
-    renderMessage(data);
-    scrollBottom();
-  }
-
-  loadUnreadBadge();
-});
-function formatDateLabel(dateStr) {
-  const date = new Date(dateStr);
-  const now = new Date();
-
-  const isToday =
-    date.toDateString() === now.toDateString();
-
-  const yesterday = new Date();
-  yesterday.setDate(now.getDate() - 1);
-
-  const isYesterday =
-    date.toDateString() === yesterday.toDateString();
-
-  if (isToday) return "Hari ini";
-  if (isYesterday) return "Kemarin";
-
-  return date.toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric"
-  });
-}
-let LAST_DATE = null;
-
-function renderMessage(data) {
-  const box = document.getElementById("chatBox");
-
-  const msgDate = new Date(data.created_at);
-  const currentDate = msgDate.toDateString();
-
-  if (LAST_DATE !== currentDate) {
-    LAST_DATE = currentDate;
-
-    const dateDivider = document.createElement("div");
-    dateDivider.style.textAlign = "center";
-    dateDivider.style.margin = "10px 0";
-    dateDivider.style.fontSize = "11px";
-    dateDivider.style.color = "#666";
-
-    dateDivider.innerText = formatDateLabel(data.created_at);
-
-    box.appendChild(dateDivider);
-  }
-
-  const isMe =
-    String(data.user_id) === String(MY_ID) &&
-    data.type === "admin";
-
-  const wrap = document.createElement("div");
-  wrap.style.display = "flex";
-  wrap.style.flexDirection = "column";
-  wrap.style.alignItems = isMe ? "flex-end" : "flex-start";
-  wrap.style.margin = "6px 0";
-
-  const bubble = document.createElement("div");
-  bubble.style.maxWidth = "70%";
-  bubble.style.padding = "10px 14px";
-  bubble.style.borderRadius = "14px";
-  bubble.style.background = isMe ? "#4f46e5" : "#e5e7eb";
-  bubble.style.color = isMe ? "white" : "#111";
-
-  bubble.innerText = data.message;
-
-  const meta = document.createElement("small");
-
-  const time = msgDate.toLocaleTimeString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-
-  meta.style.fontSize = "11px";
-  meta.style.opacity = "0.6";
-
-  meta.innerText = isMe
-    ? `You • ${time}`
-    : `${data.name} • ${time}`;
-
-  wrap.appendChild(bubble);
-  wrap.appendChild(meta);
-
-  box.appendChild(wrap);
-}
-function sendChat() {
-  const input = document.getElementById("chatInput");
-  const message = input.value.trim();
-
-  if (!message || !CURRENT_ROOM) return;
-
-  socket.emit("chat:send", {
-    room: CURRENT_ROOM,
-    name: USER_NAME,
-    user_id: MY_ID,
-    type: TYPE,
-    message
-  });
-
-  input.value = "";
-}
-function scrollBottom() {
-  const box = document.getElementById("chatBox");
-  box.scrollTop = box.scrollHeight;
-}
-function updateGlobalBadge() {
-  const badge = document.getElementById("chatBadge");
-
-  const total = Object.values(UNREAD).reduce((a, b) => a + b, 0);
-
-  if (total > 0) {
-    badge.style.display = "inline-block";
-    badge.innerText = total;
-  } else {
-    badge.style.display = "none";
-  }
-}
-function updateChatBadge(dataRooms) {
-  const badge = document.getElementById("chatBadge");
-
-  let total = 0;
-
-  dataRooms.forEach(r => {
-    total += parseInt(r.unread || 0);
-  });
-
-  if (total > 0) {
-    badge.style.display = "inline-block";
-    badge.innerText = total;
-  } else {
-    badge.style.display = "none";
-  }
-}
-function loadUnreadBadge() {
-  fetch("/portal/api/chat-rooms")
-    .then(res => res.json())
-    .then(data => {
-      updateChatBadge(data);
-    })
-    .catch(err => console.error(err));
-}
-function closeChat() {
-  const container = document.getElementById("chatContainer");
-
-  container.style.display = "none";
-
-  if (CURRENT_ROOM) {
-    socket.emit("chat:leave", CURRENT_ROOM);
-    CURRENT_ROOM = null;
-  }
-}
-document.addEventListener("DOMContentLoaded", () => {
-  loadUnreadBadge();
-});
-</script>
 
 <script>
 // ── Notification Panel ─────────────────────────────────────────
@@ -998,6 +610,40 @@ document.addEventListener('DOMContentLoaded', () => {
 <!-- ═══════════════════════════════════════════════════════════ -->
 <!-- BOTTOM NAVBAR — Mobile only                               -->
 <!-- ═══════════════════════════════════════════════════════════ -->
+<% if (isFinanceUser) { %>
+<nav class="bottom-nav" id="bottomNav">
+  <a href="/finance" class="bn-item" data-page="finance-dashboard">
+    <div class="bn-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+    </div>
+    <span>Dashboard</span>
+  </a>
+  <a href="/customers" class="bn-item" data-page="customers">
+    <div class="bn-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </div>
+    <span>Customers</span>
+  </a>
+  <a href="/billing" class="bn-item" data-page="billing">
+    <div class="bn-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+    </div>
+    <span>Billing</span>
+  </a>
+  <a href="/payments" class="bn-item" data-page="payments">
+    <div class="bn-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+    </div>
+    <span>Bayar</span>
+  </a>
+  <button class="bn-item bn-more" onclick="toggleSidebar()">
+    <div class="bn-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </div>
+    <span>Menu</span>
+  </button>
+</nav>
+<% } else { %>
 <nav class="bottom-nav" id="bottomNav">
   <a href="/dashboard" class="bn-item" data-page="dashboard">
     <div class="bn-icon">
@@ -1032,8 +678,10 @@ document.addEventListener('DOMContentLoaded', () => {
     <span>Menu</span>
   </button>
 </nav>
+<% } %>
 
-<!-- FAB Quick-action menu -->
+<!-- FAB Quick-action menu (admin/superadmin only) -->
+<% if (!isFinanceUser) { %>
 <div class="bn-menu-overlay" id="bnMenuOverlay" onclick="toggleBnMenu()"></div>
 <div class="bn-menu" id="bnMenu">
   <div class="bn-menu-title">Quick Actions</div>
@@ -1100,6 +748,7 @@ document.addEventListener('DOMContentLoaded', () => {
     </a>
   </div>
 </div>
+<% } %>
 
 <style>
 /* ── Bottom Nav ─────────────────────────────────────────────── */

@@ -33,6 +33,10 @@ module.exports = (sequelize) => {
       type: DataTypes.ENUM('unpaid', 'paid', 'overdue', 'cancelled'),
       defaultValue: 'unpaid'
     },
+    last_wa_reminder_at: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
     due_date: {
       type: DataTypes.DATEONLY,
       allowNull: false

@@ -17,42 +17,7 @@ module.exports = (sequelize) => {
       allowNull: false
     },
     address: {
-  type: DataTypes.TEXT,
-  allowNull: true
-    },
-
-    province: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-
-    province_id: {
-      type: DataTypes.STRING(20),
-      allowNull: true
-    },
-
-    kabupaten: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-
-    kabupaten: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-
-    kecamatan: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-
-    kelurahan: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-
-    phone: {
-      type: DataTypes.STRING(20),
+      type: DataTypes.TEXT,
       allowNull: true
     },
     phone: {
@@ -130,54 +95,8 @@ module.exports = (sequelize) => {
       allowNull: true
     },
     pppoe_username: {
-  type: DataTypes.STRING(100),
-  allowNull: true
-    },
-
-    province: {
       type: DataTypes.STRING(100),
       allowNull: true
-    },
-
-    province_id: {
-      type: DataTypes.STRING(20),
-      allowNull: true
-    },
-
-    kabupaten: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-
-    kabupaten: {
-      type: DataTypes.STRING(20),
-      allowNull: true
-    },
-
-    kecamatan: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-
-    kecamatan: {
-      type: DataTypes.STRING(20),
-      allowNull: true
-    },
-
-    kelurahan: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-
-    kelurahan: {
-      type: DataTypes.STRING(20),
-      allowNull: true
-    },
-
-    billing_date: {
-      type: DataTypes.INTEGER,
-      defaultValue: 1,
-      validate: { min: 1, max: 28 }
     },
     billing_date: {
       type: DataTypes.INTEGER,

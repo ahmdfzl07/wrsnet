@@ -17,9 +17,17 @@ const logger  = require('../utils/logger');
 
 // Kolom yang ada di Excel (urutan = urutan di sheet)
 // `required: true` = wajib diisi user. `customer_id` boleh kosong → auto-generate.
+// `pppoe_username` juga boleh kosong → auto-generate dari Nama (sanitize: huruf+angka, lowercase).
+// `router_name` boleh kosong → backend akan coba auto-detect router dari pppoe_username
+//   (cari di router mana secret dengan nama itu berada).
+// `static_ip` untuk customer dengan IP static (bukan PPPoE). Format IPv4.
+//   Sistem akan cek ARP semua router untuk auto-detect mikrotik_id.
 const COLUMNS = [
   { key: 'customer_id',       header: 'ID Pelanggan',       required: false, width: 16 },
   { key: 'name',              header: 'Nama',               required: true,  width: 30 },
+  { key: 'pppoe_username',    header: 'Username PPPoE',     required: false, width: 22 },
+  { key: 'static_ip',         header: 'Static IP',          required: false, width: 16 },
+  { key: 'router_name',       header: 'Router MikroTik',    required: false, width: 22 },
   { key: 'phone',             header: 'No. HP',             required: false, width: 16 },
   { key: 'email',             header: 'Email',              required: false, width: 28 },
   { key: 'address',           header: 'Alamat',             required: false, width: 40 },
@@ -36,17 +44,135 @@ const COLUMNS = [
 const VALID_STATUS = ['active', 'inactive', 'isolated', 'suspended'];
 
 // ─────────────────────────────────────────────────────────────────────────────
+// HELPER: slugify nama jadi PPPoE username (sinkron dengan helper di
+// frontend `customers.js → _slugifyForPppoe`). Aturannya:
+//   - normalisasi diakritik (é → e, ñ → n)
+//   - lowercase
+//   - hanya huruf a-z dan angka 0-9; semua karakter lain di-drop
+//   - max 32 char
+//
+// CATATAN: function ini HANYA dipakai untuk AUTO-GENERATE dari Nama
+// (output bersih & predictable). Untuk input MANUAL user, pakai
+// `sanitizePppoeManual` yang lebih lenient (izinkan @ . - _).
+//
+// Contoh: "Budi Santoso"  → "budisantoso"
+//         "PT. Maju Jaya" → "ptmajujaya"
+// ─────────────────────────────────────────────────────────────────────────────
+function slugifyForPppoe(name) {
+  if (!name) return '';
+  let s = String(name).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  s = s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return s.slice(0, 32);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPER: sanitize INPUT MANUAL user (dari kolom Excel) jadi PPPoE username
+// yang valid untuk MikroTik. Lebih lenient dari `slugifyForPppoe`:
+//   - normalisasi diakritik
+//   - lowercase
+//   - karakter yang DIIZINKAN: a-z, 0-9, @, ., -, _
+//     (mendukung format realm-style seperti "avinda@net.id")
+//   - karakter lain (spasi, ', ", /, dll) di-drop
+//   - max 32 char
+//
+// Contoh: "avinda@net.id"      → "avinda@net.id"  (unchanged)
+//         "User.Name-01"       → "user.name-01"
+//         "apinda@dsr"         → "apinda@dsr"     (unchanged, sebelumnya jadi "apindadsr")
+//         "budi santoso"       → "budisantoso"    (spasi tetap dibuang)
+//         "USER@DOMAIN.ID"     → "user@domain.id" (di-lowercase)
+// ─────────────────────────────────────────────────────────────────────────────
+function sanitizePppoeManual(input) {
+  if (!input) return '';
+  let s = String(input).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  // Izinkan: huruf, angka, @, ., -, _
+  s = s.toLowerCase().replace(/[^a-z0-9@.\-_]/g, '');
+  return s.slice(0, 32);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPER: validasi IPv4 dasar.
+// Return null kalau invalid, atau string IP yang sudah dinormalisasi
+// (trim + tanpa leading zero di tiap octet).
+//
+// Diterima: "192.168.1.10", "10.0.0.1", "172.16.5.100"
+// Ditolak: "192.168.1.256" (>255), "192.168.1" (cuma 3 octet),
+//          "abc.def.ghi.jkl", "192.168.01.10" (leading zero curiga),
+//          "192.168.1.10/24" (CIDR — buang prefix dulu kalau mau)
+// ─────────────────────────────────────────────────────────────────────────────
+function validateIPv4(input) {
+  if (!input) return null;
+  const s = String(input).trim();
+  // Cocokkan dengan regex 4 octet
+  const m = s.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!m) return null;
+  const octets = [m[1], m[2], m[3], m[4]];
+  // Validasi setiap octet
+  for (const o of octets) {
+    // Tolak leading zero kecuali "0" itu sendiri ("00", "01" tidak boleh)
+    if (o.length > 1 && o.startsWith('0')) return null;
+    const n = parseInt(o, 10);
+    if (isNaN(n) || n < 0 || n > 255) return null;
+  }
+  // Return normalized (re-join supaya konsisten)
+  return octets.map(o => parseInt(o, 10)).join('.');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPER: pastikan PPPoE username unik (tidak bentrok dengan customer lain
+// di DB maupun dengan baris yang sudah diparse di file Excel ini).
+// Kalau bentrok, append angka: budisantoso → budisantoso2, budisantoso3, ...
+//
+// Param:
+//   - base:              username hasil slugify
+//   - existingDbSet:     Set berisi semua pppoe_username yang sudah ada di DB
+//   - takenInFileSet:    Set berisi username yang sudah dipakai baris-baris
+//                        sebelumnya di file ini
+//   - excludeCustomerId: customer_id baris ini (kalau action 'update', jangan
+//                        anggap username dirinya sendiri sebagai konflik)
+//   - dbUsernameToCid:   Map<pppoe_username, customer_id> untuk cek exclude
+// ─────────────────────────────────────────────────────────────────────────────
+function uniqifyPppoeUsername(base, existingDbSet, takenInFileSet, excludeCustomerId, dbUsernameToCid) {
+  if (!base) return '';
+  const conflict = (cand) => {
+    if (takenInFileSet.has(cand)) return true;
+    if (existingDbSet.has(cand)) {
+      // Kecuali username itu memang milik customer yang sama (mode update)
+      if (excludeCustomerId && dbUsernameToCid.get(cand) === excludeCustomerId) return false;
+      return true;
+    }
+    return false;
+  };
+
+  if (!conflict(base)) return base;
+  for (let n = 2; n <= 999; n++) {
+    const cand = (base + n).slice(0, 32);
+    if (!conflict(cand)) return cand;
+  }
+  // Fallback super jarang — pakai timestamp suffix
+  return (base + Date.now().toString().slice(-4)).slice(0, 32);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // EXPORT — generate Excel berisi semua customer
 // ─────────────────────────────────────────────────────────────────────────────
 exports.exportExcel = async (req, res) => {
   try {
-    const { Customer, Package } = require('../models');
+    const { Customer, Package, Device } = require('../models');
 
     // Ambil semua customer dengan relasi paket
     const customers = await Customer.findAll({
       include: [{ model: Package, as: 'package', attributes: ['name'] }],
       order: [['customer_id', 'ASC']],
     });
+
+    // Ambil daftar router (Device tipe router) untuk lookup id → name
+    // supaya kolom Router MikroTik di Excel ter-isi nama, bukan id mentah.
+    const routers = await Device.findAll({
+      where: { type: 'router' },
+      attributes: ['id', 'name'],
+      raw: true,
+    });
+    const routerIdToName = new Map(routers.map(r => [r.id, r.name]));
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'DIGSnet';
@@ -74,6 +200,9 @@ exports.exportExcel = async (req, res) => {
       sheet.addRow({
         customer_id:        c.customer_id,
         name:               c.name,
+        pppoe_username:     c.pppoe_username || '',
+        static_ip:          c.static_ip || '',
+        router_name:        c.mikrotik_id ? (routerIdToName.get(c.mikrotik_id) || '') : '',
         phone:              c.phone || '',
         email:              c.email || '',
         address:            c.address || '',
@@ -131,10 +260,12 @@ exports.downloadTemplate = async (req, res) => {
     });
     sheet.getRow(1).height = 24;
 
-    // Contoh row 1
+    // Contoh row 1 — router diisi eksplisit
     sheet.addRow({
       customer_id:        'CUST001',
       name:               'Budi Santoso',
+      pppoe_username:     'budisantoso',
+      router_name:        'CHR-CLOUD',
       phone:              '081234567890',
       email:              'budi@example.com',
       address:            'Jl. Mawar No. 5, Jakarta',
@@ -145,28 +276,46 @@ exports.downloadTemplate = async (req, res) => {
       ont_sn:             'HWTC12345678',
       ont_mac:            '00:11:22:33:44:55',
       installation_date:  '2024-01-15',
-      notes:              'Pelanggan loyal sejak 2020',
+      notes:              'Router diisi eksplisit dengan nama dari Device Management',
     });
 
-    // Contoh row 2 (data minimal — pakai ID custom)
+    // Contoh row 2 — router kosong (akan auto-detect dari pppoe_username)
     sheet.addRow({
       customer_id:        'CUST002',
       name:               'Siti Rahmawati',
+      pppoe_username:     'siti@home.id',
+      // router_name sengaja kosong → backend cari di router mana secret "siti@home.id" berada
       phone:              '081298765432',
       status:             'active',
+      notes:              'Router auto-detect: backend cari di semua router, secret ada di router mana → auto set',
     });
 
-    // Contoh row 3 (ID kosong → akan auto-generate)
+    // Contoh row 3 — semua minimal (ID, PPPoE, router akan auto)
     sheet.addRow({
-      // customer_id sengaja kosong
+      // customer_id sengaja kosong → auto-generate (CID001, CID002, ...)
       name:               'Ahmad (ID auto)',
+      // pppoe_username sengaja kosong → auto-generate dari Nama ("ahmadidauto")
+      // router_name kosong → auto-detect (kemungkinan tidak ketemu kalau secret belum dibuat)
       phone:              '081311112222',
       status:             'active',
-      notes:              'ID akan dibuat otomatis (CID001, CID002, ...)',
+      notes:              'ID & PPPoE username akan dibuat otomatis dari Nama',
+    });
+
+    // Contoh row 4 — customer dengan IP Static (bukan PPPoE)
+    sheet.addRow({
+      customer_id:        'CUST003',
+      name:               'PT. Klien Corporate',
+      // pppoe_username sengaja kosong → tidak pakai PPPoE
+      static_ip:          '192.168.10.50',
+      // router_name kosong → backend cari di ARP router mana IP itu muncul → auto-set
+      phone:              '081333334444',
+      package_name:       'Business 100Mbps',
+      status:             'active',
+      notes:              'Customer pakai IP Static. Router auto-detect dari ARP table.',
     });
 
     // Style contoh rows (italic, abu-abu) supaya user tahu itu contoh
-    [2, 3, 4].forEach(rowNum => {
+    [2, 3, 4, 5].forEach(rowNum => {
       sheet.getRow(rowNum).eachCell(cell => {
         cell.font = { italic: true, color: { argb: 'FF94A3B8' } };
       });
@@ -189,6 +338,9 @@ exports.downloadTemplate = async (req, res) => {
     const guideRows = [
       ['ID Pelanggan',      'Opsional',   'Teks unik, max 20 char',     'CUST001 (atau kosong)',       'Kalau kosong, sistem akan auto-generate (CID001, CID002, ...). Kalau diisi dan ID sudah ada, akan di-update sesuai mode import.'],
       ['Nama',              'Wajib',      'Teks max 150 char',          'Budi Santoso',                ''],
+      ['Username PPPoE',    'Opsional',   'a-z 0-9 @ . - _, max 32',    'avinda@net.id (atau kosong)', 'Kalau kosong, sistem auto-generate dari Nama (lowercase, hanya huruf+angka). Kalau diisi manual boleh pakai @ . - _ (mendukung format realm seperti "avinda@net.id"). Karakter lain (spasi, simbol) di-drop. Kalau bentrok dengan yang sudah ada, ditambah angka. SAAT PREVIEW: sistem akan cek apakah username sudah ada di router MikroTik aktif — kalau belum ada, akan muncul warning (row tetap valid &amp; bisa di-import).'],
+      ['Static IP',         'Opsional',   'Format IPv4 (xxx.xxx.xxx.xxx)', '192.168.10.50 (atau kosong)', 'Untuk customer dengan tipe langganan IP Static (BUKAN PPPoE). Format IPv4 standard, oktet 0-255. Kalau diisi, sistem akan cek ARP table semua router untuk auto-detect router mana IP itu aktif. IP yang tidak ditemukan di ARP manapun akan dapat warning (row tetap valid). Customer bisa pakai PPPoE saja, IP Static saja, atau keduanya (hybrid). IP harus UNIK di seluruh sistem.'],
+      ['Router MikroTik',   'Opsional',   'Nama router (sesuai Device Mgmt)', 'CHR-CLOUD (atau kosong)', 'Nama router tempat PPPoE secret / IP Static customer berada. Harus PERSIS sama dengan nama di halaman Device Management (case-insensitive OK). KALAU KOSONG: backend otomatis cari (1) di router mana secret PPPoE berada, atau (2) di ARP router mana IP Static aktif. Cocok untuk skenario multi-router. Kalau tidak ditemukan dimanapun, kolom mikrotik_id customer di-set NULL.'],
       ['No. HP',            'Opsional',   'Angka diawali 0/62/+',       '081234567890',                'Akan dinormalisasi ke format 62…'],
       ['Email',             'Opsional',   'Email valid',                'budi@example.com',            ''],
       ['Alamat',            'Opsional',   'Teks bebas',                 'Jl. Mawar No. 5',             ''],
@@ -252,11 +404,33 @@ exports.importPreview = async (req, res) => {
     }
 
     // Ambil semua existing customer_id untuk deteksi duplicate
+    // + pppoe_username untuk uniqify saat auto-generate
+    // + static_ip untuk uniqueness check IP
     const existingCustomers = await Customer.findAll({
-      attributes: ['id', 'customer_id'],
+      attributes: ['id', 'customer_id', 'pppoe_username', 'static_ip'],
       raw: true,
     });
     const existingMap = new Map(existingCustomers.map(c => [c.customer_id, c.id]));
+
+    // Set semua pppoe_username yang sudah dipakai di DB (non-null, lowercase)
+    // + Map pppoe_username → customer_id untuk exclude diri sendiri saat update
+    const existingPppoeSet = new Set();
+    const dbPppoeToCid = new Map();
+    // Idem untuk static_ip
+    const existingStaticIpSet = new Set();
+    const dbStaticIpToCid = new Map();
+    existingCustomers.forEach(c => {
+      if (c.pppoe_username) {
+        const u = String(c.pppoe_username).toLowerCase();
+        existingPppoeSet.add(u);
+        dbPppoeToCid.set(u, c.customer_id);
+      }
+      if (c.static_ip) {
+        const ip = String(c.static_ip).trim();
+        existingStaticIpSet.add(ip);
+        dbStaticIpToCid.set(ip, c.customer_id);
+      }
+    });
 
     // Ambil semua paket untuk lookup nama → id
     const packages = await Package.findAll({
@@ -265,9 +439,130 @@ exports.importPreview = async (req, res) => {
     });
     const packageMap = new Map(packages.map(p => [p.name.toLowerCase(), p.id]));
 
+    // ─────────────────────────────────────────────────────────────────────
+    // Fetch daftar PPPoE secret dari semua router MikroTik aktif.
+    // Digunakan untuk soft-validation + auto-detect router dari pppoe_username
+    // + lookup kolom "Router MikroTik" di Excel (nama → id).
+    //
+    // Strategi:
+    //   - Paralel fetch ke semua router via Promise.allSettled (fail-soft)
+    //   - Router yang error/timeout → di-skip dari validation
+    //   - Build:
+    //     * routerSecretsSet     : set semua secret name (untuk soft-validation)
+    //     * secretToRouterId     : map secret name → router id (untuk auto-detect)
+    //     * routerNameToId       : map nama router → id (untuk parsing kolom Excel)
+    //     * routerNameToIdAmbig  : kalau ada nama router duplikat → di sini
+    // ─────────────────────────────────────────────────────────────────────
+    const routerSecretsSet  = new Set();
+    const secretToRouterId  = new Map(); // pppoe_username (lowercase) → mikrotik_id
+    const secretsInMultiple = new Set(); // pppoe_username yang ada di > 1 router (ambigu)
+    const routerNameToId    = new Map(); // router name (lowercase) → mikrotik_id
+    const routerIdToOriginalName = new Map(); // id → nama asli (preserve casing)
+    // ARP lookup (untuk auto-detect router dari static_ip)
+    const arpIpSet          = new Set(); // semua IP yang ada di ARP table (untuk soft-validation)
+    const arpIpToRouterId   = new Map(); // IP → router id (untuk auto-detect)
+    const arpIpsInMultiple  = new Set(); // IP yang ada di > 1 router (ambigu)
+    const routerCheckWarnings = []; // warnings untuk frontend (router yang gagal di-cek)
+    const checkedRouterNames = []; // nama router yang berhasil di-cek
+
+    try {
+      const { Device } = require('../models');
+      const { getMikrotikInstanceByDevice } = require('../services/MikrotikService');
+
+      const routers = await Device.findAll({
+        where: { type: 'router', is_active: true },
+        attributes: ['id', 'name'],
+        raw: true,
+      });
+
+      // Bangun routerNameToId dari semua router aktif (untuk parsing kolom Excel
+      // — dipakai bahkan untuk router yang nanti gagal fetch, karena user mungkin
+      // mau set router eksplisit walau cek gagal).
+      routers.forEach(r => {
+        if (r.name) {
+          routerNameToId.set(String(r.name).toLowerCase(), r.id);
+          routerIdToOriginalName.set(r.id, r.name);
+        }
+      });
+
+      if (routers.length > 0) {
+        // Paralel fetch ke setiap router: SECRETS + ARP TABLE (digabung untuk hemat
+        // round-trip). Timeout 8 detik per fetch supaya router lambat tidak block.
+        const fetchOne = async (router) => {
+          try {
+            const mt = await Promise.race([
+              getMikrotikInstanceByDevice(router.id),
+              new Promise((_, rej) => setTimeout(() => rej(new Error('connect timeout')), 8000))
+            ]);
+            // Fetch secrets + ARP secara paralel di dalam satu router
+            const [secrets, arp] = await Promise.all([
+              Promise.race([
+                mt.getPPPoESecrets(),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('secrets timeout')), 8000))
+              ]).catch(e => { logger.warn(`[MT] secrets fetch failed for router ${router.id}: ${e.message}`); return []; }),
+              Promise.race([
+                mt.get('/ip/arp'),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('arp timeout')), 8000))
+              ]).catch(e => { logger.warn(`[MT] arp fetch failed for router ${router.id}: ${e.message}`); return []; })
+            ]);
+            return { router, secrets: secrets || [], arp: arp || [], ok: true };
+          } catch (err) {
+            return { router, ok: false, error: err.message };
+          }
+        };
+
+        const results = await Promise.allSettled(routers.map(fetchOne));
+
+        results.forEach(r => {
+          if (r.status !== 'fulfilled') return;
+          const v = r.value;
+          if (v.ok) {
+            checkedRouterNames.push(v.router.name);
+            // Process secrets
+            (v.secrets || []).forEach(s => {
+              if (!s || !s.name) return;
+              const lname = String(s.name).toLowerCase();
+              routerSecretsSet.add(lname);
+              if (secretToRouterId.has(lname) && secretToRouterId.get(lname) !== v.router.id) {
+                secretsInMultiple.add(lname);
+              } else {
+                secretToRouterId.set(lname, v.router.id);
+              }
+            });
+            // Process ARP table — extract address dari setiap entry
+            // Entry shape: { address: '192.168.1.10', 'mac-address': '...', interface: '...' }
+            (v.arp || []).forEach(a => {
+              if (!a || !a.address) return;
+              const ip = String(a.address).trim();
+              if (!ip) return;
+              arpIpSet.add(ip);
+              if (arpIpToRouterId.has(ip) && arpIpToRouterId.get(ip) !== v.router.id) {
+                arpIpsInMultiple.add(ip);
+              } else {
+                arpIpToRouterId.set(ip, v.router.id);
+              }
+            });
+          } else {
+            routerCheckWarnings.push(`Router "${v.router.name}": ${v.error}`);
+          }
+        });
+      } else {
+        routerCheckWarnings.push('Tidak ada router MikroTik aktif yang terdaftar di FLAYNET. Validasi PPPoE/IP ke router di-skip.');
+      }
+    } catch (err) {
+      // Fail-soft: kalau seluruh proses fetch gagal, lanjut tanpa validation
+      routerCheckWarnings.push(`Gagal cek secret/ARP di router: ${err.message}. Validasi di-skip.`);
+    }
+
+    // Bersihkan: secret/IP yang ambigu (ada di > 1 router) tidak boleh dipakai auto-detect
+    secretsInMultiple.forEach(name => secretToRouterId.delete(name));
+    arpIpsInMultiple.forEach(ip => arpIpToRouterId.delete(ip));
+
     // Parse rows
     const rows = [];
     const seenInFile = new Set();
+    const pppoeTakenInFile = new Set(); // tracking pppoe_username yang sudah dipakai dalam file
+    const staticIpTakenInFile = new Set(); // tracking static_ip yang sudah dipakai dalam file
     let rowIndex = 2; // mulai baris ke-2 (skip header)
 
     while (rowIndex <= sheet.rowCount) {
@@ -380,6 +675,151 @@ exports.importPreview = async (req, res) => {
         }
       }
 
+      // ── PPPoE Username ────────────────────────────────────────
+      // Kalau user isi manual di Excel: pakai itu via sanitizePppoeManual
+      //   → diizinkan: a-z, 0-9, @, ., -, _  (mendukung "avinda@net.id")
+      // Kalau kosong: auto-generate dari Nama via slugifyForPppoe (strict a-z0-9).
+      // Lalu pastikan unik terhadap DB & file ini.
+      // Kalau bentrok, di-suffix angka (budisantoso → budisantoso2, ...).
+      let pppoeUsername = String(rowData.pppoe_username || '').trim();
+      const pppoeOriginal = pppoeUsername; // simpan input asli untuk warning message
+      let pppoeAutoGenerated = false;
+
+      if (pppoeUsername) {
+        // User mengisi manual → sanitize lenient (izinkan @ . - _)
+        const cleaned = sanitizePppoeManual(pppoeUsername);
+        if (cleaned !== pppoeUsername.toLowerCase()) {
+          warnings.push(`Username PPPoE "${pppoeOriginal}" dibersihkan jadi "${cleaned}" (karakter yang diizinkan: huruf, angka, @, titik, strip, underscore — max 32 char)`);
+        }
+        pppoeUsername = cleaned;
+      } else if (name) {
+        // Kosong → auto-generate dari Nama (strict slugify, hanya a-z0-9)
+        pppoeUsername = slugifyForPppoe(name);
+        pppoeAutoGenerated = true;
+      }
+
+      if (pppoeUsername) {
+        // Cek uniqueness (kecuali kalau dirinya sendiri di mode update)
+        const excludeCid = (action === 'update') ? customerId : null;
+        const unique = uniqifyPppoeUsername(
+          pppoeUsername,
+          existingPppoeSet,
+          pppoeTakenInFile,
+          excludeCid,
+          dbPppoeToCid
+        );
+        if (unique !== pppoeUsername) {
+          warnings.push(`Username PPPoE "${pppoeUsername}" sudah dipakai, diubah jadi "${unique}"`);
+          pppoeUsername = unique;
+        } else if (pppoeAutoGenerated) {
+          warnings.push(`Username PPPoE auto-generate dari Nama: "${pppoeUsername}"`);
+        }
+        // Reservasi username ini supaya baris berikutnya tidak pakai yang sama
+        pppoeTakenInFile.add(pppoeUsername);
+
+        // ── Soft validation: cek apakah secret ada di router ────────
+        // Hanya jalan kalau ada minimal 1 router yang berhasil di-cek.
+        // Kalau username TIDAK ada di router manapun → warning info supaya
+        // admin tahu konsekuensi. Row tetap valid.
+        if (checkedRouterNames.length > 0 && !routerSecretsSet.has(pppoeUsername.toLowerCase())) {
+          const routerList = checkedRouterNames.length === 1
+            ? `router "${checkedRouterNames[0]}"`
+            : `${checkedRouterNames.length} router yang di-cek`;
+          warnings.push(`⚠ Username PPPoE "${pppoeUsername}" TIDAK ditemukan di ${routerList}. Pastikan secret sudah dibuat manual di router sebelum customer aktif, atau buat secret setelah import via halaman PPPoE Manager.`);
+        }
+      }
+
+      // ── Static IP ──────────────────────────────────────────────────
+      // Customer mode IP Static (alternatif/komplemen dari PPPoE).
+      // Validasi:
+      //   - Format IPv4 valid
+      //   - Tidak duplikat dengan customer lain di DB (kecuali update diri sendiri)
+      //   - Tidak duplikat dalam file Excel sendiri
+      //   - Soft-validation: cek apakah IP ada di ARP table router → kalau tidak,
+      //     warning info (row tetap valid)
+      let staticIp = null;
+      const staticIpRaw = String(rowData.static_ip || '').trim();
+      if (staticIpRaw) {
+        const validated = validateIPv4(staticIpRaw);
+        if (!validated) {
+          errors.push(`Static IP "${staticIpRaw}" tidak valid (format harus IPv4: xxx.xxx.xxx.xxx, oktet 0-255)`);
+        } else {
+          // Cek duplikat di file
+          if (staticIpTakenInFile.has(validated)) {
+            errors.push(`Static IP "${validated}" duplikat — sudah dipakai baris lain di file ini`);
+          } else {
+            // Cek duplikat di DB (kecuali kalau memang dirinya sendiri di mode update)
+            const dbOwnerCid = dbStaticIpToCid.get(validated);
+            const isOwnSelf = (action === 'update' && dbOwnerCid && dbOwnerCid === customerId);
+            if (dbOwnerCid && !isOwnSelf) {
+              errors.push(`Static IP "${validated}" sudah dipakai customer lain: ${dbOwnerCid}`);
+            } else {
+              staticIp = validated;
+              staticIpTakenInFile.add(validated);
+              // Soft-validation: cek apakah IP ada di ARP table router yang berhasil di-cek
+              if (checkedRouterNames.length > 0 && !arpIpSet.has(validated)) {
+                const routerList = checkedRouterNames.length === 1
+                  ? `router "${checkedRouterNames[0]}"`
+                  : `${checkedRouterNames.length} router yang di-cek`;
+                warnings.push(`⚠ Static IP "${validated}" TIDAK ditemukan di ARP table ${routerList}. Mungkin customer offline saat ini, IP belum dipakai, atau typo. Row tetap valid.`);
+              }
+            }
+          }
+        }
+      }
+
+      // ── Router MikroTik ─────────────────────────────────────────────
+      // Strategi resolusi mikrotik_id (urutan prioritas):
+      //   1. Kolom "Router MikroTik" di Excel diisi → lookup ke routerNameToId
+      //      (case-insensitive). Kalau nama tidak match → warning, mikrotik_id null.
+      //   2. Kosong + pppoe_username ada di tepat 1 router → auto-detect via
+      //      secretToRouterId.
+      //   3. Kosong + pppoe_username ambigu (di multi-router) → null + warning.
+      //   4. Kosong + static_ip ada di tepat 1 router via ARP → auto-detect via
+      //      arpIpToRouterId. (Dipakai sebagai fallback kalau PPPoE tidak resolve)
+      //   5. Kosong + static_ip ambigu → null + warning.
+      //   6. Kosong + tidak ada info → null.
+      let mikrotikId = null;
+      let routerAutoDetectSource = null; // 'pppoe' | 'arp' | null
+      const routerNameInput = String(rowData.router_name || '').trim();
+
+      if (routerNameInput) {
+        // Sumber 1: explicit dari Excel
+        const lookupKey = routerNameInput.toLowerCase();
+        if (routerNameToId.has(lookupKey)) {
+          mikrotikId = routerNameToId.get(lookupKey);
+        } else {
+          // Nama tidak match — warning + null
+          const knownRouters = Array.from(routerNameToId.keys()).join('", "');
+          warnings.push(`⚠ Router MikroTik "${routerNameInput}" tidak ditemukan di Device Management${knownRouters ? ` (router yang ada: "${knownRouters}")` : ''}. Customer akan di-save tanpa router.`);
+        }
+      } else {
+        // Auto-detect path
+        // Priority A: PPPoE lookup (kalau ada pppoe_username)
+        if (pppoeUsername && secretToRouterId.size > 0) {
+          const lname = pppoeUsername.toLowerCase();
+          if (secretToRouterId.has(lname)) {
+            mikrotikId = secretToRouterId.get(lname);
+            routerAutoDetectSource = 'pppoe';
+            const routerName = routerIdToOriginalName.get(mikrotikId) || `id #${mikrotikId}`;
+            warnings.push(`Router auto-detect (PPPoE): secret "${pppoeUsername}" ditemukan di router "${routerName}"`);
+          } else if (secretsInMultiple.has(lname)) {
+            warnings.push(`⚠ Username PPPoE "${pppoeUsername}" ada di lebih dari 1 router (ambigu). Isi kolom "Router MikroTik" untuk eksplisit memilih.`);
+          }
+        }
+        // Priority B (fallback): Static IP via ARP (kalau PPPoE tidak resolve dan ada static_ip)
+        if (!mikrotikId && staticIp && arpIpToRouterId.size > 0) {
+          if (arpIpToRouterId.has(staticIp)) {
+            mikrotikId = arpIpToRouterId.get(staticIp);
+            routerAutoDetectSource = 'arp';
+            const routerName = routerIdToOriginalName.get(mikrotikId) || `id #${mikrotikId}`;
+            warnings.push(`Router auto-detect (ARP): IP "${staticIp}" aktif di router "${routerName}"`);
+          } else if (arpIpsInMultiple.has(staticIp)) {
+            warnings.push(`⚠ Static IP "${staticIp}" muncul di ARP > 1 router (ambigu, mungkin NAT/VLAN duplikat). Isi kolom "Router MikroTik" untuk eksplisit memilih.`);
+          }
+        }
+      }
+
       rows.push({
         rowNumber: rowIndex,
         action, // 'create' atau 'update'
@@ -389,11 +829,16 @@ exports.importPreview = async (req, res) => {
         data: {
           customer_id: customerId,
           name,
+          pppoe_username: pppoeUsername || null,
+          static_ip: staticIp || null,
+          mikrotik_id: mikrotikId,
           phone: phone || null,
           email: email || null,
           address: String(rowData.address || '').trim() || null,
           package_id: packageId,
           package_name: packageName || null, // hanya untuk display preview
+          router_name_input: routerNameInput || null, // untuk display preview
+          router_auto_source: routerAutoDetectSource, // untuk display preview (badge "auto: PPPoE" atau "auto: ARP")
           status,
           latitude,
           longitude,
@@ -435,6 +880,15 @@ exports.importPreview = async (req, res) => {
       summary,
       rows,
       importToken,
+      // Info hasil cek secret + ARP di router (untuk display di preview)
+      routerCheck: {
+        checkedRouters:  checkedRouterNames, // list nama router yang berhasil di-cek
+        warnings:        routerCheckWarnings, // list warning kalau ada router yang gagal di-cek
+        totalSecrets:    routerSecretsSet.size, // total secret yang ditemukan di semua router
+        totalArpEntries: arpIpSet.size,     // total IP yang ditemukan di ARP table semua router
+        // Map id → name (original casing) untuk semua router aktif
+        routerIdToName: Object.fromEntries(routerIdToOriginalName.entries()),
+      },
     });
   } catch (err) {
     logger.error('[CustomerImport] Preview failed:', err);
@@ -483,6 +937,8 @@ exports.importConfirm = async (req, res) => {
       try {
         const data = { ...row.data };
         delete data.package_name; // hanya display field, bukan kolom DB
+        delete data.router_name_input; // hanya display field, bukan kolom DB
+        delete data.router_auto_source; // hanya display field, bukan kolom DB
 
         if (row.action === 'create_auto') {
           // Generate ID baru sebelum insert
@@ -491,7 +947,12 @@ exports.importConfirm = async (req, res) => {
           await Customer.create(data);
           created++;
           createdAuto++;
-          generatedIds.push({ rowNumber: row.rowNumber, customer_id: newId, name: data.name });
+          generatedIds.push({
+            rowNumber: row.rowNumber,
+            customer_id: newId,
+            name: data.name,
+            pppoe_username: data.pppoe_username || null
+          });
         } else if (row.action === 'create') {
           await Customer.create(data);
           created++;

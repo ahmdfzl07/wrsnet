@@ -139,12 +139,6 @@ Permission.belongsToMany(Role, { through: RolePermission, foreignKey: 'permissio
 Package.hasMany(Customer, { foreignKey: 'package_id', as: 'customers' });
 Customer.belongsTo(Package, { foreignKey: 'package_id', as: 'package' });
 
-// Customer <-> Device (router MikroTik untuk PPPoE isolir)
-// Asosiasi ini opsional — customer.mikrotik_id boleh NULL (tidak semua
-// customer terhubung ke router tertentu). Alias 'mikrotik' dipakai agar
-// query yang include router pakai semantic "Customer.mikrotik".
-Customer.belongsTo(Device, { foreignKey: 'mikrotik_id', as: 'mikrotik' });
-
 // Customer <-> Invoice
 Customer.hasMany(Invoice, { foreignKey: 'customer_id', as: 'invoices' });
 Invoice.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });

@@ -8,16 +8,54 @@ let bandwidthTrendsChart = null;
 let customerGrowthChart = null;
 let revenueForecastChart = null;
 
+// Interface yang dipilih user di Bandwidth Trends.
+// String kosong '' = aggregate semua interface.
+let selectedBwIface = '';
+
+// Helper: append ?device_id=N ke URL (delegate ke shared util)
+function _withDevice(url) {
+  return (window.MikrotikSelector && window.MikrotikSelector.withDevice)
+    ? window.MikrotikSelector.withDevice(url)
+    : url;
+}
+
+// Helper: append &interface=NAME ke URL bandwidth-trends
+function _withIface(url, ifaceName) {
+  if (!ifaceName) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return url + sep + 'interface=' + encodeURIComponent(ifaceName);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   waitForApex(() => {
+    // Load interface list dulu untuk Bandwidth Trends (independen ke chart)
+    loadBwInterfaceList().then(() => {
+      loadBandwidthTrends();
+    });
+
     loadTopCustomers();
     loadNetworkUptime();
     loadTicketStats();
-    loadBandwidthTrends();
     loadCustomerGrowth();
     loadRevenueForecast();
     initAnalyticsControls();
   });
+
+  // Listen ke perubahan MikroTik device. dashboard.js sudah init shared
+  // selector, jadi di sini cukup pasang event listener tambahan langsung
+  // ke elemen <select>-nya. Saat user ganti device → list interface
+  // berubah → refresh dropdown bandwidth trends + chart.
+  const mtSel = document.getElementById('mikrotikSelector');
+  if (mtSel) {
+    mtSel.addEventListener('change', () => {
+      // Reset filter interface karena interface device A belum tentu sama
+      // dengan device B.
+      selectedBwIface = '';
+      loadBwInterfaceList().then(() => {
+        loadBandwidthTrends();
+      });
+    });
+  }
 });
 
 function waitForApex(cb) {
@@ -50,6 +88,15 @@ function initAnalyticsControls() {
     bandwidthTrendsPeriod.addEventListener('change', () => loadBandwidthTrends());
   }
 
+  // Bandwidth Trends Interface Selector
+  const bandwidthTrendsIface = document.getElementById('bandwidthTrendsIface');
+  if (bandwidthTrendsIface) {
+    bandwidthTrendsIface.addEventListener('change', () => {
+      selectedBwIface = bandwidthTrendsIface.value || '';
+      loadBandwidthTrends();
+    });
+  }
+
   // Refresh Dashboard Button
   const refreshBtn = document.getElementById('refreshDashboard');
   if (refreshBtn) {
@@ -57,10 +104,41 @@ function initAnalyticsControls() {
       loadTopCustomers();
       loadNetworkUptime();
       loadTicketStats();
-      loadBandwidthTrends();
+      loadBwInterfaceList().then(() => loadBandwidthTrends());
       loadCustomerGrowth();
       loadRevenueForecast();
     });
+  }
+}
+
+// ─── BANDWIDTH INTERFACE LIST ────────────────────────────────
+// Ambil daftar interface yang ada datanya di traffic_data untuk
+// device terpilih, populate ke dropdown #bandwidthTrendsIface.
+async function loadBwInterfaceList() {
+  const sel = document.getElementById('bandwidthTrendsIface');
+  if (!sel) return;
+
+  try {
+    const data = await App.api(_withDevice('/dashboard/bandwidth-interfaces?days=30'));
+    const list = (data?.success && Array.isArray(data.data)) ? data.data : [];
+
+    // Bangun ulang options. Selalu pertahankan "All Interfaces" sebagai default.
+    const prev = selectedBwIface;
+    let html = '<option value="">All Interfaces</option>';
+    list.forEach(item => {
+      html += `<option value="${escHtml(item.name)}">${escHtml(item.name)}</option>`;
+    });
+    sel.innerHTML = html;
+
+    // Restore selection jika masih ada
+    const stillExists = prev && list.some(i => i.name === prev);
+    sel.value = stillExists ? prev : '';
+    selectedBwIface = sel.value;
+  } catch (err) {
+    console.error('Error loading bandwidth interface list:', err);
+    // Reset ke default agar UI tetap usable
+    sel.innerHTML = '<option value="">All Interfaces</option>';
+    selectedBwIface = '';
   }
 }
 
@@ -171,18 +249,66 @@ async function loadNetworkUptime() {
 
 // ─── TICKET STATISTICS ───────────────────────────────────────
 async function loadTicketStats() {
+  const listContainer = document.getElementById('openTicketsList');
+
   try {
     const data = await App.api('/dashboard/ticket-stats?period=30d');
-    if (!data?.success) return;
+    if (!data?.success) {
+      if (listContainer) listContainer.innerHTML = '<div class="empty-state">Failed to load tickets</div>';
+      return;
+    }
 
     const s = data.data.summary;
     setText('openTickets', s.open_tickets);
     setText('resolvedTickets', s.resolved_tickets);
     setText('avgResolutionTime', s.avg_resolution_hours + 'h');
 
-    // Optional: Add ticket trend chart or details
+    // Render daftar ticket open. Klik baris → buka /tickets/:id di tab yang sama.
+    if (!listContainer) return;
+
+    const openList = Array.isArray(data.data.open_tickets_list)
+      ? data.data.open_tickets_list
+      : [];
+
+    if (!openList.length) {
+      listContainer.innerHTML = '<div class="empty-state">Tidak ada tiket open saat ini</div>';
+      return;
+    }
+
+    listContainer.innerHTML = openList.map(t => {
+      const priority = (t.priority || 'medium').toLowerCase();
+      const status   = (t.status   || 'open').toLowerCase();
+      const statusLabel = status === 'in_progress' ? 'In Progress'
+                        : status === 'pending'     ? 'Pending'
+                        : 'Open';
+
+      // Customer info di meta line (kalau ada)
+      const customerSpan = t.customer_name
+        ? `<span class="ot-customer" title="${escHtml(t.customer_name)}">${escHtml(t.customer_name)}</span>`
+        : '';
+
+      // Ticket number prefer dipakai daripada raw id agar lebih bermakna
+      const numLabel = t.ticket_number || `#${t.id}`;
+
+      return `
+        <a class="open-ticket-item" href="/tickets/${t.id}" title="${escHtml(t.title || '')}">
+          <span class="ot-priority ${priority}"></span>
+          <div class="ot-body">
+            <div class="ot-title">${escHtml(t.title || '(no title)')}</div>
+            <div class="ot-meta">
+              <span class="ot-num">${escHtml(numLabel)}</span>
+              ${customerSpan ? '<span>•</span>' + customerSpan : ''}
+            </div>
+          </div>
+          <span class="ot-status ${status}">${statusLabel}</span>
+        </a>
+      `;
+    }).join('');
   } catch (err) {
     console.error('Error loading ticket stats:', err);
+    if (listContainer) {
+      listContainer.innerHTML = '<div class="empty-state">Failed to load tickets</div>';
+    }
   }
 }
 
@@ -194,9 +320,23 @@ async function loadBandwidthTrends() {
   const periodSelect = document.getElementById('bandwidthTrendsPeriod');
   const period = periodSelect ? periodSelect.value : 'daily';
 
+  // Sync state dari dropdown (jika user mengubah lewat keyboard tanpa event)
+  const ifaceSel = document.getElementById('bandwidthTrendsIface');
+  if (ifaceSel) selectedBwIface = ifaceSel.value || '';
+
   try {
-    const data = await App.api(`/dashboard/bandwidth-trends?period=${period}`);
+    // Bangun URL: filter device dulu (via shared MikroTik selector),
+    // lalu tambahkan filter interface (jika dipilih).
+    let url = _withDevice(`/dashboard/bandwidth-trends?period=${period}`);
+    url = _withIface(url, selectedBwIface);
+
+    const data = await App.api(url);
     if (!data?.success || !data.data.length) {
+      // Destroy chart lama jika ada agar empty state benar-benar terlihat
+      if (bandwidthTrendsChart) {
+        try { bandwidthTrendsChart.destroy(); } catch(_) {}
+        bandwidthTrendsChart = null;
+      }
       chartEl.innerHTML = '<div class="empty-state">No trend data available</div>';
       return;
     }

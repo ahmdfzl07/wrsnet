@@ -244,19 +244,21 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--rc-lg);
-      padding: 24px;
+      padding: 22px 24px 20px;
       margin-bottom: 24px;
       position: relative; overflow: hidden;
+      box-shadow: 0 1px 2px rgba(15,23,42,.02), 0 0 0 1px rgba(15,23,42,.01);
     }
     .gen-panel::before {
       content: '';
-      position: absolute; inset: 0;
-      background: linear-gradient(135deg, rgba(0,113,227,.04) 0%, rgba(52,170,220,.04) 100%);
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, #0071e3 0%, #34aadc 50%, transparent 100%);
       pointer-events: none;
     }
+    .gen-panel > * { position: relative; z-index: 1; }
     .gen-panel-hdr {
       display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 20px; flex-wrap: wrap; gap: 10px;
+      margin-bottom: 18px; flex-wrap: wrap; gap: 10px;
     }
     .gen-panel-hdr-l { display: flex; align-items: center; gap: 12px; }
     .gen-title-ico {
@@ -267,46 +269,116 @@
     .gen-title-ico svg { width: 20px; height: 20px; stroke: #fff; fill: none; }
     .gen-panel-hdr-l h2 { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -.2px; }
     .gen-panel-hdr-l p { font-size: 12.5px; color: var(--text2); margin-top: 1px; }
+
+    /* ── GENERATE PANEL — refined layout ────────────────────────── */
     .gen-grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 12px; align-items: end; margin-bottom: 12px;
+      grid-template-columns: 130px 1.5fr 1fr 100px 1fr;  /* Jumlah | Profile | Server | Prefix | Limit */
+      gap: 14px; align-items: start; margin-bottom: 16px;
     }
-    @media (max-width: 1000px) { .gen-grid { grid-template-columns: repeat(3, 1fr); } }
-    @media (max-width: 650px)  { .gen-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 420px)  { .gen-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 1200px) {
+      .gen-grid {
+        grid-template-columns: 110px 1fr 1fr;
+        grid-template-areas:
+          "jumlah profile profile"
+          "server prefix  limit";
+      }
+      .gf-jumlah  { grid-area: jumlah; }
+      .gf-profile { grid-area: profile; }
+      .gf-server  { grid-area: server; }
+      .gf-prefix  { grid-area: prefix; }
+      .gf-limit   { grid-area: limit; }
+    }
+    @media (max-width: 720px) {
+      .gen-grid {
+        grid-template-columns: 1fr 1fr;
+        grid-template-areas:
+          "jumlah  server"
+          "profile profile"
+          "prefix  limit";
+      }
+    }
+    @media (max-width: 460px) {
+      .gen-grid {
+        grid-template-columns: 1fr;
+        grid-template-areas: "jumlah" "profile" "server" "prefix" "limit";
+      }
+    }
+
+    .gen-field { display: flex; flex-direction: column; min-width: 0; }
     .gen-field label {
-      display: block; font-size: 11.5px; font-weight: 600;
-      color: var(--text2); margin-bottom: 6px; letter-spacing: .1px;
+      display: block; font-size: 11px; font-weight: 600;
+      color: var(--text2); margin-bottom: 6px; letter-spacing: .3px;
+      text-transform: uppercase;
     }
     .gen-field input, .gen-field select {
-      width: 100%; padding: 9px 12px;
+      width: 100%; padding: 10px 12px;
       border: 1px solid var(--border); border-radius: var(--rc-sm);
       font-size: 13px; color: var(--text); font-family: var(--f);
-      background: var(--surface2); outline: none;
-      transition: border-color .15s, box-shadow .15s;
+      background: var(--surface); outline: none;
+      transition: border-color .15s, box-shadow .15s, background .15s;
+      height: 38px; box-sizing: border-box;
     }
+    .gen-field select { cursor: pointer; }
     .gen-field input:focus, .gen-field select:focus {
       border-color: var(--blue); background: #fff;
       box-shadow: 0 0 0 3px rgba(0,113,227,.1);
     }
+    .gen-field input:read-only {
+      background: var(--surface2); color: var(--text2); cursor: default;
+    }
+    .gen-hint {
+      font-size: 10.5px; color: var(--text3); margin-top: 5px;
+      min-height: 14px; line-height: 1.35;
+    }
+    .gen-hint b { color: var(--text); font-weight: 600; }
+
+    /* Summary card — preview di samping tombol Generate */
+    .gen-bottom {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 14px; padding-top: 16px; border-top: 1px solid var(--border2);
+      flex-wrap: wrap;
+    }
+    .gen-summary {
+      display: flex; align-items: center; gap: 18px;
+      font-size: 12px; color: var(--text2);
+      flex-wrap: wrap; min-width: 0;
+    }
+    .gen-summary-item {
+      display: flex; flex-direction: column; gap: 2px;
+      padding-right: 18px; border-right: 1px solid var(--border2);
+    }
+    .gen-summary-item:last-child { border-right: none; padding-right: 0; }
+    .gen-summary-item .gs-lbl {
+      font-size: 10.5px; color: var(--text3); text-transform: uppercase;
+      letter-spacing: .3px; font-weight: 600;
+    }
+    .gen-summary-item .gs-val {
+      font-size: 14px; font-weight: 700; color: var(--text);
+      font-family: var(--fm); letter-spacing: -.3px;
+    }
+    .gen-summary-item .gs-val.gs-revenue { color: var(--green); }
+    .gen-summary-item .gs-val.gs-empty { color: var(--text3); font-weight: 500; }
+
     .gen-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .btn-generate {
       background: var(--blue); color: #fff; border: none;
-      padding: 10px 24px; border-radius: var(--rc-sm); font-size: 13px;
+      padding: 11px 28px; border-radius: var(--rc-sm); font-size: 13px;
       font-weight: 600; cursor: pointer; font-family: var(--f);
-      display: inline-flex; align-items: center; gap: 6px;
+      display: inline-flex; align-items: center; gap: 8px;
       transition: background .15s, transform .1s; white-space: nowrap;
+      height: 40px; box-sizing: border-box;
     }
     .btn-generate:hover { background: #0077ed; }
     .btn-generate:active { transform: scale(.98); }
     .btn-generate:disabled { opacity: .5; cursor: not-allowed; }
     .btn-print-last {
       background: transparent; color: var(--text2); border: 1px solid var(--border);
-      padding: 9px 14px; border-radius: var(--rc-sm); font-size: 12px;
+      padding: 10px 16px; border-radius: var(--rc-sm); font-size: 12.5px;
       font-weight: 500; cursor: pointer; font-family: var(--f);
       display: inline-flex; align-items: center; gap: 6px;
       transition: all .15s; white-space: nowrap;
+      height: 40px; box-sizing: border-box;
     }
     .btn-print-last:hover { background: var(--surface2); color: var(--text); border-color: var(--blue); }
     .btn-generate svg, .btn-print-last svg { width: 14px; height: 14px; flex-shrink: 0; stroke: currentColor; fill: none; }
@@ -648,6 +720,139 @@
       .card-val { font-size:30px !important; }
       .xc-val   { font-size:30px !important; }
     }
+
+    /* ══ LAPORAN PENJUALAN & HISTORI ═══════════════════════════ */
+    /* Stat strip — 4 kolom (match design strip di pppoe.ejs) */
+    .rep-strip {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      background: var(--surface); border-radius: var(--rc);
+      border: 1px solid var(--border); overflow: hidden;
+      margin-bottom: 16px;
+    }
+    @media(max-width:1100px){ .rep-strip { grid-template-columns: repeat(2,1fr); } }
+    @media(max-width:520px){  .rep-strip { grid-template-columns: 1fr; } }
+    .rep-cell {
+      padding: 18px 20px; border-right: 1px solid var(--border2);
+      display: flex; flex-direction: column; gap: 6px;
+      position: relative; overflow: hidden;
+    }
+    .rep-cell:last-child { border-right: none; }
+    @media(max-width:1100px){
+      .rep-cell { border-right: none; border-bottom: 1px solid var(--border2); }
+      .rep-cell:last-child { border-bottom: none; }
+    }
+    .rep-cell .rc-lbl { font-size: 11.5px; font-weight: 500; color: var(--text2); letter-spacing: .2px; }
+    .rep-cell .rc-val { font-size: 26px; font-weight: 800; color: var(--text); letter-spacing: -.8px; line-height: 1.1; font-family: var(--f); }
+    .rep-cell .rc-sub { font-size: 11px; color: var(--text3); }
+    .rep-cell.rc-primary { background: #1e3a8a; }
+    .rep-cell.rc-primary .rc-lbl { color: rgba(255,255,255,.72); }
+    .rep-cell.rc-primary .rc-val { color: #fff; }
+    .rep-cell.rc-primary .rc-sub { color: rgba(255,255,255,.62); }
+    .rep-cell .rc-icon {
+      position: absolute; top: 14px; right: 16px;
+      width: 30px; height: 30px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      opacity: .9;
+    }
+    .rep-cell .rc-icon svg { width: 16px; height: 16px; }
+
+    /* Filter / Toolbar bar */
+    .rep-toolbar {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+      padding: 14px 18px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--rc);
+      margin-bottom: 14px;
+    }
+    .rep-toolbar label { font-size: 12px; font-weight: 600; color: var(--text2); }
+    .rep-toolbar .rep-field {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 7px 12px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--rc-sm);
+    }
+    .rep-toolbar input[type="date"],
+    .rep-toolbar select {
+      border: none; background: transparent; outline: none;
+      font-size: 13px; color: var(--text); font-family: var(--f); cursor: pointer;
+    }
+    .rep-toolbar .rep-spacer { flex: 1; }
+
+    /* Grid layout chart + table */
+    .rep-grid {
+      display: grid; gap: 14px;
+      grid-template-columns: 2fr 1fr;
+      margin-bottom: 14px;
+    }
+    @media(max-width:1100px){ .rep-grid { grid-template-columns: 1fr; } }
+
+    /* Mini-chart bar */
+    .rep-chart { padding: 18px; }
+    .rep-chart-svg { width: 100%; height: 220px; display: block; }
+    .rep-chart-svg .bar { fill: #1e3a8a; transition: fill .15s; cursor: pointer; }
+    .rep-chart-svg .bar:hover { fill: #2563eb; }
+    .rep-chart-svg .bar-zero { fill: #e2e8f0; }
+    .rep-chart-svg .grid-line { stroke: var(--border2); stroke-width: 1; }
+    .rep-chart-svg .axis-label { font-size: 10px; fill: var(--text3); font-family: var(--f); }
+    .rep-chart-svg .tip { fill: var(--text); font-size: 11px; font-weight: 600; font-family: var(--f); }
+    .rep-chart-empty { display: flex; align-items: center; justify-content: center; height: 220px; color: var(--text3); font-size: 13px; }
+
+    /* Profile rows in sidebar */
+    .rep-prof-list { padding: 8px 0; max-height: 280px; overflow-y: auto; }
+    .rep-prof-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 18px; border-bottom: 1px solid var(--border2);
+      gap: 10px; font-size: 13px;
+    }
+    .rep-prof-row:last-child { border-bottom: none; }
+    .rep-prof-name { font-weight: 600; color: var(--text); }
+    .rep-prof-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    .rep-prof-val { font-weight: 700; color: var(--green); font-family: var(--fm); }
+    .rep-prof-val.zero { color: var(--text3); }
+
+    /* Pricing editor — inline list */
+    .pricing-list { padding: 4px 0; max-height: 360px; overflow-y: auto; }
+    .pricing-row {
+      display: grid; grid-template-columns: 1fr 160px;
+      align-items: center; gap: 12px;
+      padding: 10px 18px; border-bottom: 1px solid var(--border2);
+    }
+    .pricing-row.pricing-row-3 {
+      grid-template-columns: 1fr 140px 140px;
+    }
+    @media(max-width:640px){
+      .pricing-row.pricing-row-3 {
+        grid-template-columns: 1fr 1fr;
+      }
+      .pricing-row.pricing-row-3 > div:first-child {
+        grid-column: 1 / -1;
+      }
+    }
+    .pricing-row:last-child { border-bottom: none; }
+    .pricing-row .pr-name { font-weight: 600; color: var(--text); font-size: 13px; }
+    .pricing-row .pr-rate { font-size: 11px; color: var(--text3); margin-top: 2px; font-family: var(--fm); }
+    .pricing-row .pr-input-wrap {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--rc-sm); padding: 7px 10px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .pricing-row .pr-input-wrap:focus-within {
+      border-color: var(--blue); background: #fff;
+      box-shadow: 0 0 0 3px rgba(0,113,227,.08);
+    }
+    .pricing-row .pr-input-wrap .pr-prefix { font-size: 12px; color: var(--text2); font-weight: 600; }
+    .pricing-row .pr-input-wrap input {
+      border: none; background: transparent; outline: none;
+      font-size: 13px; font-family: var(--fm); color: var(--text);
+      width: 100%; text-align: right;
+    }
+
+    /* Cell number alignments */
+    .num-r { text-align: right; font-family: var(--fm); }
+    .badge-soft { display: inline-block; padding: 2px 8px; border-radius: 5px; font-size: 10.5px; font-weight: 700; }
+    .badge-soft.bs-green  { background: var(--green-l); color: var(--green); }
+    .badge-soft.bs-amber  { background: var(--amber-l); color: var(--amber); }
+    .badge-soft.bs-red    { background: var(--red-l);   color: var(--red); }
+    .badge-soft.bs-blue   { background: var(--blue-l);  color: var(--blue); }
   </style>
 </head>
 <body>
@@ -673,7 +878,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
           Refresh
         </button>
-        <button class="btn btn-primary" onclick="openModal('m-add-user')">
+        <button class="btn btn-primary" onclick="openAddUser()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Tambah User
         </button>
@@ -871,76 +1076,101 @@
     <div class="gen-panel">
       <div class="gen-panel-hdr">
         <div class="gen-panel-hdr-l">
-          
+          <div class="gen-title-ico">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/>
+            </svg>
+          </div>
           <div>
             <h2>Generate Voucher</h2>
             <p>Buat banyak voucher sekaligus, lalu print atau download CSV</p>
           </div>
         </div>
       </div>
+
       <div class="gen-grid">
-        <div class="gen-field">
+        <div class="gen-field gf-jumlah">
           <label>Jumlah</label>
-          <input type="number" id="g-count" value="10" min="1" max="500" placeholder="10">
+          <input type="number" id="g-count" value="10" min="1" max="5000" placeholder="10" oninput="updateGenSummary()">
         </div>
-        <div class="gen-field">
+
+        <div class="gen-field gf-profile">
           <label>Profile / Paket</label>
-          <select id="g-profile"></select>
+          <select id="g-profile" onchange="onGenProfileChange();updateGenSummary()"></select>
+          <p class="gen-hint" id="g-profile-info">Pilih paket untuk lihat harga &amp; limit waktu</p>
         </div>
-        <div class="gen-field">
+
+        <div class="gen-field gf-server">
           <label>Server</label>
           <select id="g-server"><option value="all">all</option></select>
         </div>
-        <div class="gen-field">
-          <label>Prefix — Limit Waktu</label>
-          <div style="display:flex;gap:6px">
-            <input type="text" id="g-prefix" value="vc" placeholder="vc" style="width:70px;flex-shrink:0">
-            <input type="text" id="g-uptime" placeholder="1d / 8h / blank" style="flex:1">
-          </div>
+
+        <div class="gen-field gf-prefix">
+          <label>Prefix</label>
+          <input type="text" id="g-prefix" value="vc" placeholder="vc" maxlength="8">
         </div>
-        <div class="gen-field">
-          <label>Harga Voucher (opsional)</label>
-          <input type="text" id="g-price" placeholder="Rp 5.000">
+
+        <div class="gen-field gf-limit">
+          <label>Limit Waktu</label>
+          <input type="text" id="g-uptime" placeholder="auto / 1d / 8h">
+          <p class="gen-hint" id="g-uptime-info">Auto-fill dari profile. Kosong = unlimited</p>
         </div>
       </div>
-      <div class="gen-actions">
-        <button class="btn-generate" id="btn-gen" onclick="generateVouchers()">
-          <svg viewBox="0 0 24 24"><polyline points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/></svg>
-          Generate
-        </button>
-        <div class="print-dropdown" id="print-dropdown">
-          <button class="btn-print-last" onclick="togglePrintMenu(event)">
-            <svg viewBox="0 0 24 24"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-            Print Voucher
-            <svg class="print-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;margin-left:4px;transition:transform .15s"><polyline points="6,9 12,15 18,9"/></svg>
+
+      <div class="gen-bottom">
+        <div class="gen-summary">
+          <div class="gen-summary-item">
+            <span class="gs-lbl">Total Voucher</span>
+            <span class="gs-val" id="gs-total">10</span>
+          </div>
+          <div class="gen-summary-item">
+            <span class="gs-lbl">Harga / Voucher</span>
+            <span class="gs-val gs-empty" id="gs-price">—</span>
+          </div>
+          <div class="gen-summary-item">
+            <span class="gs-lbl">Estimasi Pendapatan</span>
+            <span class="gs-val gs-revenue gs-empty" id="gs-revenue">—</span>
+          </div>
+        </div>
+
+        <div class="gen-actions">
+          <button class="btn-generate" id="btn-gen" onclick="generateVouchers()">
+            <svg viewBox="0 0 24 24"><polyline points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/></svg>
+            Generate
           </button>
-          <div class="print-menu" id="print-menu" style="display:none">
-            <div class="print-menu-label">Print dari data user</div>
-            <button class="print-menu-item" onclick="printVoucherFilter('all')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-              Semua User
-              <span class="pm-badge" id="pm-badge-all">—</span>
+          <div class="print-dropdown" id="print-dropdown">
+            <button class="btn-print-last" onclick="togglePrintMenu(event)">
+              <svg viewBox="0 0 24 24"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Print Voucher
+              <svg class="print-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;margin-left:4px;transition:transform .15s"><polyline points="6,9 12,15 18,9"/></svg>
             </button>
-            <button class="print-menu-item" onclick="printVoucherFilter('active')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12h3m14 0h3M12 2v3m0 14v3"/></svg>
-              Aktif (On)
-              <span class="pm-badge pm-badge-green" id="pm-badge-active">—</span>
-            </button>
-            <button class="print-menu-item" onclick="printVoucherFilter('unused')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              Belum Dipakai
-              <span class="pm-badge pm-badge-amber" id="pm-badge-unused">—</span>
-            </button>
-            <div class="print-menu-sep"></div>
-            <div class="print-menu-label">Print per profile / paket</div>
-            <div id="pm-profile-list">
-              <div style="font-size:11px;color:var(--text3);padding:6px 12px">Memuat profile...</div>
-            </div>
-            <div class="print-menu-sep"></div>
-            <button class="print-menu-item" onclick="openLastVouchers()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-              Voucher Generate Terakhir
-              <span class="pm-badge" id="pm-badge-last">—</span>
+            <div class="print-menu" id="print-menu" style="display:none">
+              <div class="print-menu-label">Print dari data user</div>
+              <button class="print-menu-item" onclick="printVoucherFilter('all')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                Semua User
+                <span class="pm-badge" id="pm-badge-all">—</span>
+              </button>
+              <button class="print-menu-item" onclick="printVoucherFilter('active')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12h3m14 0h3M12 2v3m0 14v3"/></svg>
+                Aktif (On)
+                <span class="pm-badge pm-badge-green" id="pm-badge-active">—</span>
+              </button>
+              <button class="print-menu-item" onclick="printVoucherFilter('unused')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Belum Dipakai
+                <span class="pm-badge pm-badge-amber" id="pm-badge-unused">—</span>
+              </button>
+              <div class="print-menu-sep"></div>
+              <div class="print-menu-label">Print per profile / paket</div>
+              <div id="pm-profile-list">
+                <div style="font-size:11px;color:var(--text3);padding:6px 12px">Memuat profile...</div>
+              </div>
+              <div class="print-menu-sep"></div>
+              <button class="print-menu-item" onclick="openLastVouchers()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                Voucher Generate Terakhir
+                <span class="pm-badge" id="pm-badge-last">—</span>
             </button>
             <button class="print-menu-item" onclick="openPrintSelector()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
@@ -981,6 +1211,15 @@
         <button class="tab-item" onclick="switchTab('hosts')">Hosts</button>
         <button class="tab-item" onclick="switchTab('cookies')">Cookies</button>
         <button class="tab-item" onclick="switchTab('binding')">IP Binding</button>
+        <button class="tab-item" onclick="switchTab('reports')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+          Laporan
+        </button>
+        <button class="tab-item" onclick="switchTab('history')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+          Histori User
+          <span class="tab-badge" id="tb-history">0</span>
+        </button>
       </div>
     </div>
 
@@ -1042,7 +1281,7 @@
         <div class="card-hdr">
           <div class="card-hdr-l"><span class="card-title">User Profile (Paket)</span></div>
           <div class="card-hdr-r">
-            <button class="btn btn-primary btn-sm" onclick="openModal('m-add-profile')">
+            <button class="btn btn-primary btn-sm" onclick="openAddProfile()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Tambah Profile
             </button>
@@ -1136,6 +1375,190 @@
       </div>
     </div>
 
+    <!-- ── TAB: LAPORAN PENJUALAN ── -->
+    <div class="tab-panel" id="tp-reports">
+
+      <!-- Toolbar filter tanggal -->
+      <div class="rep-toolbar">
+        <span class="rep-field">
+          <label for="rep-from">Dari</label>
+          <input type="date" id="rep-from">
+        </span>
+        <span class="rep-field">
+          <label for="rep-to">Sampai</label>
+          <input type="date" id="rep-to">
+        </span>
+        <span class="rep-field">
+          <label>Preset</label>
+          <select id="rep-preset" onchange="repApplyPreset(this.value)">
+            <option value="">— pilih —</option>
+            <option value="today">Hari ini</option>
+            <option value="7">7 hari terakhir</option>
+            <option value="30" selected>30 hari terakhir</option>
+            <option value="month">Bulan ini</option>
+            <option value="lastmonth">Bulan lalu</option>
+          </select>
+        </span>
+        <button class="btn btn-primary btn-sm" onclick="loadSalesReport()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="23,4 23,10 17,10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+          Terapkan
+        </button>
+        <div class="rep-spacer"></div>
+        <button class="btn btn-ghost btn-sm" onclick="exportReportCSV()" title="Export per-hari ke CSV">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV
+        </button>
+      </div>
+
+      <!-- Stat strip -->
+      <div class="rep-strip">
+        <div class="rep-cell rc-primary">
+          <div class="rc-icon" style="background:rgba(255,255,255,.18)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          </div>
+          <div class="rc-lbl">Total Pendapatan</div>
+          <div class="rc-val" id="rep-revenue">Rp 0</div>
+          <div class="rc-sub" id="rep-range-lbl">— hari periode</div>
+        </div>
+        <div class="rep-cell">
+          <div class="rc-icon" style="background:var(--green-l)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#1a7f37" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="rc-lbl">Voucher Terjual</div>
+          <div class="rc-val" id="rep-sold">0</div>
+          <div class="rc-sub" id="rep-sold-sub">— total</div>
+        </div>
+        <div class="rep-cell">
+          <div class="rc-icon" style="background:var(--amber-l)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="rc-lbl">Voucher Belum Terpakai</div>
+          <div class="rc-val" id="rep-unused">0</div>
+          <div class="rc-sub">Tersedia untuk dijual</div>
+        </div>
+        <div class="rep-cell">
+          <div class="rc-icon" style="background:var(--blue-l)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#0071e3" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11l-3-3-3 3"/><line x1="19" y1="8" x2="19" y2="14"/></svg>
+          </div>
+          <div class="rc-lbl">ARPU</div>
+          <div class="rc-val" id="rep-arpu">Rp 0</div>
+          <div class="rc-sub">Rata-rata per voucher</div>
+        </div>
+      </div>
+
+      <!-- Chart + Profile breakdown -->
+      <div class="rep-grid">
+        <div class="card rep-chart">
+          <div class="card-hdr" style="border:none;padding:0 0 12px;">
+            <div class="card-hdr-l"><span class="card-title">Penjualan per Hari</span></div>
+            <div class="card-hdr-r" style="font-size:11px;color:var(--text2)" id="rep-chart-meta">—</div>
+          </div>
+          <div id="rep-chart-host">
+            <div class="rep-chart-empty">Memuat data…</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-hdr">
+            <div class="card-hdr-l"><span class="card-title">Breakdown per Profile</span></div>
+            <div class="card-hdr-r"><span class="badge-soft bs-blue" id="rep-prof-count">0 profile</span></div>
+          </div>
+          <div class="rep-prof-list" id="rep-prof-list">
+            <div class="loader" style="padding:20px">Memuat…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pricing editor -->
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-hdr-l">
+            <span class="card-title">Harga per Profile</span>
+            <span class="badge-soft bs-amber" id="rep-pricing-warn" style="display:none">Profile tanpa harga: <b id="rep-pricing-warn-n">0</b></span>
+          </div>
+          <div class="card-hdr-r">
+            <span style="font-size:11.5px;color:var(--text2)">Set harga lalu klik Simpan — laporan otomatis di-recalc.</span>
+            <button class="btn btn-primary btn-sm" id="btn-save-pricing" onclick="savePricing()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Simpan Harga
+            </button>
+          </div>
+        </div>
+        <div class="pricing-list" id="pricing-list">
+          <div class="loader" style="padding:20px">Memuat user profile…</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── TAB: HISTORI USER ── -->
+    <div class="tab-panel" id="tp-history">
+      <!-- Toolbar -->
+      <div class="rep-toolbar">
+        <span class="rep-field">
+          <label for="hist-from">Dari</label>
+          <input type="date" id="hist-from">
+        </span>
+        <span class="rep-field">
+          <label for="hist-to">Sampai</label>
+          <input type="date" id="hist-to">
+        </span>
+        <span class="rep-field">
+          <label>Profile</label>
+          <select id="hist-profile">
+            <option value="">Semua profile</option>
+          </select>
+        </span>
+        <span class="rep-field">
+          <label>Cari</label>
+          <input type="text" id="hist-search" placeholder="username / MAC / comment" style="border:none;background:transparent;outline:none;font-size:13px;font-family:var(--f);width:180px;">
+        </span>
+        <button class="btn btn-primary btn-sm" onclick="loadUsageHistory()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Cari
+        </button>
+        <div class="rep-spacer"></div>
+        <button class="btn btn-ghost btn-sm" onclick="exportHistoryCSV()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV
+        </button>
+      </div>
+
+      <!-- Stat strip ringkas -->
+      <div class="rep-strip">
+        <div class="rep-cell rc-primary">
+          <div class="rc-lbl">User Terpakai</div>
+          <div class="rc-val" id="hist-stat-total">0</div>
+          <div class="rc-sub">Sesuai filter</div>
+        </div>
+        <div class="rep-cell">
+          <div class="rc-lbl">Total Bytes Terpakai</div>
+          <div class="rc-val" id="hist-stat-bytes">0 B</div>
+          <div class="rc-sub">In + Out</div>
+        </div>
+        <div class="rep-cell">
+          <div class="rc-lbl">Estimasi Pendapatan</div>
+          <div class="rc-val" id="hist-stat-revenue">Rp 0</div>
+          <div class="rc-sub">Berdasar pricing</div>
+        </div>
+        <div class="rep-cell">
+          <div class="rc-lbl">User Aktif</div>
+          <div class="rc-val" id="hist-stat-enabled">0</div>
+          <div class="rc-sub">Belum di-disable</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-hdr-l"><span class="card-title">User Hotspot yang Pernah Digunakan</span></div>
+          <div class="card-hdr-r"><span class="badge-soft bs-blue" id="hist-count">0 user</span></div>
+        </div>
+        <div class="tbl-scroll" id="tbl-history">
+          <div class="loader" style="padding:24px"><svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>Memuat…</div>
+        </div>
+      </div>
+    </div>
+
   </div><!-- /hs-page -->
 </div><!-- /main-content -->
 
@@ -1154,14 +1577,14 @@
         <div class="form-row"><label>Password</label><input class="form-ctrl" type="text" id="u-pass" placeholder="password"></div>
       </div>
       <div class="form-2">
-        <div class="form-row"><label>Profile</label><select class="form-ctrl" id="u-profile"></select></div>
+        <div class="form-row"><label>Profile</label><select class="form-ctrl" id="u-profile" onchange="onUserProfileChange()"></select><p class="form-hint" id="u-profile-info" style="min-height:14px"></p></div>
         <div class="form-row"><label>Server</label><select class="form-ctrl" id="u-server"><option value="all">all</option></select></div>
       </div>
       <div class="form-2">
         <div class="form-row">
           <label>Limit Waktu</label>
           <input class="form-ctrl" type="text" id="u-uptime" placeholder="1d / 8h / 30m">
-          <p class="form-hint">Kosong = unlimited</p>
+          <p class="form-hint" id="u-uptime-info">Kosong = unlimited</p>
         </div>
         <div class="form-row">
           <label>Limit Bytes Total</label>
@@ -1198,8 +1621,28 @@
         <div class="form-row"><label>Shared Users</label><input class="form-ctrl" type="number" id="p-shared" value="1" min="1"></div>
       </div>
       <div class="form-2">
-        <div class="form-row"><label>Session Timeout</label><input class="form-ctrl" type="text" id="p-session" placeholder="1d / 8h"></div>
-        <div class="form-row"><label>Idle Timeout</label><input class="form-ctrl" type="text" id="p-idle" placeholder="5m"></div>
+        <div class="form-row">
+          <label>Session Timeout</label>
+          <input class="form-ctrl" type="text" id="p-session" placeholder="kosong / 1d / 8h">
+          <p class="form-hint">Max durasi 1 sesi login. Kosong = unlimited.</p>
+        </div>
+        <div class="form-row">
+          <label>Idle Timeout</label>
+          <input class="form-ctrl" type="text" id="p-idle" placeholder="kosong / 5m">
+          <p class="form-hint">Auto-disconnect kalau tidak ada aktivitas.</p>
+        </div>
+      </div>
+      <div class="form-2">
+        <div class="form-row">
+          <label>Harga Voucher (Rp)</label>
+          <input class="form-ctrl" type="number" id="p-price" min="0" step="500" placeholder="5000">
+          <p class="form-hint">Untuk laporan penjualan.</p>
+        </div>
+        <div class="form-row">
+          <label>Limit Waktu (Durasi Voucher)</label>
+          <input class="form-ctrl" type="text" id="p-limit-uptime" placeholder="1h / 1d / 7d / 30d">
+          <p class="form-hint">Auto-fill saat generate. Kosong = unlimited.</p>
+        </div>
       </div>
       <div class="form-row"><label>Address List</label><input class="form-ctrl" type="text" id="p-alist" placeholder="nama-address-list"></div>
     </div>
@@ -1472,6 +1915,8 @@ function loadTabData(n) {
   if (n==='binding')  loadBindings();
   if (n==='disabled') loadDisabledUsers();
   if (n==='servers')  loadServersTab();
+  if (n==='reports')  loadReportsTab();
+  if (n==='history')  loadHistoryTab();
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1488,8 +1933,19 @@ async function api(method, url, body) {
   const tok = localStorage.getItem('token');
   if (tok && tok !== 'null') opts.headers['Authorization'] = 'Bearer ' + tok;
   if (body) opts.body = JSON.stringify(body);
-  const r = await fetch(url, opts);
-  return r.json();
+  try {
+    const r = await fetch(url, opts);
+    return await r.json();
+  } catch (e) {
+    // Browser-specific abort messages — page mungkin navigate/reload saat fetch jalan.
+    // Tidak fatal, kita return shape consistent supaya caller bisa handle.
+    const msg = (e && e.message) || String(e);
+    if (/abort|aborted|cancel/i.test(msg)) {
+      console.warn('[api] request aborted:', url, msg);
+      return { success: false, aborted: true, message: 'Request dibatalkan' };
+    }
+    return { success: false, message: msg };
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1661,6 +2117,16 @@ function renderDisabledTable() {
     <th>Username</th><th>Profile</th><th>Server</th><th>Limit Waktu</th><th>Komentar</th><th>Aksi</th>
   </tr></thead><tbody>`;
   slice.forEach(u => {
+    // Limit: pakai user field, fallback ke profile config
+    let limitCell;
+    if (u.limitUptime) {
+      limitCell = `<span style="font-size:12px;font-family:var(--fm)">${x(u.limitUptime)}</span>`;
+    } else {
+      const cfgLim = window.HotspotPricing ? window.HotspotPricing.limitUptime(u.profile) : '';
+      limitCell = cfgLim
+        ? `<span style="font-size:12px;color:var(--blue);font-family:var(--fm)" title="Dari profile config">${x(cfgLim)}</span>`
+        : `<span style="color:var(--text3)">∞</span>`;
+    }
     h += `<tr>
       <td><input type="checkbox" class="chk chk-dis" value="${x(u.id)}" onchange="updDelDisBtn()"></td>
       <td>
@@ -1669,7 +2135,7 @@ function renderDisabledTable() {
       </td>
       <td><span class="badge b-purple">${x(u.profile)}</span></td>
       <td><span style="font-size:12px;color:var(--text2)">${x(u.server)}</span></td>
-      <td><span style="font-size:12px">${u.limitUptime || '<span style="color:var(--text3)">∞</span>'}</span></td>
+      <td>${limitCell}</td>
       <td style="font-size:12px;color:var(--text2)">${x(u.comment) || '—'}</td>
       <td>
         <div style="display:flex;gap:5px">
@@ -2012,7 +2478,12 @@ async function loadServers() {
 ═══════════════════════════════════════════════════════════════ */
 async function loadUsers() {
   setEl('tbl-users', loaderHtml());
-  const r = await api('GET', '/api/mikrotik/hotspot/users').catch(()=>({}));
+  // Pastikan pricing ter-load supaya fallback display "Limit" dari profile config bekerja
+  const pricingPromise = window.HotspotPricing ? window.HotspotPricing.ensureLoaded() : Promise.resolve();
+  const [r, _p] = await Promise.all([
+    api('GET', '/api/mikrotik/hotspot/users').catch(()=>({})),
+    pricingPromise,
+  ]);
   allUsers = r.success ? r.data : [];
   filtUsers = [...allUsers];
   document.getElementById('tb-users').textContent = allUsers.length;
@@ -2036,6 +2507,16 @@ function renderUsersTable() {
     const limitInfo = u.limitBytesTotal > 0
       ? `<div style="font-size:10.5px;color:var(--text3);margin-top:2px;font-family:var(--fm)">${fmtB(used)} / ${fmtB(u.limitBytesTotal)}</div>`
       : '';
+    // Limit cell: pakai field user; kalau kosong, fallback ke profile config (pricing)
+    let limitCell;
+    if (u.limitUptime) {
+      limitCell = `<span style="font-size:12px;font-family:var(--fm)">${x(u.limitUptime)}</span>`;
+    } else {
+      const cfgLim = window.HotspotPricing ? window.HotspotPricing.limitUptime(u.profile) : '';
+      limitCell = cfgLim
+        ? `<span style="font-size:12px;color:var(--blue);font-family:var(--fm)" title="Dari profile config">${x(cfgLim)}</span>`
+        : `<span style="color:var(--text3)">∞</span>`;
+    }
     h += `<tr>
       <td><input type="checkbox" class="chk chk-u" value="${x(u.id)}" onchange="updSelBtn()"></td>
       <td>
@@ -2045,7 +2526,7 @@ function renderUsersTable() {
       <td><span class="badge b-purple">${x(u.profile)}</span></td>
       <td><span style="font-size:12px;color:var(--text2)">${x(u.server)}</span></td>
       <td>
-        <span style="font-size:12px">${u.limitUptime || '<span style="color:var(--text3)">∞</span>'}</span>
+        ${limitCell}
         ${limitInfo}
       </td>
       <td><span class="td-mono">${u.uptime||'0s'}</span></td>
@@ -2106,7 +2587,132 @@ function syncProfileDropdowns() {
     });
     if (cv) el.value = cv;
   });
+  // Trigger auto-fill limit waktu untuk profile yang baru aktif di generator
+  if (window.HotspotPricing) window.HotspotPricing.ensureLoaded().then(() => { onGenProfileChange(); updateGenSummary(); });
 }
+
+// Auto-fill field "Limit Waktu" dari pricing config saat profile dipilih.
+// Menghormati input manual: kalau user sudah ketik sesuatu di g-uptime, jangan
+// di-overwrite. State dilacak via attribute data-auto pada element.
+function onGenProfileChange() {
+  const sel = document.getElementById('g-profile');
+  const upt = document.getElementById('g-uptime');
+  const profInfo = document.getElementById('g-profile-info');
+  const uptInfo  = document.getElementById('g-uptime-info');
+  if (!sel || !upt) return;
+
+  const profileName = sel.value || 'default';
+  const entry = window.HotspotPricing ? window.HotspotPricing.entry(profileName) : { price: 0, limitUptime: '' };
+  const lim   = entry.limitUptime || '';
+
+  // Info bar profile (harga + limit ringkas)
+  if (profInfo) {
+    const bits = [];
+    if (entry.price > 0) bits.push(`<span style="color:var(--green);font-weight:600">Rp ${entry.price.toLocaleString('id-ID')}</span>`);
+    else                 bits.push('<span style="color:var(--amber)">Harga belum di-set</span>');
+    if (lim) bits.push(`<span style="color:var(--blue)">⏱ ${x(lim)}</span>`);
+    profInfo.innerHTML = bits.join(' · ');
+  }
+
+  // Auto-fill g-uptime kalau:
+  //   - field masih kosong, ATAU
+  //   - field di-isi sebelumnya oleh auto-fill (data-auto="1")
+  const wasAutoFilled = upt.getAttribute('data-auto') === '1';
+  const currentEmpty  = !upt.value.trim();
+  if (lim && (currentEmpty || wasAutoFilled)) {
+    upt.value = lim;
+    upt.setAttribute('data-auto', '1');
+    if (uptInfo) uptInfo.innerHTML = `Otomatis dari profile: <b>${x(lim)}</b> — edit untuk override`;
+  } else if (!lim && wasAutoFilled) {
+    // Profile baru tidak punya limit, kosongkan auto-fill sebelumnya
+    upt.value = '';
+    upt.removeAttribute('data-auto');
+    if (uptInfo) uptInfo.innerHTML = 'Profile ini tidak punya limit waktu — kosong = unlimited';
+  } else if (uptInfo) {
+    uptInfo.innerHTML = lim
+      ? `Profile default: ${x(lim)}`
+      : 'Kosong = unlimited (tidak ada batas waktu)';
+  }
+}
+
+// Live summary preview di bawah generate form — total voucher, harga/voucher,
+// estimasi pendapatan. Dipanggil setiap kali jumlah atau profile berubah.
+function updateGenSummary() {
+  const countEl = document.getElementById('g-count');
+  const profEl  = document.getElementById('g-profile');
+  const totalEl   = document.getElementById('gs-total');
+  const priceEl   = document.getElementById('gs-price');
+  const revenueEl = document.getElementById('gs-revenue');
+  if (!countEl || !totalEl) return;
+
+  const count = parseInt(countEl.value) || 0;
+  const profileName = profEl?.value || '';
+  const price = (profileName && window.HotspotPricing) ? window.HotspotPricing.get(profileName) : 0;
+
+  totalEl.textContent = count.toLocaleString('id-ID');
+
+  if (price > 0) {
+    priceEl.textContent = `Rp ${price.toLocaleString('id-ID')}`;
+    priceEl.classList.remove('gs-empty');
+    const revenue = price * count;
+    revenueEl.textContent = `Rp ${revenue.toLocaleString('id-ID')}`;
+    revenueEl.classList.remove('gs-empty');
+  } else {
+    priceEl.textContent = '—';
+    priceEl.classList.add('gs-empty');
+    revenueEl.textContent = '—';
+    revenueEl.classList.add('gs-empty');
+  }
+}
+window.updateGenSummary = updateGenSummary;
+
+// Versi sama untuk modal Tambah/Edit User Hotspot (manual create).
+// Auto-fill u-uptime kalau kosong atau hasil auto-fill sebelumnya.
+function onUserProfileChange() {
+  const sel = document.getElementById('u-profile');
+  const upt = document.getElementById('u-uptime');
+  const profInfo = document.getElementById('u-profile-info');
+  const uptInfo  = document.getElementById('u-uptime-info');
+  if (!sel || !upt) return;
+
+  const profileName = sel.value || 'default';
+  const entry = window.HotspotPricing ? window.HotspotPricing.entry(profileName) : { price: 0, limitUptime: '' };
+  const lim   = entry.limitUptime || '';
+
+  if (profInfo) {
+    if (entry.price > 0 && lim) {
+      profInfo.innerHTML = `<span style="color:var(--green);font-weight:600">Rp ${entry.price.toLocaleString('id-ID')}</span> &middot; <span style="color:var(--blue)">⏱ ${x(lim)}</span>`;
+    } else if (entry.price > 0) {
+      profInfo.innerHTML = `<span style="color:var(--green);font-weight:600">Rp ${entry.price.toLocaleString('id-ID')}</span>`;
+    } else if (lim) {
+      profInfo.innerHTML = `<span style="color:var(--blue)">⏱ ${x(lim)}</span>`;
+    } else {
+      profInfo.innerHTML = '<span style="color:var(--text3)">Tidak ada harga / limit di-set untuk profile ini</span>';
+    }
+  }
+
+  const wasAutoFilled = upt.getAttribute('data-auto') === '1';
+  const currentEmpty  = !upt.value.trim();
+  if (lim && (currentEmpty || wasAutoFilled)) {
+    upt.value = lim;
+    upt.setAttribute('data-auto', '1');
+    if (uptInfo) uptInfo.innerHTML = `Otomatis dari profile: <b>${x(lim)}</b> — edit untuk override`;
+  } else if (!lim && wasAutoFilled) {
+    upt.value = '';
+    upt.removeAttribute('data-auto');
+    if (uptInfo) uptInfo.innerHTML = 'Profile ini tidak punya limit waktu — kosong = unlimited';
+  } else if (uptInfo) {
+    uptInfo.innerHTML = lim
+      ? `Profile default: ${x(lim)} — kosongkan untuk pakai nilai itu`
+      : 'Kosong = unlimited';
+  }
+}
+
+// Detect manual edit pada u-uptime — kalau user ketik, batalkan flag auto.
+document.addEventListener('DOMContentLoaded', () => {
+  const upt = document.getElementById('u-uptime');
+  if (upt) upt.addEventListener('input', () => upt.removeAttribute('data-auto'));
+});
 
 function filterUsers() {
   const q = document.getElementById('q-users').value.toLowerCase();
@@ -2127,18 +2733,49 @@ function updSelBtn() {
   document.getElementById('btn-del-sel').style.display = n>0?'inline-flex':'none';
 }
 
+function openAddUser() {
+  // Reset semua field user
+  document.getElementById('m-user-title').textContent = 'Tambah User Hotspot';
+  document.getElementById('u-id').value     = '';
+  document.getElementById('u-name').value   = '';
+  document.getElementById('u-pass').value   = '';
+  document.getElementById('u-uptime').value = '';
+  document.getElementById('u-bytes').value  = '';
+  document.getElementById('u-mac').value    = '';
+  document.getElementById('u-comment').value= '';
+  // Flag u-uptime as auto-fillable (kosong → akan diisi dari profile config)
+  const upt = document.getElementById('u-uptime');
+  if (upt) upt.setAttribute('data-auto', '1');
+  openModal('m-add-user');
+  // Trigger info bar + auto-fill berdasar profile pertama
+  if (window.HotspotPricing) {
+    window.HotspotPricing.ensureLoaded().then(onUserProfileChange);
+  }
+}
+
 function editUser(u) {
   document.getElementById('m-user-title').textContent = 'Edit User: '+u.name;
   document.getElementById('u-id').value     = u.id;
   document.getElementById('u-name').value   = u.name;
   document.getElementById('u-pass').value   = u.password;
   document.getElementById('u-uptime').value = u.limitUptime||'';
+  // Kalau user existing PUNYA limit-uptime, itu nilai eksplisit — tandai sebagai
+  // bukan auto-fill supaya tidak ke-overwrite saat onUserProfileChange jalan.
+  const upt = document.getElementById('u-uptime');
+  if (upt) {
+    if (u.limitUptime) upt.removeAttribute('data-auto');
+    else upt.setAttribute('data-auto', '1');  // kosong → biarkan auto-fill nanti
+  }
   document.getElementById('u-bytes').value  = u.limitBytesTotal||0;
   document.getElementById('u-mac').value    = u.macAddress||'';
   document.getElementById('u-comment').value= u.comment||'';
   setTimeout(()=>{
     const sp=document.getElementById('u-profile'); if(sp) sp.value=u.profile;
     const ss=document.getElementById('u-server');  if(ss) ss.value=u.server;
+    // Trigger info bar update setelah profile ter-set
+    if (window.HotspotPricing) {
+      window.HotspotPricing.ensureLoaded().then(onUserProfileChange);
+    }
   },60);
   openModal('m-add-user');
 }
@@ -2509,7 +3146,12 @@ function printVoucherFilter(type, profileName) {
 
   if (!users.length) return toast('Tidak ada user untuk filter ini', 'info');
 
-  const price = document.getElementById('g-price')?.value || '';
+  // Ambil harga dari pricing config — lookup berdasar profile user pertama,
+  // atau profile yang dipilih di g-profile (kalau filter "all" tapi user
+  // beragam, prefer yang dipilih untuk konsistensi label di print).
+  const refProfile = users[0]?.profile || document.getElementById('g-profile')?.value || '';
+  const priceNum = (refProfile && window.HotspotPricing) ? window.HotspotPricing.get(refProfile) : 0;
+  const price = priceNum > 0 ? `Rp ${priceNum.toLocaleString('id-ID')}` : '';
   const duration = document.getElementById('g-uptime')?.value || '';
 
   // Konversi format user -> voucher untuk dicetak
@@ -2748,7 +3390,9 @@ function showVouchers(r) {
   const profile = vcs[0]?.profile || '—';
   const duration = document.getElementById('g-uptime')?.value || vcs[0]?.limitUptime || '';
   const durationLabel = duration || 'Unlimited';
-  const price = document.getElementById('g-price')?.value || '';
+  // Harga dari pricing config profile (bukan dari field manual yang sudah dihapus)
+  const priceNum = (profile && window.HotspotPricing) ? window.HotspotPricing.get(profile) : 0;
+  const price = priceNum > 0 ? `Rp ${priceNum.toLocaleString('id-ID')}` : '';
 
   // Summary text
   const sub = document.getElementById('vc-summary');
@@ -2808,8 +3452,9 @@ function printVouchers() {
   pa.style.display = 'block';
   const duration = document.getElementById('g-uptime')?.value || lastVouchers[0]?.limitUptime || '';
   const durationLabel = duration || 'Unlimited';
-  const price = document.getElementById('g-price')?.value || '';
   const profile = lastVouchers[0]?.profile || '';
+  const priceNum = (profile && window.HotspotPricing) ? window.HotspotPricing.get(profile) : 0;
+  const price = priceNum > 0 ? `Rp ${priceNum.toLocaleString('id-ID')}` : '';
   const today = new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
 
   // Load template voucher dari AppSetting (cache di window._voucherTpl)
@@ -3056,20 +3701,33 @@ async function disconnectSelected(){
 ═══════════════════════════════════════════════════════════════ */
 async function loadUserProfiles() {
   setEl('tbl-profiles', loaderHtml());
-  const r=await api('GET','/api/mikrotik/hotspot/user-profiles').catch(()=>({}));
+  // Load profiles + pricing paralel — pricing dipakai untuk kolom Harga + Limit
+  const [r, _p] = await Promise.all([
+    api('GET','/api/mikrotik/hotspot/user-profiles').catch(()=>({})),
+    window.HotspotPricing ? window.HotspotPricing.ensureLoaded() : Promise.resolve({}),
+  ]);
   allProfiles=r.success?r.data:[];
   syncProfileDropdowns();
   if (!allProfiles.length){ setEl('tbl-profiles',emptyHtml('Belum ada user profile')); return; }
   let h=`<table><thead><tr>
-    <th>Nama</th><th>Rate Limit</th><th>Shared</th><th>Session Timeout</th><th>Idle Timeout</th><th>Aksi</th>
+    <th>Nama</th><th>Rate Limit</th><th>Shared</th><th>Session Timeout</th><th>Idle Timeout</th><th>Limit Voucher</th><th class="num-r">Harga</th><th>Aksi</th>
   </tr></thead><tbody>`;
   allProfiles.forEach(p=>{
+    const entry = window.HotspotPricing ? window.HotspotPricing.entry(p.name) : { price: 0, limitUptime: '' };
+    const priceCell = entry.price > 0
+      ? `<span style="font-family:var(--fm);font-weight:700;color:var(--green)">Rp ${entry.price.toLocaleString('id-ID')}</span>`
+      : `<span style="color:var(--text3);font-size:11.5px">belum di-set</span>`;
+    const limitCell = entry.limitUptime
+      ? `<span style="font-family:var(--fm);font-weight:600;color:var(--blue)">${x(entry.limitUptime)}</span>`
+      : `<span style="color:var(--text3);font-size:11.5px">∞ unlimited</span>`;
     h+=`<tr>
       <td><strong>${x(p.name)}</strong></td>
       <td><span class="td-mono">${x(p.rateLimit)||'—'}</span></td>
       <td style="text-align:center">${x(p.sharedUsers)}</td>
       <td style="font-size:12px;color:var(--text2)">${x(p.sessionTimeout)||'<span style="color:var(--text3)">∞</span>'}</td>
       <td style="font-size:12px;color:var(--text2)">${x(p.idleTimeout)||'<span style="color:var(--text3)">∞</span>'}</td>
+      <td>${limitCell}</td>
+      <td class="num-r">${priceCell}</td>
       <td><div style="display:flex;gap:5px">
         <button class="btn btn-ghost btn-xs" onclick='editProfile(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Edit</button>
         <button class="btn btn-danger btn-xs" onclick="delProfile('${p.id}','${x(p.name)}')">Hapus</button>
@@ -3078,6 +3736,26 @@ async function loadUserProfiles() {
   });
   h+='</tbody></table>';
   setEl('tbl-profiles',h);
+}
+
+function openAddProfile(){
+  // Reset form ke state kosong (penting kalau modal pernah dipakai untuk edit)
+  document.getElementById('m-profile-title').textContent='Tambah User Profile';
+  document.getElementById('p-id').value='';
+  document.getElementById('p-name').value='';
+  document.getElementById('p-rate').value='';
+  document.getElementById('p-shared').value='1';
+  document.getElementById('p-session').value='';
+  document.getElementById('p-idle').value='';
+  document.getElementById('p-alist').value='';
+  const priceInp = document.getElementById('p-price');
+  if (priceInp) {
+    priceInp.value = '';
+    priceInp.removeAttribute('data-original-name');
+  }
+  const limInp = document.getElementById('p-limit-uptime');
+  if (limInp) limInp.value = '';
+  openModal('m-add-profile');
 }
 
 function editProfile(p){
@@ -3089,6 +3767,21 @@ function editProfile(p){
   document.getElementById('p-session').value=p.sessionTimeout;
   document.getElementById('p-idle').value=p.idleTimeout;
   document.getElementById('p-alist').value=p.addressList;
+  // Pre-fill harga + limit uptime dari pricing config (lazy-load)
+  const priceInp = document.getElementById('p-price');
+  const limInp   = document.getElementById('p-limit-uptime');
+  if (window.HotspotPricing) {
+    window.HotspotPricing.ensureLoaded().then(() => {
+      const entry = window.HotspotPricing.entry(p.name);
+      if (priceInp) priceInp.value = entry.price > 0 ? entry.price : '';
+      if (limInp)   limInp.value   = entry.limitUptime || '';
+    });
+  } else {
+    if (priceInp) priceInp.value = '';
+    if (limInp)   limInp.value   = '';
+  }
+  // Track nama lama supaya kalau user rename, harga lama bisa dipindah
+  priceInp?.setAttribute('data-original-name', p.name);
   openModal('m-add-profile');
 }
 
@@ -3096,16 +3789,66 @@ async function saveProfile(){
   const id=document.getElementById('p-id').value;
   const body={name:document.getElementById('p-name').value.trim(),rateLimit:document.getElementById('p-rate').value,sharedUsers:document.getElementById('p-shared').value,sessionTimeout:document.getElementById('p-session').value,idleTimeout:document.getElementById('p-idle').value,addressList:document.getElementById('p-alist').value};
   if (!body.name) return toast('Nama profile harus diisi','error');
+
+  // Validasi harga (boleh kosong, tapi kalau diisi harus angka ≥ 0)
+  const priceRaw = (document.getElementById('p-price').value || '').trim();
+  let priceNum = 0;
+  if (priceRaw !== '') {
+    priceNum = Number(priceRaw);
+    if (!Number.isFinite(priceNum) || priceNum < 0) return toast('Harga tidak valid','error');
+  }
+  // Limit waktu (string MikroTik time format) — boleh kosong = unlimited
+  const limitUptime = (document.getElementById('p-limit-uptime').value || '').trim();
+
   const btn=document.getElementById('btn-save-profile'); btn.disabled=true; btn.textContent='Menyimpan...';
-  const r=id?await api('PUT',`/api/mikrotik/hotspot/user-profiles/${id}`,body):await api('POST','/api/mikrotik/hotspot/user-profiles',body);
-  if (r.success){ toast(r.message,'success'); closeModal('m-add-profile'); loadUserProfiles(); } else toast(r.message,'error');
-  btn.disabled=false; btn.textContent='Simpan';
+  try {
+    // 1) Simpan profile ke MikroTik
+    const r = id
+      ? await api('PUT',  `/api/mikrotik/hotspot/user-profiles/${id}`, body)
+      : await api('POST', '/api/mikrotik/hotspot/user-profiles',       body);
+
+    if (!r.success) { toast(r.message || 'Gagal menyimpan profile','error'); return; }
+
+    // 2) Sinkron harga + limit-uptime ke pricing config (best-effort)
+    if (window.HotspotPricing) {
+      try {
+        const originalName = document.getElementById('p-price').getAttribute('data-original-name');
+        if (originalName && originalName !== body.name) {
+          await window.HotspotPricing.remove(originalName);
+        }
+        const ok = await window.HotspotPricing.set(body.name, { price: priceNum, limitUptime });
+        if (!ok) toast('Profile tersimpan, tetapi gagal menyimpan harga / limit','warn');
+      } catch(e) {
+        console.warn('Pricing sync error:', e);
+        toast('Profile tersimpan, tetapi gagal menyimpan harga / limit','warn');
+      }
+    }
+
+    toast(r.message || 'Tersimpan','success');
+    closeModal('m-add-profile');
+    loadUserProfiles();
+    // Refresh state IIFE Laporan (kalau user nanti pindah ke tab Laporan)
+    if (window.HotspotPricing) window.HotspotPricing.notifyProfilesChanged();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Simpan';
+  }
 }
 
 async function delProfile(id,name){
   if (!confirm(`Hapus profile "${name}"?`)) return;
   const r=await api('DELETE',`/api/mikrotik/hotspot/user-profiles/${id}`);
-  if (r.success){ toast(r.message,'success'); loadUserProfiles(); } else toast(r.message,'error');
+  if (r.success){
+    // Clean up entry harga (kalau ada) supaya tidak orphan di pricing config
+    if (window.HotspotPricing && window.HotspotPricing.has(name)) {
+      try { await window.HotspotPricing.remove(name); } catch(e){ /* silent */ }
+    }
+    toast(r.message,'success');
+    loadUserProfiles();
+    if (window.HotspotPricing) window.HotspotPricing.notifyProfilesChanged();
+  } else toast(r.message,'error');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3235,6 +3978,12 @@ function closeModal(id){ document.getElementById(id).style.display='none'; docum
 function bgClose(e,id){ if (e.target===e.currentTarget) closeModal(id); }
 
 function toast(msg, type='info'){
+  // Suppress noise — abort errors muncul saat user navigate/reload, bukan masalah.
+  const m = String(msg || '');
+  if (/stream has been aborted|signal is aborted|user aborted|fetch aborted/i.test(m)) {
+    console.warn('[toast suppressed]', m);
+    return;
+  }
   const el=document.createElement('div');
   const icons={success:'<polyline points="20,6 9,17 4,12"/>',error:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',info:'<line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'};
   el.className=`toast toast-${type}`;
@@ -3533,6 +4282,571 @@ document.addEventListener('keydown', e => {
     } else {
       loadInterfaces();
     }
+  });
+})();
+
+/* ════════════════════════════════════════════════════════════════════
+   TAB: LAPORAN PENJUALAN + HISTORI USER
+   ──────────────────────────────────────────────────────────────────
+   State sederhana — semua perhitungan di backend, frontend cuma render.
+   "Sudah dipakai" ditentukan backend (uptime > 0 atau bytes > 0).
+   Harga = mapping profile→harga (disimpan di uploads/hotspot_pricing.json).
+   Tanggal penjualan = parse "Generated DD/MM/YYYY" dari comment voucher.
+════════════════════════════════════════════════════════════════════ */
+(function(){
+  'use strict';
+
+  // ── State internal tab Laporan & Histori ────────────────────────
+  let _repPricing  = {};        // { profileName: number }
+  let _repProfiles = [];        // dari /hotspot/user-profiles (untuk render pricing editor)
+  let _repReport   = null;      // hasil /sales-report terakhir
+  let _histRows    = [];        // hasil /usage-history terakhir
+  let _initialized = false;     // sudah set default date filter belum
+  let _pricingLoaded = false;   // pernah fetch pricing dari server?
+
+  // ── Public helper: HotspotPricing ───────────────────────────────
+  // Dipakai dari fungsi modal "Tambah/Edit User Profile" yang ada di scope
+  // global supaya bisa pre-fill harga + durasi & menyimpannya bersama profile.
+  //
+  // Struktur internal _repPricing:
+  //   { 'profileName': { price: number, limitUptime: string }, ... }
+  //
+  // API:
+  //   await HotspotPricing.fetch()                  → refresh dari server
+  //   HotspotPricing.get('1Mbps-1Hari')             → number (harga saja)
+  //   HotspotPricing.entry('1Mbps-1Hari')           → { price, limitUptime }
+  //   HotspotPricing.limitUptime('1Mbps-1Hari')     → string
+  //   HotspotPricing.has('1Mbps-1Hari')             → boolean
+  //   await HotspotPricing.set(name, { price, limitUptime })
+  //   await HotspotPricing.remove(name)             (rename / delete profile)
+  //
+  // Backward-compat: HotspotPricing.set(name, 5000) tetap diterima — angka
+  // dianggap sebagai price saja, limitUptime tidak diubah.
+  window.HotspotPricing = {
+    async fetch() {
+      try {
+        const r = await api('GET', '/api/mikrotik/hotspot/pricing');
+        // Server selalu return format baru { name: { price, limitUptime } }
+        _repPricing = (r && r.success) ? (r.data || {}) : {};
+        _pricingLoaded = true;
+        return _repPricing;
+      } catch (e) {
+        console.warn('HotspotPricing.fetch error:', e);
+        return _repPricing;
+      }
+    },
+    async ensureLoaded() {
+      if (!_pricingLoaded) await this.fetch();
+      return _repPricing;
+    },
+    entry(profileName) {
+      const e = _repPricing[profileName];
+      if (!e) return { price: 0, limitUptime: '' };
+      if (typeof e === 'number') return { price: e, limitUptime: '' };
+      return {
+        price: Number(e.price || 0),
+        limitUptime: String(e.limitUptime || ''),
+      };
+    },
+    get(profileName) { return this.entry(profileName).price; },
+    limitUptime(profileName) { return this.entry(profileName).limitUptime; },
+    has(profileName) {
+      return Object.prototype.hasOwnProperty.call(_repPricing, profileName);
+    },
+    snapshot() { return Object.assign({}, _repPricing); },
+
+    // Set entry (replace untuk profile yang dimaksud).
+    //   value bisa number  → dianggap { price: N, limitUptime: existing }
+    //   value bisa object  → { price, limitUptime }
+    // Kalau hasilnya price=0 DAN limitUptime kosong → entry dihapus.
+    async set(profileName, value) {
+      if (!profileName) return false;
+      let nextEntry;
+      const cur = this.entry(profileName);
+      if (typeof value === 'number') {
+        nextEntry = { price: value, limitUptime: cur.limitUptime };
+      } else if (value && typeof value === 'object') {
+        nextEntry = {
+          price: Number(value.price != null ? value.price : cur.price) || 0,
+          limitUptime: (value.limitUptime != null ? String(value.limitUptime) : cur.limitUptime).trim(),
+        };
+      } else {
+        nextEntry = { price: 0, limitUptime: '' };
+      }
+
+      const next = Object.assign({}, _repPricing);
+      if (nextEntry.price > 0 || nextEntry.limitUptime) {
+        next[profileName] = nextEntry;
+      } else {
+        delete next[profileName];
+      }
+      return await this._persist(next);
+    },
+
+    async remove(profileName) {
+      if (!profileName || !this.has(profileName)) return true;
+      const next = Object.assign({}, _repPricing);
+      delete next[profileName];
+      return await this._persist(next);
+    },
+
+    async _persist(next) {
+      try {
+        const r = await api('POST', '/api/mikrotik/hotspot/pricing', { pricing: next });
+        if (r && r.success) {
+          _repPricing = r.data || next;
+          // Bila tab Laporan sedang terbuka, refresh editor + report
+          const repTab = document.getElementById('tp-reports');
+          if (repTab && repTab.classList.contains('active')) {
+            try { renderPricingEditor(); } catch(e){}
+            try { loadSalesReport(); } catch(e){}
+          }
+          return true;
+        }
+        return false;
+      } catch (e) {
+        console.warn('HotspotPricing._persist error:', e);
+        return false;
+      }
+    },
+
+    // Dipanggil setelah profile dibuat/diubah/dihapus dari modal di luar tab
+    // Laporan, supaya editor pricing & sales report ikut up-to-date jika
+    // user kemudian membuka tab Laporan (atau sedang membukanya).
+    async notifyProfilesChanged() {
+      try {
+        const r = await api('GET', '/api/mikrotik/hotspot/user-profiles');
+        _repProfiles = (r && r.success) ? (r.data || []) : [];
+      } catch(e) { /* silent */ }
+      const repTab = document.getElementById('tp-reports');
+      if (repTab && repTab.classList.contains('active')) {
+        try { renderPricingEditor(); } catch(e){}
+        try { loadSalesReport(); } catch(e){}
+      }
+    },
+  };
+
+  // Helper format Rupiah
+  function fmtRp(n) {
+    n = Number(n) || 0;
+    if (n === 0) return 'Rp 0';
+    return 'Rp ' + n.toLocaleString('id-ID');
+  }
+  function fmtNum(n) { return (Number(n) || 0).toLocaleString('id-ID'); }
+  function fmtBytes(b) {
+    b = Number(b) || 0;
+    if (b < 1024) return b + ' B';
+    const k = 1024, u = ['KB','MB','GB','TB','PB'];
+    let i = -1;
+    do { b /= k; i++; } while (b >= k && i < u.length - 1);
+    return b.toFixed(b >= 100 ? 0 : b >= 10 ? 1 : 2) + ' ' + u[i];
+  }
+  function toISODate(d) {
+    const yy = d.getFullYear(), mm = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+    return yy + '-' + mm + '-' + dd;
+  }
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  // Set default tanggal: 30 hari terakhir (sekali saja per load tab)
+  function ensureDefaultDates(prefix) {
+    const fromEl = document.getElementById(prefix + '-from');
+    const toEl   = document.getElementById(prefix + '-to');
+    if (!fromEl || !toEl) return;
+    if (!fromEl.value) {
+      const t = new Date();
+      const f = new Date(t.getTime() - 29 * 86400000);
+      fromEl.value = toISODate(f);
+      toEl.value   = toISODate(t);
+    }
+  }
+
+  // ── Preset rentang tanggal untuk tab Laporan ────────────────────
+  window.repApplyPreset = function(preset) {
+    if (!preset) return;
+    const today = new Date();
+    let from, to = today;
+    if (preset === 'today') {
+      from = today;
+    } else if (preset === '7') {
+      from = new Date(today.getTime() - 6 * 86400000);
+    } else if (preset === '30') {
+      from = new Date(today.getTime() - 29 * 86400000);
+    } else if (preset === 'month') {
+      from = new Date(today.getFullYear(), today.getMonth(), 1);
+    } else if (preset === 'lastmonth') {
+      from = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      to   = new Date(today.getFullYear(), today.getMonth(), 0);
+    } else { return; }
+    document.getElementById('rep-from').value = toISODate(from);
+    document.getElementById('rep-to').value   = toISODate(to);
+    loadSalesReport();
+  };
+
+  // ── Entry point tab Laporan ─────────────────────────────────────
+  window.loadReportsTab = async function() {
+    ensureDefaultDates('rep');
+    // Load pricing + user profiles (untuk editor) paralel, lalu sales report
+    try {
+      const [_pric, profRes] = await Promise.all([
+        window.HotspotPricing.fetch(),  // ← refresh cache internal
+        api('GET', '/api/mikrotik/hotspot/user-profiles'),
+      ]);
+      _repProfiles = (profRes && profRes.success) ? (profRes.data || []) : [];
+      renderPricingEditor();
+    } catch(e) { console.warn('loadReportsTab init error:', e); }
+    loadSalesReport();
+  };
+
+  window.loadSalesReport = async function() {
+    const from = document.getElementById('rep-from').value;
+    const to   = document.getElementById('rep-to').value;
+    const q = [];
+    if (from) q.push('from=' + from);
+    if (to)   q.push('to='   + to);
+    const url = '/api/mikrotik/hotspot/sales-report' + (q.length ? '?' + q.join('&') : '');
+
+    try {
+      const r = await api('GET', url);
+      if (!r || !r.success) { toast((r && r.message) || 'Gagal memuat laporan', 'error'); return; }
+      _repReport = r.data;
+      renderSalesReport(r.data);
+    } catch(e) {
+      toast('Error: ' + e.message, 'error');
+    }
+  };
+
+  function renderSalesReport(d) {
+    if (!d) return;
+    const s = d.summary || {};
+    document.getElementById('rep-revenue').textContent = fmtRp(s.totalRevenue);
+    document.getElementById('rep-sold').textContent    = fmtNum(s.totalSold);
+    document.getElementById('rep-sold-sub').textContent = 'dari ' + fmtNum(s.totalUsers) + ' total user';
+    document.getElementById('rep-unused').textContent  = fmtNum(s.totalUnused);
+    document.getElementById('rep-arpu').textContent    = fmtRp(s.arpu);
+
+    // Range label
+    const days = (d.daily || []).length;
+    document.getElementById('rep-range-lbl').textContent = days + ' hari periode';
+    document.getElementById('rep-chart-meta').textContent = (d.range ? (d.range.from + ' s/d ' + d.range.to) : '');
+
+    // Pricing warning
+    const warnN = s.profilesWithoutPrice || 0;
+    const warnEl = document.getElementById('rep-pricing-warn');
+    if (warnEl) {
+      warnEl.style.display = warnN > 0 ? '' : 'none';
+      document.getElementById('rep-pricing-warn-n').textContent = warnN;
+    }
+
+    // Profile breakdown
+    const list = document.getElementById('rep-prof-list');
+    const byProf = d.byProfile || [];
+    document.getElementById('rep-prof-count').textContent = byProf.length + ' profile';
+    if (!byProf.length) {
+      list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text3);font-size:13px">Belum ada data</div>';
+    } else {
+      list.innerHTML = byProf.map(p => {
+        const valClass = p.revenue > 0 ? 'rep-prof-val' : 'rep-prof-val zero';
+        const priceLbl = p.price > 0 ? fmtRp(p.price) : '<span style="color:var(--amber)">harga belum di-set</span>';
+        const limLbl   = p.limitUptime ? ' &middot; <span style="color:var(--blue)">⏱ ' + esc(p.limitUptime) + '</span>' : '';
+        return '<div class="rep-prof-row">' +
+          '<div style="min-width:0;flex:1">' +
+            '<div class="rep-prof-name">' + esc(p.profile) + '</div>' +
+            '<div class="rep-prof-meta">' + priceLbl + limLbl + ' &middot; ' + fmtNum(p.sold) + ' terjual / ' + fmtNum(p.total) + ' total</div>' +
+          '</div>' +
+          '<div class="' + valClass + '">' + fmtRp(p.revenue) + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    // Chart
+    renderSalesChart(d.daily || []);
+  }
+
+  // Custom SVG bar chart — tidak butuh dependency tambahan, ringan, dan
+  // gaya konsisten dengan halaman lain. Sumbu Y otomatis, hover tooltip.
+  function renderSalesChart(daily) {
+    const host = document.getElementById('rep-chart-host');
+    if (!host) return;
+    if (!daily.length) {
+      host.innerHTML = '<div class="rep-chart-empty">Belum ada data dalam rentang ini</div>';
+      return;
+    }
+    const maxRev = Math.max(1, ...daily.map(x => x.revenue));
+    const W = 800, H = 220, padL = 60, padR = 16, padT = 16, padB = 32;
+    const innerW = W - padL - padR;
+    const innerH = H - padT - padB;
+    const n = daily.length;
+    const barGap = 2;
+    const barW = Math.max(2, (innerW / n) - barGap);
+
+    // Y axis ticks (4 garis grid)
+    const ticks = 4;
+    let gridLines = '';
+    let yLabels = '';
+    for (let i = 0; i <= ticks; i++) {
+      const y = padT + (innerH * i / ticks);
+      const v = maxRev * (1 - i / ticks);
+      gridLines += '<line class="grid-line" x1="' + padL + '" y1="' + y.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y.toFixed(1) + '"/>';
+      yLabels   += '<text class="axis-label" x="' + (padL - 6) + '" y="' + (y + 3).toFixed(1) + '" text-anchor="end">' + fmtShortRp(v) + '</text>';
+    }
+
+    // Bars
+    let bars = '';
+    daily.forEach((d, i) => {
+      const x = padL + i * (barW + barGap);
+      const h = (d.revenue / maxRev) * innerH;
+      const y = padT + innerH - h;
+      const cls = d.revenue > 0 ? 'bar' : 'bar bar-zero';
+      const tip = d.date + ' — ' + fmtRp(d.revenue) + ' (' + fmtNum(d.sold) + ' voucher)';
+      bars += '<rect class="' + cls + '" x="' + x.toFixed(1) + '" y="' + y.toFixed(1) +
+              '" width="' + barW.toFixed(1) + '" height="' + Math.max(1, h).toFixed(1) + '" rx="2">' +
+              '<title>' + esc(tip) + '</title></rect>';
+    });
+
+    // X labels — show only ~6 labels (first, last, evenly spaced) untuk hindari overlap
+    let xLabels = '';
+    const labelCount = Math.min(6, n);
+    for (let i = 0; i < labelCount; i++) {
+      const idx = Math.round(i * (n - 1) / Math.max(1, labelCount - 1));
+      const d = daily[idx];
+      const x = padL + idx * (barW + barGap) + barW / 2;
+      const lbl = d.date.slice(5); // MM-DD
+      xLabels += '<text class="axis-label" x="' + x.toFixed(1) + '" y="' + (H - padB + 14) + '" text-anchor="middle">' + lbl + '</text>';
+    }
+
+    host.innerHTML =
+      '<svg class="rep-chart-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
+        gridLines + bars + yLabels + xLabels +
+      '</svg>';
+  }
+
+  function fmtShortRp(n) {
+    n = Number(n) || 0;
+    if (n >= 1e9) return 'Rp ' + (n / 1e9).toFixed(1) + 'M';
+    if (n >= 1e6) return 'Rp ' + (n / 1e6).toFixed(1) + 'jt';
+    if (n >= 1e3) return 'Rp ' + (n / 1e3).toFixed(0) + 'rb';
+    return 'Rp ' + Math.round(n);
+  }
+
+  // ── Pricing editor ──────────────────────────────────────────────
+  function renderPricingEditor() {
+    const list = document.getElementById('pricing-list');
+    if (!list) return;
+    if (!_repProfiles.length) {
+      list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text3);font-size:13px">Belum ada user profile di MikroTik ini</div>';
+      return;
+    }
+    list.innerHTML = _repProfiles.map(p => {
+      const name = p.name || '';
+      const e    = window.HotspotPricing.entry(name);
+      const rate = p.rateLimit ? esc(p.rateLimit) : '—';
+      return '<div class="pricing-row pricing-row-3">' +
+        '<div>' +
+          '<div class="pr-name">' + esc(name) + '</div>' +
+          '<div class="pr-rate">Rate-limit: ' + rate + '</div>' +
+        '</div>' +
+        '<div class="pr-input-wrap">' +
+          '<span class="pr-prefix">Rp</span>' +
+          '<input type="number" min="0" step="1000" data-profile="' + esc(name) + '" data-field="price" value="' + (e.price > 0 ? e.price : '') + '" placeholder="0">' +
+        '</div>' +
+        '<div class="pr-input-wrap">' +
+          '<span class="pr-prefix" style="color:var(--blue)">⏱</span>' +
+          '<input type="text" data-profile="' + esc(name) + '" data-field="limitUptime" value="' + esc(e.limitUptime) + '" placeholder="1d / 7d / kosong">' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  window.savePricing = async function() {
+    const btn = document.getElementById('btn-save-pricing');
+    const inputs = document.querySelectorAll('#pricing-list input[data-profile]');
+    const pricing = {};
+    // Kumpulkan price + limitUptime per profile
+    inputs.forEach(inp => {
+      const name  = inp.getAttribute('data-profile');
+      const field = inp.getAttribute('data-field');
+      if (!name) return;
+      if (!pricing[name]) pricing[name] = { price: 0, limitUptime: '' };
+      if (field === 'price') {
+        const val = parseFloat(inp.value);
+        pricing[name].price = (Number.isFinite(val) && val >= 0) ? val : 0;
+      } else if (field === 'limitUptime') {
+        pricing[name].limitUptime = (inp.value || '').trim();
+      }
+    });
+
+    btn.disabled = true;
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<svg class="spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg> Menyimpan…';
+    try {
+      const r = await api('POST', '/api/mikrotik/hotspot/pricing', { pricing });
+      if (r && r.success) {
+        _repPricing = r.data || pricing;
+        toast('Harga & limit tersimpan — me-refresh laporan…', 'success');
+        await loadSalesReport();
+      } else {
+        toast((r && r.message) || 'Gagal menyimpan', 'error');
+      }
+    } catch(e) { toast('Error: ' + e.message, 'error'); }
+    finally {
+      btn.disabled = false;
+      btn.innerHTML = orig;
+    }
+  };
+
+  // ── Export CSV per-hari ─────────────────────────────────────────
+  window.exportReportCSV = function() {
+    if (!_repReport) { toast('Belum ada data untuk di-export', 'info'); return; }
+    const rows = [['Tanggal', 'Voucher Terjual', 'Pendapatan (Rp)']];
+    (_repReport.daily || []).forEach(d => rows.push([d.date, d.sold, d.revenue]));
+    rows.push([]);
+    rows.push(['Breakdown per Profile']);
+    rows.push(['Profile', 'Harga', 'Terjual', 'Belum Terpakai', 'Total', 'Pendapatan (Rp)']);
+    (_repReport.byProfile || []).forEach(p => rows.push([p.profile, p.price, p.sold, p.unused, p.total, p.revenue]));
+    downloadCSV(rows, 'laporan-hotspot-' + (_repReport.range?.from || '') + '_' + (_repReport.range?.to || '') + '.csv');
+  };
+
+  function downloadCSV(rows, filename) {
+    const csv = rows.map(r => r.map(cell => {
+      const s = (cell == null ? '' : String(cell));
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }).join(',')).join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  TAB: HISTORI USER
+  // ════════════════════════════════════════════════════════════════
+  window.loadHistoryTab = async function() {
+    ensureDefaultDates('hist');
+    // Populate profile filter dari _repProfiles (kalau sudah ada) atau fetch
+    try {
+      if (!_repProfiles.length) {
+        const r = await api('GET', '/api/mikrotik/hotspot/user-profiles');
+        _repProfiles = (r && r.success) ? (r.data || []) : [];
+      }
+      const sel = document.getElementById('hist-profile');
+      // Preserve current value bila ada
+      const curVal = sel.value;
+      sel.innerHTML = '<option value="">Semua profile</option>' +
+        _repProfiles.map(p => '<option value="' + esc(p.name) + '"' + (p.name === curVal ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('');
+    } catch(e) { /* silent */ }
+    loadUsageHistory();
+  };
+
+  window.loadUsageHistory = async function() {
+    const from    = document.getElementById('hist-from').value;
+    const to      = document.getElementById('hist-to').value;
+    const profile = document.getElementById('hist-profile').value;
+    const search  = document.getElementById('hist-search').value.trim();
+
+    const q = [];
+    if (from)    q.push('from='    + encodeURIComponent(from));
+    if (to)      q.push('to='      + encodeURIComponent(to));
+    if (profile) q.push('profile=' + encodeURIComponent(profile));
+    if (search)  q.push('search='  + encodeURIComponent(search));
+    const url = '/api/mikrotik/hotspot/usage-history' + (q.length ? '?' + q.join('&') : '');
+
+    document.getElementById('tbl-history').innerHTML =
+      '<div class="loader" style="padding:24px"><svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>Memuat…</div>';
+
+    try {
+      const r = await api('GET', url);
+      if (!r || !r.success) { toast((r && r.message) || 'Gagal memuat histori', 'error'); return; }
+      _histRows = r.data || [];
+      renderHistory();
+    } catch(e) { toast('Error: ' + e.message, 'error'); }
+  };
+
+  function renderHistory() {
+    const rows = _histRows;
+    // Stat strip
+    let totalBytes = 0, revenue = 0, enabled = 0;
+    rows.forEach(r => {
+      totalBytes += (r.bytesTotal || 0);
+      revenue    += (r.price || 0);
+      if (!r.disabled) enabled++;
+    });
+    document.getElementById('hist-stat-total').textContent     = fmtNum(rows.length);
+    document.getElementById('hist-stat-bytes').textContent     = fmtBytes(totalBytes);
+    document.getElementById('hist-stat-revenue').textContent   = fmtRp(revenue);
+    document.getElementById('hist-stat-enabled').textContent   = fmtNum(enabled);
+    document.getElementById('hist-count').textContent          = fmtNum(rows.length) + ' user';
+    document.getElementById('tb-history').textContent          = fmtNum(rows.length);
+
+    const host = document.getElementById('tbl-history');
+    if (!rows.length) {
+      host.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px">' +
+        '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.4;margin-bottom:10px"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>' +
+        '<div>Tidak ada user yang cocok dengan filter</div>' +
+        '<div style="font-size:11.5px;margin-top:6px">Coba ubah rentang tanggal atau hapus filter profile</div>' +
+      '</div>';
+      return;
+    }
+
+    host.innerHTML =
+      '<table>' +
+        '<thead><tr>' +
+          '<th>#</th>' +
+          '<th>Username</th>' +
+          '<th>Profile</th>' +
+          '<th>Generated</th>' +
+          '<th>Uptime</th>' +
+          '<th class="num-r">Bytes</th>' +
+          '<th class="num-r">Harga</th>' +
+          '<th>Status</th>' +
+          '<th>MAC</th>' +
+        '</tr></thead>' +
+        '<tbody>' +
+        rows.map((r, i) => {
+          const status = r.disabled
+            ? '<span class="badge-soft bs-red">Disabled</span>'
+            : '<span class="badge-soft bs-green">Aktif</span>';
+          const priceCell = r.price > 0 ? fmtRp(r.price)
+            : '<span style="color:var(--text3)">—</span>';
+          return '<tr>' +
+            '<td style="color:var(--text3);font-size:12px">' + (i+1) + '</td>' +
+            '<td style="font-weight:600">' + esc(r.name) + '</td>' +
+            '<td><span class="badge-soft bs-blue">' + esc(r.profile) + '</span></td>' +
+            '<td style="font-family:var(--fm);font-size:12px">' + (r.generatedAt || '<span style="color:var(--text3)">—</span>') + '</td>' +
+            '<td style="font-family:var(--fm);font-size:12px">' + esc(r.uptime || '—') + '</td>' +
+            '<td class="num-r">' + fmtBytes(r.bytesTotal) + '</td>' +
+            '<td class="num-r">' + priceCell + '</td>' +
+            '<td>' + status + '</td>' +
+            '<td style="font-family:var(--fm);font-size:11px;color:var(--text2)">' + esc(r.macAddress || '—') + '</td>' +
+          '</tr>';
+        }).join('') +
+        '</tbody>' +
+      '</table>';
+  }
+
+  window.exportHistoryCSV = function() {
+    if (!_histRows.length) { toast('Belum ada data untuk di-export', 'info'); return; }
+    const rows = [['Username', 'Profile', 'Generated', 'Uptime', 'Bytes In', 'Bytes Out', 'Total Bytes', 'Harga (Rp)', 'Status', 'MAC', 'Comment']];
+    _histRows.forEach(r => rows.push([
+      r.name, r.profile, r.generatedAt || '', r.uptime || '',
+      r.bytesIn, r.bytesOut, r.bytesTotal, r.price,
+      r.disabled ? 'Disabled' : 'Aktif',
+      r.macAddress || '', r.comment || ''
+    ]));
+    downloadCSV(rows, 'histori-user-hotspot-' + toISODate(new Date()) + '.csv');
+  };
+
+  // Enter di search input → trigger search
+  document.addEventListener('DOMContentLoaded', () => {
+    const sInp = document.getElementById('hist-search');
+    if (sInp) sInp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') loadUsageHistory();
+    });
   });
 })();
 </script>

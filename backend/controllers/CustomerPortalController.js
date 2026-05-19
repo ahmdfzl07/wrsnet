@@ -1307,7 +1307,7 @@ exports.midtransNotif = async (req, res) => {
       };
       const payMethod = methodMap[payment_type] || 'gateway';
 
-      await Payment.create({
+      const newPayment = await Payment.create({
         invoice_id: invoiceId,
         amount: parseFloat(gross_amount) || parseFloat(invoice.total),
         payment_method: payMethod,
@@ -1316,6 +1316,18 @@ exports.midtransNotif = async (req, res) => {
         notes: `Auto: Midtrans ${payment_type || ''} (${transaction_id || ''})`
       });
       logger.info(`Portal: Invoice #${invoiceId} PAID via Midtrans (${order_id}, ${payment_type})`);
+
+      // ── Auto: aktifkan customer, sync Keuangan, restore isolir, kirim WA ──
+      try {
+        const { finalizePaidInvoice } = require('../utils/paymentFinalizer');
+        const fin = await finalizePaidInvoice({
+          invoiceId, paymentId: newPayment.id, channel: 'midtrans', referenceNo: order_id
+        });
+        logger.info(`Midtrans webhook finalize: invoice #${invoiceId} → ${JSON.stringify(fin)}`);
+      } catch (finErr) {
+        logger.error(`Midtrans webhook finalize error invoice #${invoiceId}: ${finErr.message}`);
+        // Tidak fatal — payment & invoice sudah persist.
+      }
     } else if (isFailed) {
       logger.info(`Midtrans webhook: invoice #${invoiceId} ${transaction_status} (${order_id})`);
       // Tidak update status invoice — tetap unpaid, biarkan customer bisa coba lagi
@@ -1381,7 +1393,7 @@ exports.xenditNotif = async (req, res) => {
       else if (methodLower.includes('ewallet') || methodLower.includes('wallet')) payMethod = 'ewallet';
       else if (methodLower.includes('credit'))                              payMethod = 'gateway';
 
-      await Payment.create({
+      const newPayment = await Payment.create({
         invoice_id: invoiceId,
         amount: parseFloat(paid_amount) || parseFloat(invoice.total),
         payment_method: payMethod,
@@ -1390,6 +1402,17 @@ exports.xenditNotif = async (req, res) => {
         notes: `Auto: Xendit ${payment_method || ''} ${payment_channel || ''} (${xenInvoiceId || ''})`
       });
       logger.info(`Portal: Invoice #${invoiceId} PAID via Xendit (${external_id}, ${payment_method})`);
+
+      // ── Auto: aktifkan customer, sync Keuangan, restore isolir, kirim WA ──
+      try {
+        const { finalizePaidInvoice } = require('../utils/paymentFinalizer');
+        const fin = await finalizePaidInvoice({
+          invoiceId, paymentId: newPayment.id, channel: 'xendit', referenceNo: external_id
+        });
+        logger.info(`Xendit webhook finalize: invoice #${invoiceId} → ${JSON.stringify(fin)}`);
+      } catch (finErr) {
+        logger.error(`Xendit webhook finalize error invoice #${invoiceId}: ${finErr.message}`);
+      }
     } else if (status === 'EXPIRED' || status === 'FAILED') {
       logger.info(`Xendit webhook: invoice #${invoiceId} ${status} (${external_id})`);
     } else {
@@ -1510,7 +1533,7 @@ exports.duitkuNotif = async (req, res) => {
         payMethod = 'other'; // retail offline
       }
 
-      await Payment.create({
+      const newPayment = await Payment.create({
         invoice_id: invoiceId,
         amount: callbackAmount,
         payment_method: payMethod,
@@ -1519,6 +1542,17 @@ exports.duitkuNotif = async (req, res) => {
         notes: `Auto: Duitku ${paymentCode || ''} (ref: ${reference || ''}${publisherOrderId ? ', pub: ' + publisherOrderId : ''}${settlementDate ? ', settle: ' + settlementDate : ''})`
       });
       logger.info(`Portal: Invoice #${invoiceId} PAID via Duitku (${merchantOrderId}, paymentCode=${paymentCode}, ref=${reference})`);
+
+      // ── Auto: aktifkan customer, sync Keuangan, restore isolir, kirim WA ──
+      try {
+        const { finalizePaidInvoice } = require('../utils/paymentFinalizer');
+        const fin = await finalizePaidInvoice({
+          invoiceId, paymentId: newPayment.id, channel: 'duitku', referenceNo: reference || merchantOrderId
+        });
+        logger.info(`Duitku webhook finalize: invoice #${invoiceId} → ${JSON.stringify(fin)}`);
+      } catch (finErr) {
+        logger.error(`Duitku webhook finalize error invoice #${invoiceId}: ${finErr.message}`);
+      }
     } else {
       // resultCode '01' atau lainnya = failed/expired. Tidak update invoice — biarkan
       // customer bisa coba lagi.

@@ -9,7 +9,7 @@ const GeniePage = (() => {
   let pendingAction = null;
   let filterStatus = '';
   let searchTimer = null;
-  const PER_PAGE = 25;
+  let PER_PAGE = 25;
   let currentPage = 1;
 
   // ── INIT ────────────────────────────────────────────
@@ -141,7 +141,19 @@ const GeniePage = (() => {
     }
 
     el('ont-count-label').textContent = `${filtered.length} device`;
-    el('genie-pg-info').textContent   = `${filtered.length} device ditemukan`;
+
+    // ─── Pagination math ───
+    const totalRows = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalRows / PER_PAGE));
+    // Clamp currentPage kalau search/filter mengecilkan jumlah hasil
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+    const start = (currentPage - 1) * PER_PAGE;
+    const end   = Math.min(start + PER_PAGE, totalRows);
+    const pageRows = filtered.slice(start, end);
+
+    // Pagination info text — diisi setelah render controls
+    renderPagination(totalRows, totalPages);
 
     if (filtered.length === 0) {
       tbody.innerHTML = `<tr><td colspan="11"><div class="tbl-empty">
@@ -151,11 +163,13 @@ const GeniePage = (() => {
     }
 
     // Simpan mapping id -> index untuk lookup saat klik
+    // PENTING: index relative ke pageRows (yang ditampilkan), karena tbody
+    // hanya berisi page saat ini. Reset map setiap render.
     window._genieDeviceMap = {};
-    filtered.forEach((d, i) => { window._genieDeviceMap[i] = d.id; });
+    pageRows.forEach((d, i) => { window._genieDeviceMap[i] = d.id; });
 
-    tbody.innerHTML = filtered.map((d, i) => {
-      const num = String(i + 1).padStart(2, '0');
+    tbody.innerHTML = pageRows.map((d, i) => {
+      const num = String(start + i + 1).padStart(2, '0');
 
       // Manufacturer icon color tier
       const mfrKey = (d.manufacturer || '').toLowerCase();
@@ -319,12 +333,16 @@ const GeniePage = (() => {
       const ds = c.getAttribute('onclick')?.match(/'([^']*)'/)?.[1] ?? '';
       if (ds === status) c.classList.add('active');
     });
+    currentPage = 1;  // reset ke halaman 1 saat ganti filter
     loadDevices();
   }
 
   function debounce() {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(renderTable, 300);
+    searchTimer = setTimeout(() => {
+      currentPage = 1;  // reset ke halaman 1 saat search berubah
+      renderTable();
+    }, 300);
   }
 
   function refresh() { loadStats(); loadDevices(); }
@@ -1033,6 +1051,112 @@ const GeniePage = (() => {
     return new Date(dateStr).toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
   }
 
+  // ── PAGINATION ──────────────────────────────────────
+  // Render pagination controls di footer tabel.
+  // Mendukung: prev/next, page numbers (with ellipsis untuk page banyak),
+  // per-page selector (25/50/100/250), dan jump-to-page input.
+  function renderPagination(totalRows, totalPages) {
+    const info = el('genie-pg-info');
+    if (!info) return;
+
+    if (totalRows === 0) {
+      info.innerHTML = '<span class="pg-empty">Tidak ada device</span>';
+      return;
+    }
+
+    const startIdx = (currentPage - 1) * PER_PAGE + 1;
+    const endIdx   = Math.min(currentPage * PER_PAGE, totalRows);
+
+    // ─── Build page number buttons dengan ellipsis ───
+    // Logic: tampilkan max ~7 tombol (current ± 2, dengan ellipsis jika perlu)
+    const pages = [];
+    const cp = currentPage, tp = totalPages;
+    function addBtn(p) {
+      if (p === cp) {
+        pages.push(`<button class="pg-btn pg-active" disabled>${p}</button>`);
+      } else {
+        pages.push(`<button class="pg-btn" onclick="GeniePage.gotoPage(${p})">${p}</button>`);
+      }
+    }
+    function addEllipsis() {
+      pages.push(`<span class="pg-ellipsis">…</span>`);
+    }
+
+    if (tp <= 7) {
+      // Tampilkan semua kalau total page sedikit
+      for (let i = 1; i <= tp; i++) addBtn(i);
+    } else {
+      // Smart pagination: 1 … (cp-1) cp (cp+1) … tp
+      addBtn(1);
+      if (cp > 4) addEllipsis();
+      const startP = Math.max(2, cp - 2);
+      const endP   = Math.min(tp - 1, cp + 2);
+      for (let i = startP; i <= endP; i++) addBtn(i);
+      if (cp < tp - 3) addEllipsis();
+      addBtn(tp);
+    }
+
+    info.innerHTML = `
+      <div class="pg-wrap">
+        <div class="pg-info-text">
+          Menampilkan <strong>${startIdx.toLocaleString('id-ID')}</strong>–<strong>${endIdx.toLocaleString('id-ID')}</strong>
+          dari <strong>${totalRows.toLocaleString('id-ID')}</strong> device
+        </div>
+
+        <div class="pg-controls">
+          <label class="pg-perpage">
+            <span>Per halaman:</span>
+            <select onchange="GeniePage.setPerPage(parseInt(this.value))">
+              <option value="25"  ${PER_PAGE===25  ? 'selected':''}>25</option>
+              <option value="50"  ${PER_PAGE===50  ? 'selected':''}>50</option>
+              <option value="100" ${PER_PAGE===100 ? 'selected':''}>100</option>
+              <option value="250" ${PER_PAGE===250 ? 'selected':''}>250</option>
+            </select>
+          </label>
+
+          <div class="pg-nav">
+            <button class="pg-btn pg-arrow" ${cp <= 1 ? 'disabled' : `onclick="GeniePage.gotoPage(${cp-1})"`} aria-label="Halaman sebelumnya">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            ${pages.join('')}
+            <button class="pg-btn pg-arrow" ${cp >= tp ? 'disabled' : `onclick="GeniePage.gotoPage(${cp+1})"`} aria-label="Halaman berikutnya">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function gotoPage(n) {
+    n = parseInt(n) || 1;
+    if (n < 1) n = 1;
+    currentPage = n;
+    renderTable();
+    // Scroll ke atas tabel supaya user lihat data baru
+    const tableCard = document.querySelector('.ot-table-card') || el('genie-tbody').closest('.card');
+    if (tableCard) {
+      tableCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    // Rebuild mobile cards juga
+    if (typeof window.rebuildMobileCards === 'function') window.rebuildMobileCards();
+  }
+
+  function setPerPage(n) {
+    n = parseInt(n) || 25;
+    if (![25,50,100,250].includes(n)) n = 25;
+    PER_PAGE = n;
+    currentPage = 1;
+    renderTable();
+    if (typeof window.rebuildMobileCards === 'function') window.rebuildMobileCards();
+  }
+
+  // Reset ke page 1 saat search/filter berubah, supaya user tidak stuck
+  // di halaman yang lebih besar dari total page hasil filter.
+  function resetPageOnSearch() {
+    currentPage = 1;
+  }
+
   // ── PUBLIC ───────────────────────────────────────────
   return {
     init, refresh, loadDevices, loadStats,
@@ -1043,7 +1167,8 @@ const GeniePage = (() => {
     loadClients, loadSignalHistory, loadBandwidth,
     loadAssignedCustomer, searchCustomers, selectCustomer, unassignCustomer,
     sendTask, doConfirm, confirmReboot, sendRefresh,
-    openSettings, testConn, saveSettings
+    openSettings, testConn, saveSettings,
+    gotoPage, setPerPage, resetPageOnSearch
   };
 })();
 
