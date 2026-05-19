@@ -5,3 +5,7 @@ CREATE TABLE live_messages (
   message TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE `live_messages` ADD `type` VARCHAR(50) NULL DEFAULT NULL AFTER `user_id`;
+ALTER TABLE `live_messages` ADD `name` VARCHAR(50) NULL DEFAULT NULL AFTER `room`;
+ALTER TABLE live_messages 
+ADD COLUMN is_read TINYINT(1) DEFAULT 0;

@@ -1006,7 +1006,6 @@
   </a>
 </div>
 
-
 <!-- ═══ MODAL: Konfirmasi Upgrade Paket ═══ -->
 <div class="modal-overlay" id="modalUpgrade">
   <div class="modal-sheet" style="position:relative">
@@ -1156,6 +1155,7 @@ const customer = JSON.parse(localStorage.getItem("portal_customer"));
 const USER_ID = user?.id ?? null;
 const CUSTOMER_ID = customer?.customer_id ?? null;
 const CUSTOMER_ID_KEY = customer?.id ?? null;
+const CUSTOMER_NAME= customer?.name ?? null;
 
 const ROOM = CUSTOMER_ID
   ? `customer_${CUSTOMER_ID}`
@@ -1164,6 +1164,8 @@ const ROOM = CUSTOMER_ID
 const USER_ID_CHAT = CUSTOMER_ID_KEY
   ? `${CUSTOMER_ID_KEY}`
   : `${USER_ID}`;
+
+const TYPE = "customer";
 
 const ticketId =
   new URLSearchParams(window.location.search).get("ticket_id") || "1";
@@ -1196,8 +1198,8 @@ function renderMessage(data) {
   const box = document.getElementById("chatBox");
 
   const isMe =
-    String(data.user_id) === String(USER_ID) ||
-    String(data.user_id) === String(CUSTOMER_ID_KEY);
+    (String(data.user_id) === String(USER_ID) && data.type === "customer") ||
+    (String(data.user_id) === String(CUSTOMER_ID_KEY) && data.type === "customer");
 
   const wrap = document.createElement("div");
   wrap.style.display = "flex";
@@ -1217,14 +1219,18 @@ function renderMessage(data) {
   bubble.innerText = data.message;
 
   const meta = document.createElement("small");
+
+  const time = new Date(data.created_at).toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+
   meta.style.fontSize = "11px";
   meta.style.opacity = "0.6";
 
   meta.innerText = isMe
-    ? "You"
-    : data.customer_id
-      ? `Customer ${data.customer_id}`
-      : `User ${data.user_id}`;
+    ? `You • ${time}`
+    : `${data.name} • ${time}`;
 
   wrap.appendChild(bubble);
   wrap.appendChild(meta);
@@ -1240,7 +1246,9 @@ function sendChat() {
 
   socket.emit("chat:send", {
     room: ROOM,
+    name: CUSTOMER_NAME,
     user_id: USER_ID_CHAT,
+    type: TYPE,
     message
   });
 
