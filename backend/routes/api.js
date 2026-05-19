@@ -138,7 +138,7 @@ const _nocBlockedPrefixes = [
   '/whatsapp',
   '/broadcast',
   '/message-logs',
-  '/users',             // user management
+  '/users',             
   '/roles',
   '/permissions',
   '/activity-logs',
