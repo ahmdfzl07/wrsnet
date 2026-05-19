@@ -44,6 +44,7 @@ router.get("/payment/finish", (req, res) =>
     invoiceId: req.query.invoice || "",
   }),
 );
+
 router.get("/payment/pending", (req, res) =>
   res.render("portal/payment-result", {
     title: "Pembayaran Pending",
