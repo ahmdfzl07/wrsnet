@@ -52,6 +52,7 @@ const axios = require("axios");
 const db = require("../models");
 const Customer = db.Customer;
 const Package = db.Package;
+const Invoice = db.Invoice;
 
 // ===== DEMO (public — /provision tidak butuh login) =====
 router.use("/demo", demoRoutes);
@@ -3003,6 +3004,231 @@ router.post("/qontak/send-invoice", async (req, res) => {
       success: false,
       message: "Gagal kirim invoice",
       error: err?.response?.data || err.message,
+    });
+  }
+});
+
+// payment gateaway
+router.post("/payment/create", async (req, res) => {
+  try {
+    const crypto = require("crypto");
+
+    const { invoice_id, provider, method, admin_fee } = req.body;
+
+    const invoice = await Invoice.findByPk(invoice_id, {
+      include: [{ model: Customer, as: "customer" }],
+    });
+
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        message: "Invoice tidak ditemukan",
+      });
+    }
+
+    const amount = parseInt(invoice.total);
+    //     const adminFee = parseInt(admin_fee || 0);
+    // const amount = parseInt(invoice.total) + adminFee;
+
+    if (provider === "duitku") {
+      const merchantCode = process.env.DUITKU_MERCHANT_CODE;
+      const apiKey = process.env.DUITKU_API_KEY;
+
+      const merchantOrderId = `INV-${invoice.id}-${Date.now()}`;
+
+      const signature = crypto
+        .createHash("md5")
+        .update(merchantCode + merchantOrderId + amount + apiKey)
+        .digest("hex");
+
+      const payload = {
+        merchantCode: merchantCode,
+        paymentAmount: amount,
+
+        paymentMethod: method,
+
+        merchantOrderId: merchantOrderId,
+        productDetails: "Tagihan Internet " + invoice.invoice_number,
+
+        customerVaName: invoice.customer?.name || "Customer",
+        email: invoice.customer?.email || "customer@gmail.com",
+        phoneNumber: invoice.customer?.phone || "",
+
+        callbackUrl: process.env.APP_URL + "/api/payment/duitku/callback",
+        returnUrl: process.env.APP_URL + "/payment-success",
+
+        signature: signature,
+        expiryPeriod: 1440,
+      };
+
+      console.log("DUITKU PAYLOAD:", payload);
+
+      const response = await axios.post(
+        "https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry",
+        payload,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      console.log("DUITKU RESPONSE:", response.data);
+
+      const paymentUrl =
+        response.data.paymentUrl || response.data.data?.paymentUrl;
+
+      if (!paymentUrl) {
+        return res.status(400).json({
+          success: false,
+          message: response.data?.statusMessage || "Duitku gagal",
+          data: response.data,
+        });
+      }
+
+      return res.json({
+        success: true,
+        provider: "duitku",
+        payment_url: paymentUrl,
+        reference: response.data.reference,
+        data: response.data,
+      });
+    }
+
+    if (provider === "tripay") {
+      const merchantRef = "INV-" + invoice.id + "-" + Date.now();
+
+      const signature = crypto
+        .createHmac("sha256", process.env.TRIPAY_PRIVATE_KEY)
+        .update(process.env.TRIPAY_MERCHANT_CODE + merchantRef + amount)
+        .digest("hex");
+
+      const selectedMethod = method || "BRIVA";
+
+      const payload = {
+        method: selectedMethod,
+        merchant_ref: merchantRef,
+        amount: amount,
+
+        customer_name: invoice.customer?.name || "Customer",
+        customer_email: invoice.customer?.email || "customer@gmail.com",
+        customer_phone: invoice.customer?.phone || "",
+
+        order_items: [
+          {
+            sku: "internet",
+            name: "Tagihan Internet " + invoice.invoice_number,
+            price: amount,
+            quantity: 1,
+          },
+        ],
+
+        callback_url: process.env.APP_URL + "/api/payment/tripay/callback",
+        return_url: process.env.APP_URL + "/payment-success",
+        expired_time: Math.floor(Date.now() / 1000) + 86400,
+
+        signature: signature,
+      };
+
+      console.log("TRIPAY PAYLOAD:", payload);
+
+      const response = await axios.post(
+        // "https://tripay.co.id/api/transaction/create",
+        "https://tripay.co.id/api-sandbox/transaction/create",
+        payload,
+        {
+          headers: {
+            Authorization: "Bearer " + process.env.TRIPAY_API_KEY,
+          },
+        },
+      );
+
+      return res.json({
+        success: true,
+        provider: "tripay",
+        payment_url: response.data.data.checkout_url,
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: "Provider tidak valid",
+    });
+  } catch (err) {
+    console.log("ERROR:", err?.response?.data || err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal membuat pembayaran",
+      error: err?.response?.data || err.message,
+    });
+  }
+});
+
+router.post("/payment/tripay/callback", async (req, res) => {
+  try {
+    const data = req.body;
+
+    console.log("TRIPAY CALLBACK:", data);
+
+    if (data.status === "PAID") {
+      const invoiceId = data.merchant_ref.split("-")[1];
+
+      await Invoice.update(
+        {
+          status: "paid",
+          paid_at: new Date(),
+        },
+        {
+          where: {
+            id: invoiceId,
+          },
+        },
+      );
+    }
+
+    return res.json({
+      success: true,
+    });
+  } catch (err) {
+    console.log(err);
+
+    return res.status(500).json({
+      success: false,
+    });
+  }
+});
+
+router.post("/payment/duitku/callback", async (req, res) => {
+  try {
+    const data = req.body;
+
+    console.log("DUITKU CALLBACK:", data);
+
+    if (data.resultCode === "00") {
+      const invoiceId = data.merchantOrderId.split("-")[1];
+
+      await Invoice.update(
+        {
+          status: "paid",
+          paid_at: new Date(),
+        },
+        {
+          where: {
+            id: invoiceId,
+          },
+        },
+      );
+    }
+
+    return res.json({
+      success: true,
+    });
+  } catch (err) {
+    console.log(err);
+
+    return res.status(500).json({
+      success: false,
     });
   }
 });
