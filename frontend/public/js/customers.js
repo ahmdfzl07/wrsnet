@@ -951,7 +951,7 @@ async function sendInvoice(customerId) {
       return;
     }
 
-    alert("Invoice berhasil dikirim via WhatsApp ✔");
+    alert("Invoice berhasil dikirim via WhatsApp");
 
     console.log("Qontak response:", res.data);
   } catch (err) {

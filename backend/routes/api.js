@@ -2954,18 +2954,22 @@ router.post("/qontak/send-invoice", async (req, res) => {
         body: [
           {
             key: "1",
+            value: "customer_name",
             value_text: customer.name,
           },
           {
             key: "2",
+            value: "due_date",
             value_text: dueDate,
           },
           {
             key: "3",
+            value: "package_name",
             value_text: customer.package?.name || "-",
           },
           {
             key: "4",
+            value: "package_price",
             value_text: packagePrice,
           },
         ],
@@ -2985,9 +2989,6 @@ router.post("/qontak/send-invoice", async (req, res) => {
         },
       },
     );
-
-    console.log("QONTAK SUCCESS:");
-    console.log(response.data);
 
     return res.json({
       success: true,
