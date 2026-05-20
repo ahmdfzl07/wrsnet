@@ -929,30 +929,35 @@ function sendWA(phone) {
 }
 window.sendWA = sendWA;
 
-function sendInvoice(customerId) {
+// sned tagihan via qontak
+async function sendInvoice(customerId) {
   if (!confirm("Kirim tagihan ke customer ini via WhatsApp?")) return;
 
-  fetch("/api/qontak/send-invoice", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      customer_id: customerId,
-    }),
-  })
-    .then((res) => res.json())
-    .then((res) => {
-      if (res.success) {
-        alert("Tagihan berhasil dikirim!");
-      } else {
-        alert("Gagal kirim tagihan");
-      }
-    })
-    .catch((err) => {
-      console.error(err);
-      alert("Error kirim tagihan");
+  try {
+    console.log("Mengirim invoice...");
+
+    const response = await fetch("/api/qontak/send-invoice", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ customer_id: customerId }),
     });
+
+    const res = await response.json();
+
+    if (!response.ok || !res.success) {
+      alert(res.message || "Gagal kirim invoice");
+      return;
+    }
+
+    alert("Invoice berhasil dikirim via WhatsApp ✔");
+
+    console.log("Qontak response:", res.data);
+  } catch (err) {
+    console.error("Error kirim invoice:", err);
+    alert("Terjadi kesalahan saat mengirim invoice");
+  }
 }
 
 // ── PACKAGES ─────────────────────────────────────────────────

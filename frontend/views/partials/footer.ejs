@@ -1,0 +1,128 @@
+<footer class="main-footer">
+  <div class="footer-container">
+
+    <!-- Copyright -->
+    <div class="footer-left">
+      <p>
+        © <%= new Date().getFullYear() %> ISPNET Management System
+      </p>
+    </div>
+
+    <!-- Logos -->
+    <div class="footer-right">
+
+      <a href="#" class="footer-brand">
+        <img 
+          src="https://e.ebilling.id:2096/img/logo/3275WRSNET%201%20(REMOVE%20BACKGROUND).png"
+          alt="WRSNET Logo"
+          class="footer-logo wrsnet-logo"
+        >
+      </a>
+
+      <div class="footer-divider"></div>
+
+      <a href="https://gmdp.net.id" target="_blank" class="footer-brand">
+        <img 
+          src="https://gmdp.net.id/build/assets/gmdp%20logo-Cm7eDGKF.webp"
+          alt="GDMP Logo"
+          class="footer-logo gdmp-logo"
+        >
+      </a>
+
+    </div>
+  </div>
+</footer>
+
+<style>
+.main-footer {
+  width: 100%;
+  background: #ffffff;
+  border-top: 1px solid #edf0f5;
+  padding: 14px 28px;
+  margin-top: 30px;
+}
+
+.footer-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.footer-left p {
+  margin: 0;
+  font-size: 13px;
+  color: #94a3b8;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+.footer-right {
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  padding: 8px 16px;
+  border-radius: 14px;
+  border: 1px solid #eef2f7;
+  gap: 14px;
+}
+
+.footer-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: all 0.25s ease;
+}
+
+.footer-brand:hover {
+  transform: translateY(-2px);
+  opacity: 0.9;
+}
+
+.footer-logo {
+  object-fit: contain;
+  display: block;
+}
+
+/* WRSNET */
+.wrsnet-logo {
+  height: 28px;
+}
+
+/* GDMP */
+.gdmp-logo {
+  height: 24px;
+}
+
+.footer-divider {
+  width: 1px;
+  height: 24px;
+  background: #dbe2ea;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .main-footer {
+    padding: 14px 16px;
+  }
+
+  .footer-container {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .footer-right {
+    padding: 8px 14px;
+  }
+
+  .wrsnet-logo {
+    height: 24px;
+  }
+
+  .gdmp-logo {
+    height: 20px;
+  }
+}
+</style>

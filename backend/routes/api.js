@@ -48,6 +48,10 @@ const NotificationController = require("../controllers/NotificationController");
 const ActivityLogController = require("../controllers/ActivityLogController");
 const ResourceController = require("../controllers/ResourceController");
 const TopologyController = require("../controllers/TopologyController");
+const axios = require("axios");
+const db = require("../models");
+const Customer = db.Customer;
+const Package = db.Package;
 
 // ===== DEMO (public — /provision tidak butuh login) =====
 router.use("/demo", demoRoutes);
@@ -2895,31 +2899,84 @@ router.delete(
   PushNotifCtrl.deleteTemplate,
 );
 
-router.post("/api/qontak/send-invoice", async (req, res) => {
+router.post("/qontak/send-invoice", async (req, res) => {
   try {
     const { customer_id } = req.body;
 
-    const customer = await Customer.findByPk(customer_id);
+    const customer = await Customer.findByPk(customer_id, {
+      include: [
+        {
+          model: Package,
+          as: "package",
+        },
+      ],
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer tidak ditemukan",
+      });
+    }
+
+    let phone = customer.phone.replace(/\D/g, "");
+
+    if (phone.startsWith("0")) {
+      phone = "62" + phone.slice(1);
+    }
+
+    const packagePrice = Number(customer.package?.price || 0).toLocaleString(
+      "id-ID",
+    );
+
+    const dueDate = customer.due_date
+      ? new Date(customer.due_date).toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+      : "-";
 
     const payload = {
-      to_number: customer.phone,
-      message_template_id: "TEMPLATE_ID_QONTAK",
-      channel_integration_id: "CHANNEL_ID",
+      to_name: customer.name,
+
+      to_number: phone,
+
+      channel_integration_id: process.env.QONTAK_CHANNEL_ID,
+
+      message_template_id: process.env.QONTAK_TEMPLATE_ID,
+
       language: {
         code: "id",
       },
+
       parameters: {
         body: [
           {
             key: "1",
-            value: customer.name,
+            value_text: customer.name,
+          },
+          {
+            key: "2",
+            value_text: dueDate,
+          },
+          {
+            key: "3",
+            value_text: customer.package?.name || "-",
+          },
+          {
+            key: "4",
+            value_text: packagePrice,
           },
         ],
       },
     };
 
+    console.log("PAYLOAD:");
+    console.log(JSON.stringify(payload, null, 2));
+
     const response = await axios.post(
-      "https://service-chat.qontak.com/api/open/v1/templates/whatsapp/dispatch",
+      "https://service-chat.qontak.com/api/open/v1/broadcasts/whatsapp/direct",
       payload,
       {
         headers: {
@@ -2929,12 +2986,26 @@ router.post("/api/qontak/send-invoice", async (req, res) => {
       },
     );
 
-    res.json({ success: true, data: response.data });
+    console.log("QONTAK SUCCESS:");
+    console.log(response.data);
+
+    return res.json({
+      success: true,
+      message: "Invoice berhasil dikirim",
+      data: response.data,
+    });
   } catch (err) {
-    console.error(err.response?.data || err.message);
-    res.status(500).json({ success: false });
+    console.log("========== ERROR ==========");
+    console.log(JSON.stringify(err?.response?.data, null, 2));
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal kirim invoice",
+      error: err?.response?.data || err.message,
+    });
   }
 });
+
 // ===== GPS TRACKING =====
 const trackingRoutes = require("./tracking");
 router.use("/tracking", authenticate, demoGuard, trackingRoutes);

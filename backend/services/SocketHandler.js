@@ -74,6 +74,55 @@ module.exports = (io) => {
       io.to(room).emit("chat:receive", payload);
     });
 
+    // send tagihan via qontak
+    // socket.on("send-invoice", async ({ customer_id }) => {
+    //   try {
+    //     const customer = await Customer.findByPk(customer_id);
+
+    //     if (!customer) {
+    //       socket.emit("send-invoice-result", {
+    //         success: false,
+    //         message: "Customer tidak ditemukan",
+    //       });
+    //       return;
+    //     }
+
+    //     const payload = {
+    //       to_number: customer.phone,
+    //       message_template_id: "TEMPLATE_ID_QONTAK",
+    //       channel_integration_id: "CHANNEL_ID",
+    //       language: { code: "id" },
+    //       parameters: {
+    //         body: [{ key: "1", value: customer.name }],
+    //       },
+    //     };
+
+    //     const response = await axios.post(
+    //       "https://service-chat.qontak.com/api/open/v1/templates/whatsapp/dispatch",
+    //       payload,
+    //       {
+    //         headers: {
+    //           Authorization: `Bearer ${process.env.QONTAK_TOKEN}`,
+    //           "Content-Type": "application/json",
+    //         },
+    //       },
+    //     );
+
+    //     socket.emit("send-invoice-result", {
+    //       success: true,
+    //       data: response.data,
+    //     });
+    //   } catch (err) {
+    //     console.log(err);
+    //     // console.error(err.response?.data || err.message);
+
+    //     // socket.emit("send-invoice-result", {
+    //     //   success: false,
+    //     //   message: "Gagal kirim invoice",
+    //     // });
+    //   }
+    // });
+
     // Device monitoring
     socket.on("device:subscribe", (deviceId) =>
       socket.join(`device_${deviceId}`),

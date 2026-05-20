@@ -975,7 +975,6 @@
   </div>
 
 </div><!-- /content -->
-
 <!-- ═══ BOTTOM NAV ═══ -->
 <div class="bottom-nav">
   <a class="bn-item" id="bn-chat" onclick="navTo('chat')">
@@ -1194,8 +1193,97 @@ socket.on("chat:receive", (data) => {
   scrollBottom();
 });
 
+function formatChatDate(dateString) {
+  const date = new Date(dateString);
+  const today = new Date();
+
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  const isToday =
+    date.toDateString() === today.toDateString();
+
+  const isYesterday =
+    date.toDateString() === yesterday.toDateString();
+
+  if (isToday) return "Hari ini";
+  if (isYesterday) return "Kemarin";
+
+  return date.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric"
+  });
+}
+
+function renderDateSeparator(label) {
+  const box = document.getElementById("chatBox");
+
+  const existing = box.querySelector(`[data-date="${label}"]`);
+  if (existing) return; // jangan duplikat
+
+  const div = document.createElement("div");
+  div.setAttribute("data-date", label);
+  div.style.textAlign = "center";
+  div.style.margin = "10px 0";
+  div.style.fontSize = "12px";
+  div.style.color = "#6b7280";
+
+  div.innerHTML = `<span style="background:#f3f4f6;padding:4px 10px;border-radius:999px">${label}</span>`;
+
+  box.appendChild(div);
+}
+
+// function renderMessage(data) {
+//   const box = document.getElementById("chatBox");
+
+//   const isMe =
+//     (String(data.user_id) === String(USER_ID) && data.type === "customer") ||
+//     (String(data.user_id) === String(CUSTOMER_ID_KEY) && data.type === "customer");
+
+//   const wrap = document.createElement("div");
+//   wrap.style.display = "flex";
+//   wrap.style.flexDirection = "column";
+//   wrap.style.alignItems = isMe ? "flex-end" : "flex-start";
+//   wrap.style.margin = "6px 0";
+
+//   const bubble = document.createElement("div");
+//   bubble.style.maxWidth = "70%";
+//   bubble.style.padding = "10px 14px";
+//   bubble.style.borderRadius = "14px";
+//   bubble.style.fontSize = "14px";
+//   bubble.style.wordBreak = "break-word";
+//   bubble.style.background = isMe ? "#4f46e5" : "#e5e7eb";
+//   bubble.style.color = isMe ? "white" : "#111";
+
+//   bubble.innerText = data.message;
+
+//   const meta = document.createElement("small");
+
+//   const time = new Date(data.created_at).toLocaleTimeString("id-ID", {
+//     hour: "2-digit",
+//     minute: "2-digit"
+//   });
+
+//   meta.style.fontSize = "11px";
+//   meta.style.opacity = "0.6";
+
+//   meta.innerText = isMe
+//     ? `You • ${time}`
+//     : `${data.name} • ${time}`;
+
+//   wrap.appendChild(bubble);
+//   wrap.appendChild(meta);
+
+//   box.appendChild(wrap);
+// }
+
 function renderMessage(data) {
   const box = document.getElementById("chatBox");
+
+  const dateLabel = formatChatDate(data.created_at);
+
+  renderDateSeparator(dateLabel);
 
   const isMe =
     (String(data.user_id) === String(USER_ID) && data.type === "customer") ||
