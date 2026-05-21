@@ -100,53 +100,23 @@ router.post("/webhook/duitku", PortalCtrl.duitkuNotif);
 
 const { Op } = require("sequelize");
 
-// router.get("/api/chat/:room", portalAuth, async (req, res) => {
-//   try {
-//     const room = req.params.room;
-
-//     const { LiveMessage } = require("../models");
-
-//     const messages = await LiveMessage.findAll({
-//       where: {
-//         room: room,
-//       },
-//       order: [["created_at", "ASC"]],
-//     });
-
-//     res.json(messages);
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json([]);
-//   }
-// });
-
-// router.get("/api/chat-rooms", portalAuth, async (req, res) => {
-//   try {
-//     const { LiveMessage } = require("../models");
-//     const { fn, col } = require("sequelize");
-
-//     const rooms = await LiveMessage.findAll({
-//       attributes: ["room", [fn("MAX", col("created_at")), "last_time"]],
-//       group: ["room"],
-//       order: [[fn("MAX", col("created_at")), "DESC"]],
-//     });
-
-//     res.json(rooms);
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json([]);
-//   }
-// });
-
 router.get("/api/chat-rooms", portalAuth, async (req, res) => {
   const { LiveMessage, Sequelize } = require("../models");
-  const { fn, col } = Sequelize;
+  const { fn, col, literal } = Sequelize;
 
   const rooms = await LiveMessage.findAll({
     attributes: [
       "room",
       "name",
-      [fn("SUM", Sequelize.literal("is_read = 0")), "unread"],
+      [
+        fn(
+          "SUM",
+          literal(
+            `CASE WHEN is_read = 0 AND type = 'customer' THEN 1 ELSE 0 END`,
+          ),
+        ),
+        "unread",
+      ],
       [fn("MAX", col("created_at")), "last_time"],
     ],
     group: ["room"],
