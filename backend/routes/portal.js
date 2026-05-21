@@ -125,7 +125,6 @@ router.get("/api/chat-rooms", portalAuth, async (req, res) => {
 
   res.json(rooms);
 });
-
 router.get("/api/chat/:room", portalAuth, async (req, res) => {
   try {
     const room = req.params.room;
@@ -160,6 +159,42 @@ router.post("/api/chat/read", portalAuth, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
+  }
+});
+
+router.post("/api/chat/read-customer/:room", portalAuth, async (req, res) => {
+  try {
+    const { room } = req.params;
+
+    if (!room) {
+      return res.status(400).json({
+        success: false,
+        message: "Room is required",
+      });
+    }
+
+    const updated = await LiveMessage.update(
+      { is_read: true },
+      {
+        where: {
+          room: room,
+          is_read: false,
+          type: "admin",
+        },
+      },
+    );
+
+    res.json({
+      success: true,
+      updated,
+      message: "Chat marked as read",
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update read status",
+    });
   }
 });
 

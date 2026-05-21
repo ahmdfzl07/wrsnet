@@ -515,6 +515,7 @@
       }
 
       .chat-card{
+        position: relative;
         border-radius: 18px;
         overflow: hidden;
         background: #ffffff;
@@ -604,6 +605,29 @@
       .chat-send-btn:hover{
         background: #4338ca;
         transform: scale(1.05);
+      }
+      #scrollBottomBtn {
+        position: absolute;
+        right: 16px;
+        bottom: 90px;
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        border: none;
+        background: #4f46e5;
+        color: white;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 999;
+
+        box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+        transition: all 0.2s ease;
+      }
+
+      #scrollBottomBtn:hover {
+        transform: scale(1.1);
       }
   </style>
 </head>
@@ -1177,6 +1201,13 @@
       <!-- CHAT BOX -->
       <div id="chatBox" class="chat-box"></div>
 
+      <!-- SCROLL TO BOTTOM BUTTON -->
+      <button id="scrollBottomBtn" onclick="scrollBottom()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 16l-6-6h12l-6 6z"/>
+        </svg>
+      </button>
+
       <!-- INPUT -->
       <div class="chat-input-area">
         <input id="chatInput" class="chat-input" placeholder="Ketik pesan..." />
@@ -1195,11 +1226,24 @@
 </div><!-- /content -->
 <!-- ═══ BOTTOM NAV ═══ -->
 <div class="bottom-nav">
-  <a class="bn-item" id="bn-chat" onclick="navTo('chat')">
+  <a class="bn-item" id="bn-chat" onclick="navTo('chat')" style="position:relative;">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M21 15a4 4 0 01-4 4H7l-4 4V7a4 4 0 014-4h10a4 4 0 014 4z"/>
     </svg>
     <span>Chat</span>
+
+    <!-- Badge -->
+    <span id="chat-badge" style="
+      position:absolute;
+      top:2px;
+      right:6px;
+      background:red;
+      color:white;
+      font-size:10px;
+      padding:2px 6px;
+      border-radius:999px;
+      display:none;
+    ">0</span>
   </a>
   <a class="bn-item active" id="bn-home" onclick="navTo('home')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
@@ -1393,6 +1437,43 @@ socket.on("connect", () => {
   loadChat();
 });
 
+document.addEventListener("DOMContentLoaded", function () {
+
+  const chatBox = document.getElementById("chatBox");
+  const btn = document.getElementById("scrollBottomBtn");
+
+  if (!chatBox || !btn) return;
+
+  chatBox.addEventListener("scroll", function () {
+    const distance =
+      chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight;
+
+    if (distance > 80) {
+      btn.style.display = "flex";
+    } else {
+      btn.style.display = "none";
+    }
+  });
+
+});
+
+function updateChatBadge(messages) {
+  const badge = document.getElementById("chat-badge");
+
+  const unread = messages.filter(msg =>
+    msg.is_read == 0 &&
+    msg.type === "admin" &&
+    msg.room === ROOM
+  );
+
+  if (unread.length > 0) {
+    badge.style.display = "inline-block";
+    badge.innerText = unread.length;
+  } else {
+    badge.style.display = "none";
+  }
+}
+
 function loadChat() {
   fetch(`/portal/api/chat/${ROOM}`)
     .then(res => res.json())
@@ -1401,15 +1482,61 @@ function loadChat() {
       box.innerHTML = "";
 
       data.forEach(renderMessage);
+
+      updateChatBadge(data);
+
       scrollBottom();
     });
 }
+
 socket.on("chat:receive", (data) => {
   if (data.room !== ROOM) return;
 
   renderMessage(data);
   scrollBottom();
+
+  if (data.is_read == 0 && data.type === "admin") {
+    const badge = document.getElementById("chat-badge");
+    let count = parseInt(badge.innerText || "0");
+
+    badge.style.display = "inline-block";
+    badge.innerText = count + 1;
+  }
+
+  const box = document.getElementById("chatBox");
+  const btn = document.getElementById("scrollBottomBtn");
+
+  const distance =
+    box.scrollHeight - box.scrollTop - box.clientHeight;
+  if (distance < 80) {
+    scrollBottom();
+  } else {
+    btn.style.display = "flex";
+  }
 });
+
+socket.on("chat:read", (data) => {
+  if (data.room !== ROOM) return;
+
+  const badge = document.getElementById("chat-badge");
+  badge.style.display = "none";
+  badge.innerText = "0";
+});
+
+function markAsRead(room) {
+  fetch(`/portal/api/chat/read-customer/${room}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+
+  const badge = document.getElementById("chat-badge");
+  if (badge) {
+    badge.style.display = "none";
+    badge.innerText = "0";
+  }
+}
 
 function formatChatDate(dateString) {
   const date = new Date(dateString);
@@ -1438,7 +1565,7 @@ function renderDateSeparator(label) {
   const box = document.getElementById("chatBox");
 
   const existing = box.querySelector(`[data-date="${label}"]`);
-  if (existing) return; // jangan duplikat
+  if (existing) return;
 
   const div = document.createElement("div");
   div.setAttribute("data-date", label);
@@ -1451,50 +1578,6 @@ function renderDateSeparator(label) {
 
   box.appendChild(div);
 }
-
-// function renderMessage(data) {
-//   const box = document.getElementById("chatBox");
-
-//   const isMe =
-//     (String(data.user_id) === String(USER_ID) && data.type === "customer") ||
-//     (String(data.user_id) === String(CUSTOMER_ID_KEY) && data.type === "customer");
-
-//   const wrap = document.createElement("div");
-//   wrap.style.display = "flex";
-//   wrap.style.flexDirection = "column";
-//   wrap.style.alignItems = isMe ? "flex-end" : "flex-start";
-//   wrap.style.margin = "6px 0";
-
-//   const bubble = document.createElement("div");
-//   bubble.style.maxWidth = "70%";
-//   bubble.style.padding = "10px 14px";
-//   bubble.style.borderRadius = "14px";
-//   bubble.style.fontSize = "14px";
-//   bubble.style.wordBreak = "break-word";
-//   bubble.style.background = isMe ? "#4f46e5" : "#e5e7eb";
-//   bubble.style.color = isMe ? "white" : "#111";
-
-//   bubble.innerText = data.message;
-
-//   const meta = document.createElement("small");
-
-//   const time = new Date(data.created_at).toLocaleTimeString("id-ID", {
-//     hour: "2-digit",
-//     minute: "2-digit"
-//   });
-
-//   meta.style.fontSize = "11px";
-//   meta.style.opacity = "0.6";
-
-//   meta.innerText = isMe
-//     ? `You • ${time}`
-//     : `${data.name} • ${time}`;
-
-//   wrap.appendChild(bubble);
-//   wrap.appendChild(meta);
-
-//   box.appendChild(wrap);
-// }
 
 function renderMessage(data) {
   const box = document.getElementById("chatBox");
@@ -1564,6 +1647,9 @@ function sendChat() {
 function scrollBottom() {
   const box = document.getElementById("chatBox");
   box.scrollTop = box.scrollHeight;
+
+  const btn = document.getElementById("scrollBottomBtn");
+  if (btn) btn.style.display = "none";
 }
 </script>
 
@@ -1620,6 +1706,7 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 var PANELS = ['chat','home','billing','traffic','ont','wifi','upgrade','profil','tickets'];
 var BN_MAP  = { chat:'chat', home:'home', billing:'billing', traffic:'traffic', ont:'traffic', wifi:'wifi', upgrade:'wifi', profil:'profil', tickets:'profil' };
 
+let HAS_OPENED_CHAT = false;
 function navTo(id) {
   currentPanel = id;
 
@@ -1645,6 +1732,11 @@ function navTo(id) {
   // Scroll to content
   var c = document.querySelector('.content');
   if (c) window.scrollTo({ top: c.offsetTop - 10, behavior: 'smooth' });
+
+  if (id === 'chat' && !HAS_OPENED_CHAT) {
+    markAsRead(ROOM);
+    HAS_OPENED_CHAT = true;
+  }
 
   if (id === 'upgrade') loadUpgrade();
 
