@@ -326,6 +326,12 @@ router.post(
   logActivity("create", "customer"),
   CustomerController.create,
 );
+router.put(
+  "/customers/:id",
+  authenticate,
+  demoGuard,
+  CustomerController.update,
+);
 router.get(
   "/customers/stats",
   authenticate,

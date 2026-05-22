@@ -668,7 +668,15 @@ window.custCardClick = function(el) {
   if (typeof loadCustomers === 'function') loadCustomers();
 };
 
-/* Modal open/close shim — customers.js already handles openAddCustomer/closeModal */
+// function editCustomer(data) {
+//   window.editCustomerId = data.id;
+
+//   document.getElementById("custName").value = data.name;
+//   document.getElementById("custPhone").value = data.phone;
+
+//   openModal();
+// }
+
 window.saveCustomerBtn = async function () {
   const btn = document.getElementById("saveCustomerBtn");
 
@@ -676,47 +684,88 @@ window.saveCustomerBtn = async function () {
   btn.innerText = "Menyimpan...";
 
   try {
-    const phone = document.getElementById("custPhone").value;
-    const checked =
-      document.getElementById("custSendWaWelcome")?.checked;
-    const sendWA = !!checked && !!phone.trim();
-
     const body = {
       name: document.getElementById("custName").value,
       phone: document.getElementById("custPhone").value,
       email: document.getElementById("custEmail")?.value || "",
-      package_id: document.getElementById("custPackage")?.value || null,
-      due_date: document.getElementById("custDueDate")?.value || null,
+      package_id:
+        document.getElementById("custPackage")?.value || null,
+      due_date:
+        document.getElementById("custDueDate")?.value || null,
       installation_date:
         document.getElementById("custInstallDate")?.value || null,
-      pppoe_username: document.getElementById("custPPPoE")?.value || "",
-      ont_sn: document.getElementById("custOntSn")?.value || "",
-      static_ip: document.getElementById("custStaticIP")?.value || null,
-      mikrotik_id: document.getElementById("custMikrotikId")?.value || null,
-      status: document.getElementById("custStatus")?.value || "active",
-      address: document.getElementById("custAddress").value,
+      pppoe_username:
+        document.getElementById("custPPPoE")?.value || "",
+      ont_sn:
+        document.getElementById("custOntSn")?.value || "",
+      static_ip:
+        document.getElementById("custStaticIP")?.value || null,
+      mikrotik_id:
+        document.getElementById("custMikrotikId")?.value || null,
+      status:
+        document.getElementById("custStatus")?.value || "active",
+      address:
+        document.getElementById("custAddress")?.value || "",
 
-      province: document.getElementById("custProvinsi").selectedOptions[0]?.text || "",
-      province_id: document.getElementById("custProvinsi").value || "",
+      province:
+        document.getElementById("custProvinsi")
+          ?.selectedOptions[0]?.text || "",
 
-      kabupaten: document.getElementById("custKabupaten").selectedOptions[0]?.text || "",
-      kabupaten_id: document.getElementById("custKabupaten").value || "",
+      province_id:
+        document.getElementById("custProvinsi")?.value || "",
 
-      kecamatan: document.getElementById("custKecamatan").selectedOptions[0]?.text || "",
-      kecamatan_id: document.getElementById("custKecamatan").value || "",
+      kabupaten:
+        document.getElementById("custKabupaten")
+          ?.selectedOptions[0]?.text || "",
 
-      kelurahan: document.getElementById("custKelurahan").selectedOptions[0]?.text || "",
-      kelurahan_id: document.getElementById("custKelurahan").value || "",
+      kabupaten_id:
+        document.getElementById("custKabupaten")?.value || "",
+
+      kecamatan:
+        document.getElementById("custKecamatan")
+          ?.selectedOptions[0]?.text || "",
+
+      kecamatan_id:
+        document.getElementById("custKecamatan")?.value || "",
+
+      kelurahan:
+        document.getElementById("custKelurahan")
+          ?.selectedOptions[0]?.text || "",
+
+      kelurahan_id:
+        document.getElementById("custKelurahan")?.value || "",
+
+      latitude:
+      document.getElementById("custLatitude")?.value || null,
+
+    longitude:
+      document.getElementById("custLongitude")?.value || null,
+
+      rt:
+        document.getElementById("custRt")?.value || "",
+
+      rw:
+        document.getElementById("custRw")?.value || "",
     };
 
-    if (sendWA) {
-      body.send_wa_welcome = true;
-    }
+    // =========================
+    // MODE EDIT / CREATE
+    // =========================
+    const isEdit = !!_custEditId;
 
-    console.log("FINAL BODY:", body);
+    const url = isEdit
+      ? `/api/customers/${_custEditId}`
+      : "/api/customers";
 
-    const res = await fetch("/api/customers", {
-      method: "POST",
+    const method = isEdit ? "PUT" : "POST";
+
+    console.log("MODE:", isEdit ? "EDIT" : "CREATE");
+    console.log("METHOD:", method);
+    console.log("URL:", url);
+    console.log("EDIT ID:", _custEditId);
+
+    const res = await fetch(url, {
+      method: method,
       headers: {
         "Content-Type": "application/json",
       },
@@ -726,16 +775,47 @@ window.saveCustomerBtn = async function () {
     const result = await res.json();
 
     if (result.success) {
+      App.showToast(
+        isEdit
+          ? "Customer berhasil diupdate"
+          : "Customer berhasil ditambahkan",
+        "success"
+      );
+
       closeModal();
+
+      // reset edit id
+      _custEditId = null;
+
+      // reset title modal
+      const ttl = document.getElementById("customerModalTitle");
+      if (ttl) ttl.innerText = "Tambah Customer";
+
+      // show kembali box WA & PPPoE
+      const waBox = document.getElementById("waWelcomeBox");
+      if (waBox) waBox.style.display = "flex";
+
+      const ppBox = document.getElementById("pppoeCreateBox");
+      if (ppBox) ppBox.style.display = "block";
+
       loadCustomers();
     } else {
-      alert(result.message);
+      App.showToast(
+        result.message || "Gagal menyimpan customer",
+        "error"
+      );
     }
   } catch (err) {
     console.error(err);
+
+    App.showToast(
+      err.message || "Terjadi kesalahan",
+      "error"
+    );
   }
+
   btn.disabled = false;
-  btn.innerText = "Simpan";
+  btn.innerText = "Simpan Customer";
 };
 
 /* ── Customer name link → profile page ── */
