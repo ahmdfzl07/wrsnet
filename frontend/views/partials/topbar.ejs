@@ -805,18 +805,34 @@ function scrollBottom() {
   });
 }
 
+// function updateChatBadge(dataRooms) {
+//   const badge = document.getElementById("chatBadge");
+
+//   let total = 0;
+//   dataRooms.forEach(r => total += parseInt(r.unread || 0));
+
+//   if (total > 0) {
+//     badge.style.display = "inline-block";
+//     badge.innerText = total;
+//   } else {
+//     badge.style.display = "none";
+//   }
+// }
+
 function updateChatBadge(dataRooms) {
   const badge = document.getElementById("chatBadge");
 
-  let total = 0;
-  dataRooms.forEach(r => total += parseInt(r.unread || 0));
-
-  if (total > 0) {
-    badge.style.display = "inline-block";
-    badge.innerText = total;
-  } else {
+  if (!Array.isArray(dataRooms) || dataRooms.length === 0) {
     badge.style.display = "none";
+    return;
   }
+
+  const total = dataRooms.reduce((sum, r) => {
+    return sum + parseInt(r.unread || 0);
+  }, 0);
+
+  badge.style.display = total > 0 ? "inline-block" : "none";
+  badge.innerText = total;
 }
 
 function loadUnreadBadge() {
