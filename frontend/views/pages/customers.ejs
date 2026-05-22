@@ -676,9 +676,24 @@ window.saveCustomerBtn = async function () {
   btn.innerText = "Menyimpan...";
 
   try {
+    const phone = document.getElementById("custPhone").value;
+    const checked =
+      document.getElementById("custSendWaWelcome")?.checked;
+    const sendWA = !!checked && !!phone.trim();
+
     const body = {
       name: document.getElementById("custName").value,
       phone: document.getElementById("custPhone").value,
+      email: document.getElementById("custEmail")?.value || "",
+      package_id: document.getElementById("custPackage")?.value || null,
+      due_date: document.getElementById("custDueDate")?.value || null,
+      installation_date:
+        document.getElementById("custInstallDate")?.value || null,
+      pppoe_username: document.getElementById("custPPPoE")?.value || "",
+      ont_sn: document.getElementById("custOntSn")?.value || "",
+      static_ip: document.getElementById("custStaticIP")?.value || null,
+      mikrotik_id: document.getElementById("custMikrotikId")?.value || null,
+      status: document.getElementById("custStatus")?.value || "active",
       address: document.getElementById("custAddress").value,
 
       province: document.getElementById("custProvinsi").selectedOptions[0]?.text || "",
@@ -693,6 +708,12 @@ window.saveCustomerBtn = async function () {
       kelurahan: document.getElementById("custKelurahan").selectedOptions[0]?.text || "",
       kelurahan_id: document.getElementById("custKelurahan").value || "",
     };
+
+    if (sendWA) {
+      body.send_wa_welcome = true;
+    }
+
+    console.log("FINAL BODY:", body);
 
     const res = await fetch("/api/customers", {
       method: "POST",
@@ -713,7 +734,6 @@ window.saveCustomerBtn = async function () {
   } catch (err) {
     console.error(err);
   }
-
   btn.disabled = false;
   btn.innerText = "Simpan";
 };

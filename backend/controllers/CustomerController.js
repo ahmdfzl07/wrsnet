@@ -14,26 +14,26 @@ class CustomerController {
       const { page = 1, limit = 20, search, status, package_id } = req.query;
       const where = {};
 
-       if (search) {
-      where[Op.or] = [
-        { name: { [Op.like]: `%${search}%` } },
-        { customer_id: { [Op.like]: `%${search}%` } },
-        { phone: { [Op.like]: `%${search}%` } },
-        { address: { [Op.like]: `%${search}%` } },
+      if (search) {
+        where[Op.or] = [
+          { name: { [Op.like]: `%${search}%` } },
+          { customer_id: { [Op.like]: `%${search}%` } },
+          { phone: { [Op.like]: `%${search}%` } },
+          { address: { [Op.like]: `%${search}%` } },
 
-        {
-          "$package.name$": {
-            [Op.like]: `%${search}%`,
-          },
-        },
-        Sequelize.where(
-          Sequelize.cast(Sequelize.col("package.price"), "CHAR"),
           {
-            [Op.like]: `%${search}%`,
-          }
-        ),
-      ];
-    }
+            "$package.name$": {
+              [Op.like]: `%${search}%`,
+            },
+          },
+          Sequelize.where(
+            Sequelize.cast(Sequelize.col("package.price"), "CHAR"),
+            {
+              [Op.like]: `%${search}%`,
+            },
+          ),
+        ];
+      }
       // overdue & due_soon adalah filter virtual — tidak set where.status
       if (status && status !== "overdue" && status !== "due_soon") {
         where.status = status;
@@ -1019,129 +1019,232 @@ Tim kami akan segera menghubungi Anda untuk konfirmasi pemasangan.
 Terima kasih telah memilih layanan kami 🙏
 _${`{perusahaan}`}_`;
 
-async function sendWelcomeWA(customer) {
-  const { sequelize, WaSession } = require("../models");
+// async function sendWelcomeWA(customer) {
+//   const { sequelize, WaSession } = require("../models");
 
-  // Cek toggle setting (default: ON)
-  try {
-    const sett = await sequelize.query(
-      "SELECT value FROM app_settings WHERE `key`='welcome_wa_enable'",
-      { type: sequelize.QueryTypes.SELECT },
-    );
-    if (sett[0] && sett[0].value === "0")
-      return { sent: false, reason: "disabled" };
-  } catch (_) {
-    /* abaikan, default-nya kirim */
-  }
+//   // Cek toggle setting (default: ON)
+//   try {
+//     const sett = await sequelize.query(
+//       "SELECT value FROM app_settings WHERE `key`='welcome_wa_enable'",
+//       { type: sequelize.QueryTypes.SELECT },
+//     );
+//     if (sett[0] && sett[0].value === "0")
+//       return { sent: false, reason: "disabled" };
+//   } catch (_) {
+//     /* abaikan, default-nya kirim */
+//   }
 
-  // Cek WA session aktif
-  const session = await WaSession.findOne({ where: { status: "connected" } });
-  if (!session) return { sent: false, reason: "no_wa_session" };
+//   // Cek WA session aktif
+//   const session = await WaSession.findOne({ where: { status: "connected" } });
+//   if (!session) return { sent: false, reason: "no_wa_session" };
 
-  // Format helpers
-  const fmtDate = (d) => {
-    if (!d) return "-";
-    try {
-      const dt = new Date(d);
-      const months = [
-        "Januari",
-        "Februari",
-        "Maret",
-        "April",
-        "Mei",
-        "Juni",
-        "Juli",
-        "Agustus",
-        "September",
-        "Oktober",
-        "November",
-        "Desember",
-      ];
-      return `${dt.getDate()} ${months[dt.getMonth()]} ${dt.getFullYear()}`;
-    } catch (_) {
-      return String(d);
-    }
-  };
-  const fmtIDR = (n) => "Rp " + Number(n || 0).toLocaleString("id-ID");
+//   // Format helpers
+//   const fmtDate = (d) => {
+//     if (!d) return "-";
+//     try {
+//       const dt = new Date(d);
+//       const months = [
+//         "Januari",
+//         "Februari",
+//         "Maret",
+//         "April",
+//         "Mei",
+//         "Juni",
+//         "Juli",
+//         "Agustus",
+//         "September",
+//         "Oktober",
+//         "November",
+//         "Desember",
+//       ];
+//       return `${dt.getDate()} ${months[dt.getMonth()]} ${dt.getFullYear()}`;
+//     } catch (_) {
+//       return String(d);
+//     }
+//   };
+//   const fmtIDR = (n) => "Rp " + Number(n || 0).toLocaleString("id-ID");
 
-  // Build context
-  const pkg = customer.package || {};
+//   // Build context
+//   const pkg = customer.package || {};
 
-  // Hitung jatuh tempo invoice pertama
-  // Prioritas: customer.due_date → installation_date + 30 hari → today + 30 hari
-  let jatuhTempoDate;
-  if (customer.due_date) {
-    jatuhTempoDate = new Date(customer.due_date);
-  } else if (customer.installation_date) {
-    jatuhTempoDate = new Date(customer.installation_date);
-    jatuhTempoDate.setDate(jatuhTempoDate.getDate() + 30);
-  } else {
-    jatuhTempoDate = new Date();
-    jatuhTempoDate.setDate(jatuhTempoDate.getDate() + 30);
-  }
+//   // Hitung jatuh tempo invoice pertama
+//   // Prioritas: customer.due_date → installation_date + 30 hari → today + 30 hari
+//   let jatuhTempoDate;
+//   if (customer.due_date) {
+//     jatuhTempoDate = new Date(customer.due_date);
+//   } else if (customer.installation_date) {
+//     jatuhTempoDate = new Date(customer.installation_date);
+//     jatuhTempoDate.setDate(jatuhTempoDate.getDate() + 30);
+//   } else {
+//     jatuhTempoDate = new Date();
+//     jatuhTempoDate.setDate(jatuhTempoDate.getDate() + 30);
+//   }
 
-  const ctx = {
-    nama: customer.name || "",
-    cid: customer.customer_id || "",
-    phone: customer.phone || "",
-    nohp: customer.phone || "",
-    email: customer.email || "-",
-    alamat: customer.address || "-",
-    paket: pkg.name || "-",
-    harga_paket: fmtIDR(pkg.price),
-    tgl_install:
-      fmtDate(customer.installation_date) === "-"
-        ? fmtDate(new Date())
-        : fmtDate(customer.installation_date),
-    jatuh_tempo: fmtDate(jatuhTempoDate),
-    tgl_jatuh_tempo: fmtDate(jatuhTempoDate), // alias
-    // Tetap dukung placeholder lama (kalau user pakai di template)
-    pppoe_user: customer.pppoe_username || "-",
-    static_ip: customer.static_ip || "-",
-    phone_cs: process.env.COMPANY_PHONE || process.env.SUPPORT_PHONE || "-",
-    perusahaan: await getCompanyName(),
-  };
+//   const ctx = {
+//     nama: customer.name || "",
+//     cid: customer.customer_id || "",
+//     phone: customer.phone || "",
+//     nohp: customer.phone || "",
+//     email: customer.email || "-",
+//     alamat: customer.address || "-",
+//     paket: pkg.name || "-",
+//     harga_paket: fmtIDR(pkg.price),
+//     tgl_install:
+//       fmtDate(customer.installation_date) === "-"
+//         ? fmtDate(new Date())
+//         : fmtDate(customer.installation_date),
+//     jatuh_tempo: fmtDate(jatuhTempoDate),
+//     tgl_jatuh_tempo: fmtDate(jatuhTempoDate), // alias
+//     // Tetap dukung placeholder lama (kalau user pakai di template)
+//     pppoe_user: customer.pppoe_username || "-",
+//     static_ip: customer.static_ip || "-",
+//     phone_cs: process.env.COMPANY_PHONE || process.env.SUPPORT_PHONE || "-",
+//     perusahaan: await getCompanyName(),
+//   };
 
-  // Load template welcome aktif
-  let tplContent = null;
-  try {
-    const rows = await sequelize.query(
-      `SELECT content, message FROM wa_templates
-        WHERE category = 'welcome' AND is_active = 1
-        ORDER BY updated_at DESC LIMIT 1`,
-      { type: sequelize.QueryTypes.SELECT },
-    );
-    tplContent = rows[0]?.content || rows[0]?.message || null;
-  } catch (_) {}
+//   // Load template welcome aktif
+//   let tplContent = null;
+//   try {
+//     const rows = await sequelize.query(
+//       `SELECT content, message FROM wa_templates
+//         WHERE category = 'welcome' AND is_active = 1
+//         ORDER BY updated_at DESC LIMIT 1`,
+//       { type: sequelize.QueryTypes.SELECT },
+//     );
+//     tplContent = rows[0]?.content || rows[0]?.message || null;
+//   } catch (_) {}
 
-  if (!tplContent) tplContent = DEFAULT_WELCOME_TPL;
-  const msg = _renderWelcomeTemplate(tplContent, ctx);
+//   if (!tplContent) tplContent = DEFAULT_WELCOME_TPL;
+//   const msg = _renderWelcomeTemplate(tplContent, ctx);
 
-  // Send via WAService
-  try {
-    const WAService = require("../services/WAService");
-    await WAService.sendMessage(session.session_id, customer.phone, msg, null);
+//   // Send via WAService
+//   try {
+//     const WAService = require("../services/WAService");
+//     await WAService.sendMessage(session.session_id, customer.phone, msg, null);
 
-    // Update usage counter (best-effort)
-    try {
-      await sequelize.query(
-        `UPDATE wa_templates SET usage_count = usage_count + 1
-          WHERE category = 'welcome' AND is_active = 1
-          ORDER BY updated_at DESC LIMIT 1`,
-      );
-    } catch (_) {}
+//     // Update usage counter (best-effort)
+//     try {
+//       await sequelize.query(
+//         `UPDATE wa_templates SET usage_count = usage_count + 1
+//           WHERE category = 'welcome' AND is_active = 1
+//           ORDER BY updated_at DESC LIMIT 1`,
+//       );
+//     } catch (_) {}
 
-    return { sent: true };
-  } catch (e) {
-    console.error("[Customer] WAService.sendMessage error:", e.message);
-    return { sent: false, reason: "send_failed" };
-  }
-}
+//     return { sent: true };
+//   } catch (e) {
+//     console.error("[Customer] WAService.sendMessage error:", e.message);
+//     return { sent: false, reason: "send_failed" };
+//   }
+// }
 
 // ════════════════════════════════════════════════════════════════
 // AUTO-MIGRATION: tambah 'welcome' ke ENUM wa_templates.category +
 // auto-seed default template welcome. Idempotent.
 // ════════════════════════════════════════════════════════════════
+
+// templae qontak customer new
+// 🎉 *Selamat Datang di WRSNET!*
+
+// Yth. *{{1}}*,
+
+// Akun layanan internet Anda telah berhasil dibuat. Berikut detail akun Anda:
+
+// 📋 ID Pelanggan: *{{2}}*
+// 📦 Paket: {{3}}
+// 📅 Tanggal Pemasangan: {{4}}
+// 📞 Hubungi kami: +62 812-8363-9357
+
+// Tim kami akan segera menghubungi Anda untuk konfirmasi pemasangan.
+
+// Terima kasih telah memilih layanan kami 🙏
+// *WRSNET*
+const axios = require("axios");
+async function sendWelcomeWA(customer) {
+  try {
+    let phone = customer.phone.replace(/\D/g, "");
+
+    if (phone.startsWith("0")) {
+      phone = "62" + phone.slice(1);
+    }
+
+    const customerPackage = await Customer.findByPk(customer.id, {
+      include: [
+        {
+          model: Package,
+          as: "package",
+        },
+      ],
+    });
+    const instalasiDate = customer.installation_date
+      ? new Date(customer.installation_date).toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+      : "-";
+
+    const payload = {
+      to_name: customer.name,
+      to_number: phone,
+
+      channel_integration_id: process.env.QONTAK_CHANNEL_ID,
+      message_template_id: process.env.QONTAK_TEMPLATE_ID,
+      // message_template_id: process.env.QONTAK_TEMPLATE_WELCOME_ID,
+
+      language: {
+        code: "id",
+      },
+
+      parameters: {
+        body: [
+          {
+            key: "1",
+            value: "customer_name",
+            value_text: customer.name,
+          },
+          {
+            key: "2",
+            value: "customer_id",
+            value_text: customer.customer_id,
+          },
+          {
+            key: "3",
+            value: "package_name",
+            value_text: customerPackage.package?.name || "-",
+          },
+          {
+            key: "4",
+            value: "instalasi_date",
+            value_text: instalasiDate,
+          },
+        ],
+      },
+    };
+
+    const response = await axios.post(
+      "https://service-chat.qontak.com/api/open/v1/broadcasts/whatsapp/direct",
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.QONTAK_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    return { sent: true, data: response.data };
+  } catch (err) {
+    console.log("QONTAK ERROR:");
+    console.log(err);
+
+    return {
+      sent: false,
+      reason: err?.response?.data?.message || "failed",
+    };
+  }
+}
+
 async function ensureWelcomeTemplate() {
   try {
     const { sequelize } = require("../models");

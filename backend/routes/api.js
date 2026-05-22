@@ -2944,7 +2944,6 @@ router.post("/qontak/send-invoice", async (req, res) => {
       to_number: phone,
 
       channel_integration_id: process.env.QONTAK_CHANNEL_ID,
-
       message_template_id: process.env.QONTAK_TEMPLATE_ID,
 
       language: {
@@ -2976,9 +2975,6 @@ router.post("/qontak/send-invoice", async (req, res) => {
         ],
       },
     };
-
-    console.log("PAYLOAD:");
-    console.log(JSON.stringify(payload, null, 2));
 
     const response = await axios.post(
       "https://service-chat.qontak.com/api/open/v1/broadcasts/whatsapp/direct",
@@ -3061,8 +3057,6 @@ router.post("/payment/create", async (req, res) => {
         expiryPeriod: 1440,
       };
 
-      console.log("DUITKU PAYLOAD:", payload);
-
       const response = await axios.post(
         "https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry",
         payload,
@@ -3072,8 +3066,6 @@ router.post("/payment/create", async (req, res) => {
           },
         },
       );
-
-      console.log("DUITKU RESPONSE:", response.data);
 
       const paymentUrl =
         response.data.paymentUrl || response.data.data?.paymentUrl;
@@ -3130,8 +3122,6 @@ router.post("/payment/create", async (req, res) => {
         signature: signature,
       };
 
-      console.log("TRIPAY PAYLOAD:", payload);
-
       const response = await axios.post(
         // "https://tripay.co.id/api/transaction/create",
         "https://tripay.co.id/api-sandbox/transaction/create",
@@ -3169,8 +3159,6 @@ router.post("/payment/tripay/callback", async (req, res) => {
   try {
     const data = req.body;
 
-    console.log("TRIPAY CALLBACK:", data);
-
     if (data.status === "PAID") {
       const invoiceId = data.merchant_ref.split("-")[1];
 
@@ -3202,8 +3190,6 @@ router.post("/payment/tripay/callback", async (req, res) => {
 router.post("/payment/duitku/callback", async (req, res) => {
   try {
     const data = req.body;
-
-    console.log("DUITKU CALLBACK:", data);
 
     if (data.resultCode === "00") {
       const invoiceId = data.merchantOrderId.split("-")[1];
