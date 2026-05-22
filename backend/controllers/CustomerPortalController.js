@@ -39,10 +39,12 @@ exports.login = async (req, res) => {
   try {
     const { customer_id, password } = req.body;
     if (!customer_id || !password)
-      return res.status(400).json({
-        success: false,
-        message: "ID Pelanggan dan password wajib diisi",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "ID Pelanggan dan password wajib diisi",
+        });
 
     const customer = await Customer.findOne({
       where: {
@@ -69,10 +71,12 @@ exports.login = async (req, res) => {
         .status(401)
         .json({ success: false, message: "Password salah" });
     if (customer.status === "suspended")
-      return res.status(403).json({
-        success: false,
-        message: "Akun Anda telah di-suspend. Hubungi ISP.",
-      });
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "Akun Anda telah di-suspend. Hubungi ISP.",
+        });
 
     await customer.update({ last_portal_login: new Date() });
 
@@ -112,10 +116,8 @@ exports.login = async (req, res) => {
       },
     });
   } catch (e) {
-    console.log("Portal login error:", e);
-
-    // logger.error("Portal login error:", e);
-    // res.status(500).json({ success: false, message: "Server error" });
+    logger.error("Portal login error:", e);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -884,10 +886,12 @@ exports.ticketCreate = async (req, res) => {
       },
     });
     if (recentOpen >= 3)
-      return res.status(429).json({
-        success: false,
-        message: "Terlalu banyak tiket. Tunggu beberapa saat.",
-      });
+      return res
+        .status(429)
+        .json({
+          success: false,
+          message: "Terlalu banyak tiket. Tunggu beberapa saat.",
+        });
 
     const ticket = await Ticket.create({
       title: title.trim().substring(0, 255),
@@ -932,10 +936,12 @@ exports.createPayment = async (req, res) => {
       },
     });
     if (!invoice)
-      return res.status(404).json({
-        success: false,
-        message: "Invoice tidak ditemukan atau sudah lunas",
-      });
+      return res
+        .status(404)
+        .json({
+          success: false,
+          message: "Invoice tidak ditemukan atau sudah lunas",
+        });
 
     const customer = await Customer.findByPk(req.portalUser.id, {
       include: [{ model: Package, as: "package" }],
@@ -1309,10 +1315,12 @@ exports.createPayment = async (req, res) => {
             .json({ success: false, message: "Koneksi ke Xendit timeout" });
         }
         if (gwErr.code === "ENOTFOUND" || gwErr.code === "ECONNREFUSED") {
-          return res.status(502).json({
-            success: false,
-            message: "Tidak bisa terhubung ke server Xendit",
-          });
+          return res
+            .status(502)
+            .json({
+              success: false,
+              message: "Tidak bisa terhubung ke server Xendit",
+            });
         }
         throw gwErr;
       }
@@ -1518,10 +1526,12 @@ exports.createPayment = async (req, res) => {
             .json({ success: false, message: "Koneksi ke Duitku timeout" });
         }
         if (gwErr.code === "ENOTFOUND" || gwErr.code === "ECONNREFUSED") {
-          return res.status(502).json({
-            success: false,
-            message: "Tidak bisa terhubung ke server Duitku",
-          });
+          return res
+            .status(502)
+            .json({
+              success: false,
+              message: "Tidak bisa terhubung ke server Duitku",
+            });
         }
         throw gwErr;
       }
@@ -1565,17 +1575,21 @@ exports.createPayment = async (req, res) => {
       });
     }
 
-    res.status(400).json({
-      success: false,
-      message: "Payment gateway provider tidak dikenali",
-    });
+    res
+      .status(400)
+      .json({
+        success: false,
+        message: "Payment gateway provider tidak dikenali",
+      });
   } catch (e) {
     logger.error("Portal createPayment error:", e.message);
     if (e.response) logger.error("GW response:", e.response.data);
-    res.status(500).json({
-      success: false,
-      message: "Gagal membuat transaksi: " + e.message,
-    });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Gagal membuat transaksi: " + e.message,
+      });
   }
 };
 
@@ -2383,15 +2397,19 @@ exports.wifiSet = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Password WiFi minimal 8 karakter" });
     if (ssid_5g && ssid_5g.length > 32)
-      return res.status(400).json({
-        success: false,
-        message: "Nama WiFi 5GHz maksimal 32 karakter",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Nama WiFi 5GHz maksimal 32 karakter",
+        });
     if (password_5g && password_5g.length < 8)
-      return res.status(400).json({
-        success: false,
-        message: "Password WiFi 5GHz minimal 8 karakter",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Password WiFi 5GHz minimal 8 karakter",
+        });
 
     const customer = await Customer.findByPk(req.portalUser.id);
     if (!customer || !customer.ont_sn)
