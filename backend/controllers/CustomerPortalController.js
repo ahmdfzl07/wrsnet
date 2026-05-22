@@ -112,7 +112,8 @@ exports.login = async (req, res) => {
       },
     });
   } catch (e) {
-    cconsole.log("Portal login error:", e);
+    console.log("Portal login error:", e);
+
     // logger.error("Portal login error:", e);
     // res.status(500).json({ success: false, message: "Server error" });
   }
