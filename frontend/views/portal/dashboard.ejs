@@ -2501,65 +2501,65 @@ function renderPaymentAccordion() {
     </div>
   `;
 
-  if (
-    banks.length ||
-    ewallets.length ||
-    qrisList.length
-  ) {
+  // if (
+  //   banks.length ||
+  //   ewallets.length ||
+  //   qrisList.length
+  // ) {
 
-    html += `
-      <div class="pm-divider">
-        <span>atau transfer manual</span>
-      </div>
-    `;
-  }
+  //   html += `
+  //     <div class="pm-divider">
+  //       <span>atau transfer manual</span>
+  //     </div>
+  //   `;
+  // }
 
-  if (banks.length) {
+  // if (banks.length) {
 
-    html += buildAccordionGroup({
-      key: 'bank',
+  //   html += buildAccordionGroup({
+  //     key: 'bank',
 
-      icon:
-        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg>',
+  //     icon:
+  //       '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg>',
 
-      title: 'Transfer Bank',
+  //     title: 'Transfer Bank',
 
-      sub: 'BCA, BRI, Mandiri',
+  //     sub: 'BCA, BRI, Mandiri',
 
-      items: banks,
+  //     items: banks,
 
-      labelMap: PM_BANK_LABELS,
+  //     labelMap: PM_BANK_LABELS,
 
-      iconClass: ''
-    });
-  }
+  //     iconClass: ''
+  //   });
+  // }
 
-  if (ewallets.length) {
+  // if (ewallets.length) {
 
-    html += buildAccordionGroup({
-      key: 'ewallet',
+  //   html += buildAccordionGroup({
+  //     key: 'ewallet',
 
-      icon:
-        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M2 10h20M16 15h3"/></svg>',
+  //     icon:
+  //       '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M2 10h20M16 15h3"/></svg>',
 
-      title: 'E-Wallet',
+  //     title: 'E-Wallet',
 
-      sub: 'OVO, DANA, GoPay',
+  //     sub: 'OVO, DANA, GoPay',
 
-      items: ewallets,
+  //     items: ewallets,
 
-      labelMap: PM_EWALLET_LABELS,
+  //     labelMap: PM_EWALLET_LABELS,
 
-      iconClass: 'is-ewallet'
-    });
-  }
+  //     iconClass: 'is-ewallet'
+  //   });
+  // }
 
-  if (qrisList.length) {
+  // if (qrisList.length) {
 
-    html += buildAccordionGroupQris(
-      qrisList[0]
-    );
-  }
+  //   html += buildAccordionGroupQris(
+  //     qrisList[0]
+  //   );
+  // }
 
   container.innerHTML = html;
 
