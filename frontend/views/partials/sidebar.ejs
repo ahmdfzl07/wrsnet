@@ -9,10 +9,10 @@
     <div class="sidebar-logo" id="sidebarBrand">
       <%
         // Ambil brand settings dari app (fallback ke default)
-        const brandMode   = locals.brandMode   || locals.appSettings?.brand_mode   || 'name_tagline';
-        const appName     = locals.appName     || locals.appSettings?.app_name     || 'DIGSnet';
-        const appTagline  = locals.appTagline  || locals.appSettings?.app_tagline  || 'ISP Management';
-        const logoUrl     = locals.logoUrl     || locals.appSettings?.logo_url     || '';
+        const brandMode   = locals.appSettings?.brand_mode   || locals.brandMode   || 'name_tagline';
+        const appName     = locals.appSettings?.app_name     || locals.appName     || 'DIGSnet';
+        const appTagline  = locals.appSettings?.app_tagline  || locals.appTagline  || 'ISP Management';
+        const logoUrl     = locals.appSettings?.logo_url     || locals.logoUrl     || '';
       %>
       <% if (brandMode === 'logo_only' && logoUrl) { %>
         <img src="<%= logoUrl %>" alt="<%= appName %>" style="height:36px;object-fit:contain;">
