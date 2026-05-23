@@ -247,75 +247,64 @@ router.get(
   "/users",
   authenticate,
   demoGuard,
-  authorize("superadmin", "admin"),
   UserController.index,
 );
+
 router.post(
   "/users",
   authenticate,
   demoGuard,
-  authorize("superadmin"),
   logActivity("create", "user"),
   UserController.create,
 );
+
 router.get(
   "/users/:id",
   authenticate,
   demoGuard,
-  authorize("superadmin", "admin"),
   UserController.show,
 );
+
 router.put(
   "/users/:id",
   authenticate,
   demoGuard,
-  authorize("superadmin"),
   logActivity("update", "user"),
   UserController.update,
 );
+
 router.delete(
   "/users/:id",
   authenticate,
   demoGuard,
-  authorize("superadmin"),
   logActivity("delete", "user"),
   UserController.destroy,
 );
 
 // ===== ROLES & PERMISSIONS =====
-router.get("/roles", authenticate, demoGuard, UserController.getRoles);
+router.get("/roles", UserController.getRoles);
+
 router.post(
-  "/roles",
-  authenticate,
-  demoGuard,
-  authorize("superadmin"),
-  logActivity("create", "role"),
-  UserController.createRole,
-);
-router.put(
-  "/roles/:id",
-  authenticate,
-  demoGuard,
-  authorize("superadmin"),
-  logActivity("update", "role"),
-  UserController.updateRole,
-);
-router.delete(
-  "/roles/:id",
-  authenticate,
-  demoGuard,
-  authorize("superadmin"),
-  logActivity("delete", "role"),
-  UserController.deleteRole,
-);
-router.get(
-  "/permissions",
-  authenticate,
-  demoGuard,
-  authorize("superadmin"),
-  UserController.getPermissions,
+  "/users",
+  logActivity("create", "user"),
+  UserController.create,
 );
 
+router.get("/users", UserController.index);
+
+router.get("/users/:id", UserController.show);
+
+router.put(
+  "/users/:id",
+  logActivity("update", "user"),
+  UserController.update,
+);
+
+router.delete(
+  "/users/:id",
+  logActivity("delete", "user"),
+  UserController.destroy,
+);
 // ===== CUSTOMERS =====
 router.get("/customers", authenticate, demoGuard, CustomerController.index);
 router.post(
@@ -3224,6 +3213,14 @@ router.post("/payment/duitku/callback", async (req, res) => {
     });
   }
 });
+
+router.get("/roles", authenticate, UserController.getRoles);
+
+router.post("/roles", authenticate, UserController.createRole);
+
+router.put("/roles/:id", authenticate, UserController.updateRole);
+
+router.delete("/roles/:id", authenticate, UserController.deleteRole);
 
 // ===== GPS TRACKING =====
 const trackingRoutes = require("./tracking");

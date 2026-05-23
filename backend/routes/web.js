@@ -381,4 +381,17 @@ router.get('/technician/ticket/:id', authenticate, (req, res) => {
   });
 });
 
+router.get('/user', (req, res) => {
+  res.render('pages/users', {
+    title: 'User Management',
+    active: 'users',
+    appName: 'WRSNET',
+    user: req.user || null
+  });
+});
+
+const SalesController = require('../controllers/SalesController');
+
+router.get('/sales', SalesController.index);
+
 module.exports = router;

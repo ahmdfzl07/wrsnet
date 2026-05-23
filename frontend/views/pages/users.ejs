@@ -14,10 +14,25 @@
     <%- include('../partials/topbar') %>
     <main class="page-content">
 
-      <div class="page-header">
-        <div class="page-header-left"><h1>User Management</h1></div>
-        <div class="page-header-right">
-          <button class="btn btn-primary" onclick="openAddUser()">+ Tambah User</button>
+    <div class="page-header">
+
+        <div class="page-header-left">
+          <h1>User Management</h1>
+        </div>
+
+        <div
+          class="page-header-right"
+          style="display:flex;gap:10px;align-items:center;">
+          <button
+            class="btn btn-primary"
+            onclick="openAddUser()">
+            + Tambah User
+          </button>
+          <!-- <button
+            class="btn btn-secondary"
+            onclick="openAddRole()">
+            + Tambah Roles
+          </button> -->
         </div>
       </div>
 
@@ -75,6 +90,70 @@
         <button type="button" onclick="closeUserModal()" class="btn btn-secondary">Batal</button>
         <button type="submit" class="btn btn-primary">Simpan</button>
       </div>
+    </form>
+  </div>
+</div>
+<!-- ROLE MODAL -->
+<div id="roleModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:28px;width:100%;max-width:500px;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <h3 id="roleModalTitle" style="font-size:16px;font-weight:600;margin:0;">
+        Tambah Role
+      </h3>
+
+      <button
+        onclick="closeRoleModal()"
+        style="background:none;border:none;font-size:20px;cursor:pointer;color:#64748b;">
+        ×
+      </button>
+    </div>
+
+    <form id="roleForm" onsubmit="event.preventDefault();saveRole();">
+
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:13px;font-weight:500;margin-bottom:6px;">
+          Nama Role *
+        </label>
+
+        <input
+          id="roleName"
+          type="text"
+          placeholder="Contoh: admin"
+          required
+          style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;box-sizing:border-box;"
+        >
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <label style="display:block;font-size:13px;font-weight:500;margin-bottom:6px;">
+          Display Name *
+        </label>
+
+        <input
+          id="roleDisplayName"
+          type="text"
+          placeholder="Contoh: Administrator"
+          required
+          style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;box-sizing:border-box;"
+        >
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button
+          type="button"
+          onclick="closeRoleModal()"
+          class="btn btn-secondary">
+          Batal
+        </button>
+
+        <button
+          type="submit"
+          class="btn btn-primary">
+          Simpan
+        </button>
+      </div>
+
     </form>
   </div>
 </div>
