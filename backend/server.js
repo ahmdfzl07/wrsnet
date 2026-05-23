@@ -38,9 +38,11 @@ app.set("trust proxy", true);
 
 const server = http.createServer(app);
 
+const isProd = process.env.APP_ENV === "production";
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.APP_URL || "http://localhost:3001",
+    origin: isProd ? process.env.APP_URL : "http://localhost:3000",
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -66,7 +68,7 @@ app.use(
 
 app.use(
   cors({
-    origin: process.env.APP_URL || "http://localhost:3001",
+    origin: process.env.APP_URL || "http://103.150.81.147:3000/",
     credentials: true,
   }),
 );

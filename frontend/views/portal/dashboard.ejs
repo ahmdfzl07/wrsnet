@@ -1404,11 +1404,26 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-const socket = io("http://localhost:3001", {
-  auth: {
-    token: localStorage.getItem("token")
+// const socket = io("http://103.150.81.147:3000/", {
+//   auth: {
+//     token: localStorage.getItem("token")
+//   }
+// });
+
+const isLocal =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1";
+
+const socket = io(
+  isLocal
+    ? "http://localhost:3001"
+    : "http://103.150.81.147:3000",
+  {
+    auth: {
+      token: localStorage.getItem("token"),
+    },
   }
-});
+);
 
 const user = JSON.parse(localStorage.getItem("user"));
 const customer = JSON.parse(localStorage.getItem("portal_customer"));
