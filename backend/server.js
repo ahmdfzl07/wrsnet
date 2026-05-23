@@ -138,8 +138,31 @@ app.get("/favicon.ico", async (req, res) => {
 
 app.use("/api", demoDataMasker);
 
-app.use((req, res, next) => {
-  res.locals.appName = "ISPNET";
+// app.use((req, res, next) => {
+//   res.locals.appName = "WRS NET";
+
+//   next();
+// });
+
+const { AppSetting } = require("./models");
+app.use(async (req, res, next) => {
+  try {
+    const settings = await db.AppSetting.findAll();
+
+    const mapped = {};
+    settings.forEach((item) => {
+      mapped[item.key] = item.value;
+    });
+
+    res.locals.appSettings = mapped;
+
+    res.locals.appName = mapped.app_name || "WRS NET";
+  } catch (err) {
+    console.error("SETTINGS ERROR:", err);
+
+    res.locals.appSettings = {};
+    res.locals.appName = "WRS NET";
+  }
 
   next();
 });
