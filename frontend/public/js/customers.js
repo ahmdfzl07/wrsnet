@@ -834,6 +834,9 @@ async function loadCustomers() {
         '<td><span class="cid-badge">' +
         _esc(c.customer_id) +
         "</span></td>" +
+        '<td style="color:#6b7fa8">' +
+        _esc(c.nik || "–") +
+        "</td>" +
         "<td>" +
         '<div style="display:flex;align-items:center;gap:11px">' +
         '<div class="av-circle" style="background:' +
