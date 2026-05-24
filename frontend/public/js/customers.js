@@ -172,6 +172,7 @@ window.editCustomer = async function (id) {
   // bisa di-edit user — karena pppoeCreateBox tertutup di mode edit.
   _movePppoeToEditSlot();
 
+  _setVal("custNik", c.nik || "");
   _setVal("custName", c.name || "");
   _setVal("custPhone", c.phone || "");
   _setVal("custEmail", c.email || "");

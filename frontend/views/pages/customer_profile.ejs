@@ -940,6 +940,7 @@ function openEditModal(cust) {
 
   // Fill fields
   var set = function(id, val) { var el=document.getElementById(id); if(el) el.value=val||''; };
+  set('ep-nik',          cust.nik);
   set('ep-name',         cust.name);
   set('ep-phone',        cust.phone);
   set('ep-email',        cust.email);

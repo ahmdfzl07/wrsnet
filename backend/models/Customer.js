@@ -22,7 +22,11 @@ module.exports = (sequelize) => {
         type: DataTypes.TEXT,
         allowNull: true,
       },
-
+      nik: {
+        type: DataTypes.STRING(16),
+        unique: true,
+        allowNull: true,
+      },
       province: {
         type: DataTypes.STRING(100),
         allowNull: true,

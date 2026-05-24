@@ -373,8 +373,9 @@
     <div id="customerModalTitle" class="modal-ttl">Tambah Customer</div>
     <div class="modal-body" id="custModalBody" style="overflow-y:auto;max-height:70vh">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-        <div><label class="flbl">CID *</label><input type="text" class="finput" id="custId" placeholder="CID001" style="font-family:'DM Mono',monospace;text-transform:uppercase" oninput="onCustIdInput(this.value)" autocomplete="off"></div>
+        <div><label class="flbl">CID *</label><input type="text" class="finput" id="custId" placeholder="CID001" style="font-family:'DM Mono',monospace;text-transform:uppercase" oninput="onCustIdInput(this.value)" autocomplete="off" readonly></div>
         <div><label class="flbl">Status</label><select class="finput" id="custStatus"><option value="active">Aktif</option><option value="inactive">Nonaktif</option><option value="suspended">Suspended</option></select></div>
+        <div style="grid-column:1/-1"><label class="flbl">NIK</label><input type="number" class="finput" id="custNik" placeholder="16-digit NIK" maxlength="16"></div>
         <div style="grid-column:1/-1"><label class="flbl">Nama Lengkap *</label><input type="text" class="finput" id="custName" placeholder="Nama customer"></div>
         <div><label class="flbl">No HP / WA *</label><input type="text" class="finput" id="custPhone" placeholder="08xx / 628xx"></div>
         <div><label class="flbl">Email</label><input type="email" class="finput" id="custEmail" placeholder="opsional"></div>
@@ -685,6 +686,7 @@ window.saveCustomerBtn = async function () {
 
   try {
     const body = {
+      nik: document.getElementById("custNik").value,
       name: document.getElementById("custName").value,
       phone: document.getElementById("custPhone").value,
       email: document.getElementById("custEmail")?.value || "",
@@ -1070,6 +1072,7 @@ let _importValidCount = 0;
 
 // Pindahkan dropdown ke body root saat halaman siap, supaya 100% lepas
 // dari stacking context parent manapun.
+
 (function ensureMenuAtBodyRoot() {
   const move = () => {
     const menu = document.getElementById('importExportMenu');
@@ -1491,6 +1494,12 @@ let kabupatenSelect;
 let kecamatanSelect;
 let kelurahanSelect;
 
+custNik.addEventListener("input", function(){
+  this.value = this.value.replace(/\D/g,'');
+  if(this.value.length > 16){
+    this.value = this.value.slice(0,16);
+  }
+});
 
 async function loadKabupaten(
   provinsiId
@@ -1590,7 +1599,6 @@ async function loadKecamatan(
       }
     );
 }
-
 
 async function loadKelurahan(
   kecamatanId
