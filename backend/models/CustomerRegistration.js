@@ -51,6 +51,8 @@ module.exports = (sequelize) => {
       mikrotik_id: DataTypes.INTEGER,
 
       due_date: DataTypes.DATEONLY,
+      coordinates: DataTypes.STRING(100),
+      referral: DataTypes.STRING(100),
 
       documents: {
         type: DataTypes.JSON,

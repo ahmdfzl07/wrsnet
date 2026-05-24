@@ -18,8 +18,6 @@
   --muted:#64748b;
 }
 
-*{box-sizing:border-box}
-
 body{
   margin:0;
   font-family:system-ui;
@@ -27,48 +25,61 @@ body{
   color:var(--text);
 }
 
-/* CARD */
-.container{
-  max-width:1100px;
-  margin:40px auto;
-  background:var(--card);
-  padding:28px;
-  border-radius:16px;
-  box-shadow:0 12px 30px rgba(0,0,0,0.08);
+.header{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:18px;
+  padding:25px 10px 0;
 }
 
-/* TITLE */
+.footer-brand img{
+  height:42px;
+  object-fit:contain;
+}
+
+.footer-divider{
+  width:2px;
+  height:30px;
+  background:#cbd5e1;
+}
+
+.container{
+  max-width:1050px;
+  margin:20px auto 50px;
+  background:var(--card);
+  padding:32px;
+  border-radius:18px;
+  box-shadow:0 12px 35px rgba(0,0,0,0.08);
+}
+
 h2{
-  margin:0 0 20px;
+  margin:10px 0 25px;
   font-size:22px;
   font-weight:700;
+  text-align:center;
 }
 
-/* GRID SYSTEM (COL STYLE) */
 .grid{
   display:grid;
   grid-template-columns:repeat(12, 1fr);
   gap:16px;
 }
 
-/* COLUMN SIZE SYSTEM */
 .col-12{grid-column:span 12}
 .col-6{grid-column:span 6}
 .col-4{grid-column:span 4}
 .col-3{grid-column:span 3}
 
-/* RESPONSIVE */
 @media(max-width:900px){
   .col-6,.col-4,.col-3{grid-column:span 12}
 }
 
-/* FIELD */
 .field{
   display:flex;
   flex-direction:column;
 }
 
-/* LABEL */
 label{
   font-size:12px;
   font-weight:600;
@@ -76,9 +87,8 @@ label{
   margin-bottom:6px;
 }
 
-/* INPUT */
 input,select,textarea{
-  padding:10px 12px;
+  padding:11px 12px;
   border:1.5px solid var(--border);
   border-radius:10px;
   font-size:13px;
@@ -89,24 +99,22 @@ input,select,textarea{
 input:focus,select:focus,textarea:focus{
   outline:none;
   border-color:var(--primary);
-  box-shadow:0 0 0 2px rgba(37,99,235,0.1);
+  box-shadow:0 0 0 3px rgba(37,99,235,0.12);
 }
 
-/* SECTION */
 .section{
   grid-column:span 12;
   margin-top:10px;
-  padding:10px 0;
+  padding:12px 0;
   border-top:1px solid var(--border);
   font-weight:700;
   color:var(--muted);
 }
 
-/* ACTION */
 .actions{
   display:flex;
-  gap:10px;
-  margin-top:20px;
+  gap:12px;
+  margin-top:25px;
 }
 
 button{
@@ -125,6 +133,7 @@ button{
 
 .btn-primary:hover{
   background:var(--primary-dark);
+  transform:translateY(-1px);
 }
 
 .btn-secondary{
@@ -135,7 +144,6 @@ button{
   text-decoration:none;
 }
 
-/* ERROR */
 .error{
   border-color:#dc2626 !important;
 }
@@ -144,7 +152,20 @@ button{
 
 <body>
 
+<div class="header">
+  <a href="#" class="footer-brand">
+    <img src="https://e.ebilling.id:2096/img/logo/3275WRSNET%201%20(REMOVE%20BACKGROUND).png">
+  </a>
+
+  <div class="footer-divider"></div>
+
+  <a href="https://gmdp.net.id" target="_blank" class="footer-brand">
+    <img src="https://gmdp.net.id/build/assets/gmdp%20logo-Cm7eDGKF.webp">
+  </a>
+</div>
+
 <div class="container">
+
 <h2>Registrasi Customer</h2>
 
 <form id="formRegister">
@@ -152,8 +173,8 @@ button{
 <div class="grid">
 
   <div class="field col-6">
-    <label>NIK</label>
-    <input type="number" id="nik" maxlength="16">
+    <label>NIK (16 digit)</label>
+    <input id="nik" maxlength="16">
   </div>
 
   <div class="field col-6">
@@ -179,6 +200,16 @@ button{
   <div class="field col-6">
     <label>Tanggal Instalasi</label>
     <input type="date" id="custInstallDate">
+  </div>
+
+  <div class="field col-6">
+    <label>Koordinat</label>
+    <input id="custCoordinates">
+  </div>
+
+  <div class="field col-6">
+    <label>Referral</label>
+    <input id="custReferral">
   </div>
 
   <div class="section">Wilayah & Lokasi</div>
@@ -221,8 +252,8 @@ button{
 </div>
 
 <div class="actions">
-<button type="submit" class="btn-primary">Daftar</button>
-<a href="/" class="btn-secondary">Batal</a>
+  <button type="submit" class="btn-primary">Daftar</button>
+  <a href="/" class="btn-secondary">Batal</a>
 </div>
 
 </form>
@@ -241,11 +272,14 @@ async function loadPackages(){
 
   custPackage.innerHTML =
     '<option value="">Pilih paket</option>' +
-    json.data.map(p =>
-      `<option value="${p.id}">
-        ${p.name} — Rp ${Number(p.price).toLocaleString("id-ID")}/bln
-      </option>`
-    ).join("");
+    json.data.map(p => {
+      if (p.is_active == 1) {
+        return `<option value="${p.id}">
+          ${p.name} — Rp ${Number(p.price).toLocaleString("id-ID")}/bln
+        </option>`;
+      }
+      return "";
+    }).join("");
 }
 
 function resetWilayah(level){
@@ -369,15 +403,24 @@ formRegister.addEventListener("submit", async function(e){
     rw: custRw.value,
     package_id: custPackage.value,
     installation_date: custInstallDate.value,
+    coordinates: custCoordinates.value,
+    referral: custReferral.value,
   };
 
-  await fetch("/api/register/customer",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(data)
+  const res = await fetch("/api/register/customer", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
 
-  alert("Berhasil daftar!");
+  const result = await res.json();
+
+  if (!res.ok || !result.success) {
+    alert(result.message || "Gagal registrasi");
+    return;
+  }
+
+  alert(result.message || "Berhasil daftar!");
   location.reload();
 });
 </script>

@@ -97,6 +97,11 @@ const CustomerRegistration = require("./CustomerRegistration")(
   Sequelize,
 );
 
+Ticket.belongsTo(CustomerRegistration, {
+  foreignKey: "customer_id",
+  as: "customerRegistration",
+});
+
 // ===== ASSOCIATIONS =====
 // InfrastructureLink associations
 InfrastructureLink.belongsTo(InfrastructurePoint, {
