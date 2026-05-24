@@ -158,13 +158,13 @@ class CustomerController {
           .status(400)
           .json({ success: false, message: "Nama customer wajib diisi" });
 
-      const nik = String(data.nik || "").trim();
+      // const nik = String(data.nik || "").trim();
 
-      if (!nik || nik.length !== 16 || !/^\d{16}$/.test(nik))
-        return res.status(400).json({
-          success: false,
-          message: "NIK harus 16 digit angka",
-        });
+      // if (!nik || nik.length !== 16 || !/^\d{16}$/.test(nik))
+      //   return res.status(400).json({
+      //     success: false,
+      //     message: "NIK harus 16 digit angka",
+      //   });
 
       // Jika customer_id dikirim manual, validasi uniqueness
       if (data.customer_id) {
@@ -239,13 +239,13 @@ class CustomerController {
         }
       }
 
-      const nik = String(req.body.nik || "").trim();
+      // const nik = String(req.body.nik || "").trim();
 
-      if (!nik || nik.length !== 16 || !/^\d{16}$/.test(nik))
-        return res.status(400).json({
-          success: false,
-          message: "NIK harus 16 digit angka",
-        });
+      // if (!nik || nik.length !== 16 || !/^\d{16}$/.test(nik))
+      //   return res.status(400).json({
+      //     success: false,
+      //     message: "NIK harus 16 digit angka",
+      //   });
 
       // SECURITY: Field portal credentials TIDAK BOLEH diupdate via endpoint umum
       // karena password akan ter-bypass bcrypt dan disimpan plaintext.

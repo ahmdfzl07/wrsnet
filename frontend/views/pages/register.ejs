@@ -177,11 +177,6 @@ button{
   </div>
 
   <div class="field col-6">
-    <label>Jatuh Tempo</label>
-    <input type="date" id="custDueDate">
-  </div>
-
-  <div class="field col-6">
     <label>Tanggal Instalasi</label>
     <input type="date" id="custInstallDate">
   </div>
@@ -373,7 +368,6 @@ formRegister.addEventListener("submit", async function(e){
     rt: custRt.value,
     rw: custRw.value,
     package_id: custPackage.value,
-    due_date: custDueDate.value,
     installation_date: custInstallDate.value,
   };
 
