@@ -626,8 +626,7 @@ const USER_NAME = user?.name ?? null;
 const CUSTOMER_ID = customer?.id ?? null;
 
 const TYPE = "admin";
-// const MY_ID = CUSTOMER_ID ?? USER_ID;
-const MY_ID =  USER_ID;
+const MY_ID = CUSTOMER_ID ?? USER_ID;
 
 let CURRENT_ROOM = null;
 let LAST_DATE = null;
@@ -718,8 +717,6 @@ socket.on("chat:receive", (data) => {
   const isMe =
     String(data.user_id) === String(MY_ID) &&
     data.type === TYPE;
-
-    console.log("Received chat message:", data);
 
   const isSameRoom = data.room === CURRENT_ROOM;
 
