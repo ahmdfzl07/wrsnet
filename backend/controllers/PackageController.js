@@ -1,11 +1,21 @@
-const { Package, Customer } = require('../models');
+const { Package, Customer } = require("../models");
 
 // Allowed fields untuk create/update
-const ALLOWED = ['name','speed_down','speed_up','price','description','category','is_active'];
+const ALLOWED = [
+  "name",
+  "speed_down",
+  "speed_up",
+  "price",
+  "description",
+  "category",
+  "is_active",
+];
 
 function pickFields(body) {
   const out = {};
-  ALLOWED.forEach(k => { if (k in body) out[k] = body[k]; });
+  ALLOWED.forEach((k) => {
+    if (k in body) out[k] = body[k];
+  });
   return out;
 }
 
@@ -13,17 +23,19 @@ class PackageController {
   async index(req, res) {
     try {
       const packages = await Package.findAll({
-        order: [['price', 'ASC']],
-        include: [{
-          model: Customer,
-          as: 'customers',
-          attributes: ['id']
-        }]
+        order: [["price", "ASC"]],
+        include: [
+          {
+            model: Customer,
+            as: "customers",
+            attributes: ["id"],
+          },
+        ],
       });
 
-      const data = packages.map(pkg => ({
+      const data = packages.map((pkg) => ({
         ...pkg.toJSON(),
-        customer_count: pkg.customers?.length || 0
+        customer_count: pkg.customers?.length || 0,
       }));
 
       res.json({ success: true, data });
@@ -35,12 +47,20 @@ class PackageController {
   async stats(req, res) {
     try {
       const packages = await Package.findAll({
-        include: [{ model: Customer, as: 'customers', attributes: ['id'] }]
+        include: [{ model: Customer, as: "customers", attributes: ["id"] }],
       });
-      const active    = packages.filter(p => p.is_active).length;
-      const totalCust = packages.reduce((a, p) => a + (p.customers?.length || 0), 0);
-      const maxSpeed  = packages.length ? Math.max(...packages.map(p => p.speed_down || 0)) : 0;
-      res.json({ success: true, data: { total: packages.length, active, totalCust, maxSpeed } });
+      const active = packages.filter((p) => p.is_active).length;
+      const totalCust = packages.reduce(
+        (a, p) => a + (p.customers?.length || 0),
+        0,
+      );
+      const maxSpeed = packages.length
+        ? Math.max(...packages.map((p) => p.speed_down || 0))
+        : 0;
+      res.json({
+        success: true,
+        data: { total: packages.length, active, totalCust, maxSpeed },
+      });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
     }
@@ -49,12 +69,23 @@ class PackageController {
   async create(req, res) {
     try {
       const fields = pickFields(req.body);
-      if (!fields.name)       return res.status(400).json({ success: false, message: 'Nama paket wajib diisi' });
-      if (!fields.speed_down) return res.status(400).json({ success: false, message: 'Kecepatan download wajib diisi' });
-      if (!fields.speed_up)   return res.status(400).json({ success: false, message: 'Kecepatan upload wajib diisi' });
-      if (!fields.price)      return res.status(400).json({ success: false, message: 'Harga wajib diisi' });
+      if (!fields.name)
+        return res
+          .status(400)
+          .json({ success: false, message: "Nama paket wajib diisi" });
+      if (!fields.speed_down)
+        return res
+          .status(400)
+          .json({ success: false, message: "Kecepatan download wajib diisi" });
+      if (!fields.speed_up)
+        return res
+          .status(400)
+          .json({ success: false, message: "Kecepatan upload wajib diisi" });
+      // if (!fields.price)      return res.status(400).json({ success: false, message: 'Harga wajib diisi' });
       const pkg = await Package.create(fields);
-      res.status(201).json({ success: true, data: pkg, message: 'Paket berhasil dibuat' });
+      res
+        .status(201)
+        .json({ success: true, data: pkg, message: "Paket berhasil dibuat" });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
     }
@@ -63,10 +94,18 @@ class PackageController {
   async show(req, res) {
     try {
       const pkg = await Package.findByPk(req.params.id, {
-        include: [{ model: Customer, as: 'customers', attributes: ['id','name'] }]
+        include: [
+          { model: Customer, as: "customers", attributes: ["id", "name"] },
+        ],
       });
-      if (!pkg) return res.status(404).json({ success: false, message: 'Paket tidak ditemukan' });
-      res.json({ success: true, data: { ...pkg.toJSON(), customer_count: pkg.customers?.length || 0 } });
+      if (!pkg)
+        return res
+          .status(404)
+          .json({ success: false, message: "Paket tidak ditemukan" });
+      res.json({
+        success: true,
+        data: { ...pkg.toJSON(), customer_count: pkg.customers?.length || 0 },
+      });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
@@ -75,10 +114,17 @@ class PackageController {
   async update(req, res) {
     try {
       const pkg = await Package.findByPk(req.params.id);
-      if (!pkg) return res.status(404).json({ success: false, message: 'Paket tidak ditemukan' });
+      if (!pkg)
+        return res
+          .status(404)
+          .json({ success: false, message: "Paket tidak ditemukan" });
       const fields = pickFields(req.body);
       await pkg.update(fields);
-      res.json({ success: true, data: pkg, message: 'Paket berhasil diperbarui' });
+      res.json({
+        success: true,
+        data: pkg,
+        message: "Paket berhasil diperbarui",
+      });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
     }
@@ -87,18 +133,23 @@ class PackageController {
   async destroy(req, res) {
     try {
       const pkg = await Package.findByPk(req.params.id);
-      if (!pkg) return res.status(404).json({ success: false, message: 'Paket tidak ditemukan' });
+      if (!pkg)
+        return res
+          .status(404)
+          .json({ success: false, message: "Paket tidak ditemukan" });
 
-      const customerCount = await Customer.count({ where: { package_id: pkg.id } });
+      const customerCount = await Customer.count({
+        where: { package_id: pkg.id },
+      });
       if (customerCount > 0) {
         return res.status(400).json({
           success: false,
-          message: `Paket masih digunakan oleh ${customerCount} pelanggan. Pindahkan pelanggan terlebih dahulu.`
+          message: `Paket masih digunakan oleh ${customerCount} pelanggan. Pindahkan pelanggan terlebih dahulu.`,
         });
       }
 
       await pkg.destroy();
-      res.json({ success: true, message: 'Paket berhasil dihapus' });
+      res.json({ success: true, message: "Paket berhasil dihapus" });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
