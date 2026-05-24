@@ -48,6 +48,7 @@ const NotificationController = require("../controllers/NotificationController");
 const ActivityLogController = require("../controllers/ActivityLogController");
 const ResourceController = require("../controllers/ResourceController");
 const TopologyController = require("../controllers/TopologyController");
+const CustomerRegistrationController = require("../controllers/CustomerRegistrationController");
 const axios = require("axios");
 const db = require("../models");
 const Customer = db.Customer;
@@ -56,6 +57,9 @@ const Invoice = db.Invoice;
 
 // ===== DEMO (public — /provision tidak butuh login) =====
 router.use("/demo", demoRoutes);
+
+// register customer tanpa login
+router.post("/register/customer", CustomerRegistrationController.register);
 
 // ===== AUTH =====
 router.post("/auth/login", AuthController.login);
@@ -243,12 +247,7 @@ router.post(
 );
 
 // ===== USERS =====
-router.get(
-  "/users",
-  authenticate,
-  demoGuard,
-  UserController.index,
-);
+router.get("/users", authenticate, demoGuard, UserController.index);
 
 router.post(
   "/users",
@@ -258,12 +257,7 @@ router.post(
   UserController.create,
 );
 
-router.get(
-  "/users/:id",
-  authenticate,
-  demoGuard,
-  UserController.show,
-);
+router.get("/users/:id", authenticate, demoGuard, UserController.show);
 
 router.put(
   "/users/:id",
@@ -284,21 +278,13 @@ router.delete(
 // ===== ROLES & PERMISSIONS =====
 router.get("/roles", UserController.getRoles);
 
-router.post(
-  "/users",
-  logActivity("create", "user"),
-  UserController.create,
-);
+router.post("/users", logActivity("create", "user"), UserController.create);
 
 router.get("/users", UserController.index);
 
 router.get("/users/:id", UserController.show);
 
-router.put(
-  "/users/:id",
-  logActivity("update", "user"),
-  UserController.update,
-);
+router.put("/users/:id", logActivity("update", "user"), UserController.update);
 
 router.delete(
   "/users/:id",

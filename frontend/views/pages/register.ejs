@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Registrasi Customer</title>
+
+<link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
+
+<style>
+:root{
+  --primary:#2563eb;
+  --primary-dark:#1d4ed8;
+  --bg:#f1f5f9;
+  --card:#ffffff;
+  --border:#e2e8f0;
+  --text:#0f172a;
+  --muted:#64748b;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:system-ui;
+  background:linear-gradient(135deg,#eef2ff,#f8fafc);
+  color:var(--text);
+}
+
+/* CARD */
+.container{
+  max-width:1100px;
+  margin:40px auto;
+  background:var(--card);
+  padding:28px;
+  border-radius:16px;
+  box-shadow:0 12px 30px rgba(0,0,0,0.08);
+}
+
+/* TITLE */
+h2{
+  margin:0 0 20px;
+  font-size:22px;
+  font-weight:700;
+}
+
+/* GRID SYSTEM (COL STYLE) */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(12, 1fr);
+  gap:16px;
+}
+
+/* COLUMN SIZE SYSTEM */
+.col-12{grid-column:span 12}
+.col-6{grid-column:span 6}
+.col-4{grid-column:span 4}
+.col-3{grid-column:span 3}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .col-6,.col-4,.col-3{grid-column:span 12}
+}
+
+/* FIELD */
+.field{
+  display:flex;
+  flex-direction:column;
+}
+
+/* LABEL */
+label{
+  font-size:12px;
+  font-weight:600;
+  color:var(--muted);
+  margin-bottom:6px;
+}
+
+/* INPUT */
+input,select,textarea{
+  padding:10px 12px;
+  border:1.5px solid var(--border);
+  border-radius:10px;
+  font-size:13px;
+  transition:.2s;
+  background:#fff;
+}
+
+input:focus,select:focus,textarea:focus{
+  outline:none;
+  border-color:var(--primary);
+  box-shadow:0 0 0 2px rgba(37,99,235,0.1);
+}
+
+/* SECTION */
+.section{
+  grid-column:span 12;
+  margin-top:10px;
+  padding:10px 0;
+  border-top:1px solid var(--border);
+  font-weight:700;
+  color:var(--muted);
+}
+
+/* ACTION */
+.actions{
+  display:flex;
+  gap:10px;
+  margin-top:20px;
+}
+
+button{
+  flex:1;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+.btn-primary{
+  background:var(--primary);
+  color:#fff;
+}
+
+.btn-primary:hover{
+  background:var(--primary-dark);
+}
+
+.btn-secondary{
+  background:#e2e8f0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-decoration:none;
+}
+
+/* ERROR */
+.error{
+  border-color:#dc2626 !important;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<h2>Registrasi Customer</h2>
+
+<form id="formRegister">
+
+<div class="grid">
+
+  <div class="field col-6">
+    <label>NIK</label>
+    <input id="nik" maxlength="16">
+  </div>
+
+  <div class="field col-6">
+    <label>Nama Lengkap</label>
+    <input id="custName">
+  </div>
+
+  <div class="field col-6">
+    <label>No HP</label>
+    <input id="custPhone">
+  </div>
+
+  <div class="field col-6">
+    <label>Email</label>
+    <input id="custEmail">
+  </div>
+
+  <div class="field col-6">
+    <label>Paket</label>
+    <select id="custPackage"></select>
+  </div>
+
+  <div class="field col-6">
+    <label>Jatuh Tempo</label>
+    <input type="date" id="custDueDate">
+  </div>
+
+  <div class="field col-6">
+    <label>Tanggal Instalasi</label>
+    <input type="date" id="custInstallDate">
+  </div>
+
+  <div class="section">Wilayah & Lokasi</div>
+
+  <div class="field col-6">
+    <label>Provinsi</label>
+    <select id="custProvinsi"></select>
+  </div>
+
+  <div class="field col-6">
+    <label>Kabupaten</label>
+    <select id="custKabupaten"></select>
+  </div>
+
+  <div class="field col-6">
+    <label>Kecamatan</label>
+    <select id="custKecamatan"></select>
+  </div>
+
+  <div class="field col-6">
+    <label>Kelurahan</label>
+    <select id="custKelurahan"></select>
+  </div>
+
+  <div class="field col-3">
+    <label>RT</label>
+    <input id="custRt">
+  </div>
+
+  <div class="field col-3">
+    <label>RW</label>
+    <input id="custRw">
+  </div>
+
+  <div class="field col-12">
+    <label>Alamat</label>
+    <textarea id="custAddress"></textarea>
+  </div>
+
+</div>
+
+<div class="actions">
+<button type="submit" class="btn-primary">Daftar</button>
+<a href="/" class="btn-secondary">Batal</a>
+</div>
+
+</form>
+</div>
+
+<script>
+const API = window.location.origin + "/api/wilayah";
+
+let provinsiSelect, kabupatenSelect, kecamatanSelect, kelurahanSelect;
+
+async function loadPackages(){
+  const res = await fetch("/api/packages");
+  const json = await res.json();
+
+  if(!json?.success) return;
+
+  custPackage.innerHTML =
+    '<option value="">Pilih paket</option>' +
+    json.data.map(p =>
+      `<option value="${p.id}">
+        ${p.name} — Rp ${Number(p.price).toLocaleString("id-ID")}/bln
+      </option>`
+    ).join("");
+}
+
+function resetWilayah(level){
+  if(level === "provinsi"){
+    if(kabupatenSelect){kabupatenSelect.destroy(); kabupatenSelect=null;}
+    if(kecamatanSelect){kecamatanSelect.destroy(); kecamatanSelect=null;}
+    if(kelurahanSelect){kelurahanSelect.destroy(); kelurahanSelect=null;}
+
+    custKabupaten.innerHTML = '<option value="">Pilih Kabupaten</option>';
+    custKecamatan.innerHTML = '<option value="">Pilih Kecamatan</option>';
+    custKelurahan.innerHTML = '<option value="">Pilih Kelurahan</option>';
+  }
+
+  if(level === "kabupaten"){
+    if(kecamatanSelect){kecamatanSelect.destroy(); kecamatanSelect=null;}
+    if(kelurahanSelect){kelurahanSelect.destroy(); kelurahanSelect=null;}
+
+    custKecamatan.innerHTML = '<option value="">Pilih Kecamatan</option>';
+    custKelurahan.innerHTML = '<option value="">Pilih Kelurahan</option>';
+  }
+
+  if(level === "kecamatan"){
+    if(kelurahanSelect){kelurahanSelect.destroy(); kelurahanSelect=null;}
+    custKelurahan.innerHTML = '<option value="">Pilih Kelurahan</option>';
+  }
+}
+
+async function loadProvinsi(){
+  const res = await fetch("/api/wilayah/provinsi");
+  const data = await res.json();
+
+  custProvinsi.innerHTML = '<option value="">Pilih Provinsi</option>';
+  data.forEach(i=>{
+    custProvinsi.innerHTML += `<option value="${i.id}">${i.name}</option>`;
+  });
+
+  provinsiSelect = new TomSelect("#custProvinsi",{
+    onChange(val){
+      resetWilayah("provinsi");
+      if(val) loadKabupaten(val);
+    }
+  });
+}
+
+async function loadKabupaten(id){
+  const res = await fetch(`${API}/kabupaten/${id}`);
+  const data = await res.json();
+
+  custKabupaten.innerHTML = '<option value="">Pilih Kabupaten</option>';
+  data.forEach(i=>{
+    custKabupaten.innerHTML += `<option value="${i.id}">${i.name}</option>`;
+  });
+
+  kabupatenSelect = new TomSelect("#custKabupaten",{
+    onChange(val){
+      resetWilayah("kabupaten");
+      if(val) loadKecamatan(val);
+    }
+  });
+}
+
+async function loadKecamatan(id){
+  const res = await fetch(`${API}/kecamatan/${id}`);
+  const data = await res.json();
+
+  custKecamatan.innerHTML = '<option value="">Pilih Kecamatan</option>';
+  data.forEach(i=>{
+    custKecamatan.innerHTML += `<option value="${i.id}">${i.name}</option>`;
+  });
+
+  kecamatanSelect = new TomSelect("#custKecamatan",{
+    onChange(val){
+      resetWilayah("kecamatan");
+      if(val) loadKelurahan(val);
+    }
+  });
+}
+
+async function loadKelurahan(id){
+  const res = await fetch(`${API}/kelurahan/${id}`);
+  const data = await res.json();
+
+  custKelurahan.innerHTML = '<option value="">Pilih Kelurahan</option>';
+  data.forEach(i=>{
+    custKelurahan.innerHTML += `<option value="${i.id}">${i.name}</option>`;
+  });
+
+  kelurahanSelect = new TomSelect("#custKelurahan");
+}
+
+loadProvinsi();
+loadPackages();
+
+nik.addEventListener("input", function(){
+  this.value = this.value.replace(/\D/g,'');
+  if(this.value.length > 16){
+    this.value = this.value.slice(0,16);
+  }
+});
+
+formRegister.addEventListener("submit", async function(e){
+  e.preventDefault();
+
+  if(nik.value.length !== 16){
+    alert("NIK harus 16 digit!");
+    nik.classList.add("error");
+    return;
+  }
+
+  const data = {
+    nik: nik.value,
+    name: custName.value,
+    phone: custPhone.value,
+    email: custEmail.value,
+    address: custAddress.value,
+    province_id: custProvinsi.value,
+    kabupaten: custKabupaten.value,
+    kecamatan: custKecamatan.value,
+    kelurahan: custKelurahan.value,
+    rt: custRt.value,
+    rw: custRw.value,
+    package_id: custPackage.value,
+    due_date: custDueDate.value,
+    installation_date: custInstallDate.value,
+  };
+
+  await fetch("/api/register/customer",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(data)
+  });
+
+  alert("Berhasil daftar!");
+  location.reload();
+});
+</script>
+
+</body>
+</html>

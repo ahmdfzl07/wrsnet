@@ -92,6 +92,10 @@ const NocMonitorPreset = require("./NocMonitorPreset")(sequelize);
 
 // live chat
 const LiveMessage = require("./LiveMessage")(sequelize, Sequelize);
+const CustomerRegistration = require("./CustomerRegistration")(
+  sequelize,
+  Sequelize,
+);
 
 // ===== ASSOCIATIONS =====
 // InfrastructureLink associations
@@ -259,6 +263,7 @@ const db = {
   PushNotification,
   NocMonitorPreset,
   LiveMessage,
+  CustomerRegistration,
 };
 
 // ── Todo associations
