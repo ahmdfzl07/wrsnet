@@ -102,6 +102,11 @@ Ticket.belongsTo(CustomerRegistration, {
   as: "customerRegistration",
 });
 
+WorkOrder.belongsTo(CustomerRegistration, {
+  foreignKey: "customer_id",
+  as: "customerRegistration",
+});
+
 // ===== ASSOCIATIONS =====
 // InfrastructureLink associations
 InfrastructureLink.belongsTo(InfrastructurePoint, {

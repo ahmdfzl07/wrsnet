@@ -56,3 +56,5 @@ ALTER TABLE `customers` ADD `nik` INT NULL DEFAULT NULL AFTER `name`;
 ALTER TABLE customers MODIFY nik VARCHAR(16);
 ALTER TABLE `customer_registration` ADD `coordinates` VARCHAR(100) NULL DEFAULT NULL AFTER `longitude`, ADD `referral` VARCHAR(100) NULL DEFAULT NULL AFTER `coordinates`;
 ALTER TABLE `tickets` ADD `is_registration` VARCHAR(10) NULL DEFAULT NULL AFTER `tags`;
+ALTER TABLE work_orders 
+ADD COLUMN is_registration TINYINT(1) DEFAULT 0 AFTER ticket_id;
