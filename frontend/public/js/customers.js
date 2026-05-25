@@ -181,6 +181,8 @@ window.editCustomer = async function (id) {
   _setVal("custDueDate", c.due_date || "");
   _setVal("custInstallDate", c.installation_date || "");
   _setVal("custPPPoE", c.pppoe_username || "");
+  _setVal("custLatitude", c.latitude || "");
+  _setVal("custLongitude", c.longitude || "");
   // Simpan value asli untuk deteksi perubahan di saveCustomer()
   _originalPppoeUsername = String(c.pppoe_username || "").trim();
   _setVal("custOntSn", c.ont_sn || "");
