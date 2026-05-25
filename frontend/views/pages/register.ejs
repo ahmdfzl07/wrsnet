@@ -328,7 +328,7 @@
           Daftar
         </button>
 
-        <a href="/"
+        <a href="/portal/login"
           class="flex-1 text-center bg-slate-200 hover:bg-slate-300 py-3 rounded-xl font-semibold transition">
           Batal
         </a>
@@ -488,47 +488,65 @@
   formRegister.addEventListener("submit", async function(e){
     e.preventDefault();
 
-    if(nik.value.length !== 16){
-      alert("NIK harus 16 digit!");
-      nik.classList.add("error");
-      return;
+    const btn = document.querySelector(".btn-primary");
+    const original = btn.innerHTML;
+
+    btn.innerHTML = "Memproses...";
+    btn.disabled = true;
+
+    try {
+
+      if(nik.value.length !== 16){
+        alert("NIK harus 16 digit!");
+        return;
+      }
+
+      const [lat, lng] = custCoordinates.value.split(',');
+
+      const data = {
+        nik: nik.value,
+        name: custName.value,
+        phone: custPhone.value,
+        email: custEmail.value,
+        address: custAddress.value,
+        province_id: custProvinsi.value,
+        kabupaten: custKabupaten.value,
+        kecamatan: custKecamatan.value,
+        kelurahan: custKelurahan.value,
+        rt: custRt.value,
+        rw: custRw.value,
+        package_id: custPackage.value,
+        installation_date: custInstallDate.value,
+        latitude: lat,
+        longitude: lng,
+        referral: custReferral.value,
+      };
+
+      const res = await fetch("/api/register/customer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        alert(result.message || "Gagal registrasi");
+        return;
+      }
+
+      btn.innerHTML = "Berhasil ✓";
+
+      setTimeout(()=>{
+        location.reload();
+      },1200);
+
+    } finally {
+      setTimeout(()=>{
+        btn.disabled = false;
+        btn.innerHTML = original;
+      },1200);
     }
-
-    const [lat, lng] = custCoordinates.value.split(',');
-    const data = {
-      nik: nik.value,
-      name: custName.value,
-      phone: custPhone.value,
-      email: custEmail.value,
-      address: custAddress.value,
-      province_id: custProvinsi.value,
-      kabupaten: custKabupaten.value,
-      kecamatan: custKecamatan.value,
-      kelurahan: custKelurahan.value,
-      rt: custRt.value,
-      rw: custRw.value,
-      package_id: custPackage.value,
-      installation_date: custInstallDate.value,
-      latitude: lat,
-      longitude: lng,
-      referral: custReferral.value,
-    };
-
-    const res = await fetch("/api/register/customer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    const result = await res.json();
-
-    if (!res.ok || !result.success) {
-      alert(result.message || "Gagal registrasi");
-      return;
-    }
-
-    alert(result.message || "Berhasil daftar!");
-    location.reload();
   });
 
   let map, marker;
