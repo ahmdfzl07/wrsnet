@@ -421,6 +421,12 @@ exports.update = async (req, res) => {
             name: regis.name,
             phone: regis.phone,
             email: regis.email,
+            province_id: regis.province_id,
+            kabupaten: regis.kabupaten,
+            kecamatan: regis.kecamatan,
+            kelurahan: regis.kelurahan,
+            rt: regis.rt,
+            rw: regis.rw,
             address: regis.address,
 
             nik: regis.nik,
