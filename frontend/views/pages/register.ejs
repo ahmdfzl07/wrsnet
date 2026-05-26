@@ -443,7 +443,7 @@
 
   let packageSelect;
   async function loadPackages() {
-    const res = await fetch("/api/packages");
+    const res = await fetch("/api/packages/public");
     const json = await res.json();
 
     if (!json?.success) return;

@@ -60,6 +60,7 @@ router.use("/demo", demoRoutes);
 
 // register customer tanpa login
 router.post("/register/customer", CustomerRegistrationController.register);
+router.get("/packages/public", PackageController.index);
 
 // ===== AUTH =====
 router.post("/auth/login", AuthController.login);
