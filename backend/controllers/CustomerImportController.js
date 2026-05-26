@@ -25,7 +25,7 @@ const logger = require("../utils/logger");
 const COLUMNS = [
   { key: "customer_id", header: "ID Pelanggan", required: false, width: 16 },
   { key: "name", header: "Nama", required: true, width: 30 },
-  { key: "nik", header: "NIK", required: true, width: 20 },
+  { key: "nik", header: "NIK", required: true, width: 20, type: "string" },
   {
     key: "pppoe_username",
     header: "Username PPPoE",
@@ -284,6 +284,7 @@ exports.downloadTemplate = async (req, res) => {
       header: c.header + (c.required ? " *" : ""),
       key: c.key,
       width: c.width,
+      style: c.key === "nik" ? { numFmt: "@" } : undefined,
     }));
 
     // Style header
@@ -799,6 +800,9 @@ exports.importPreview = async (req, res) => {
       }
 
       // Normalisasi phone
+      let nik = String(rowData.nik || "")
+        .trim()
+        .replace(/[^\d+]/g, "");
       let phone = String(rowData.phone || "")
         .trim()
         .replace(/[^\d+]/g, "");
@@ -1007,6 +1011,7 @@ exports.importPreview = async (req, res) => {
         data: {
           customer_id: customerId,
           name,
+          nik: nik || null,
           pppoe_username: pppoeUsername || null,
           static_ip: staticIp || null,
           mikrotik_id: mikrotikId,
