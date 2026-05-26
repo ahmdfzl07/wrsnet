@@ -91,6 +91,14 @@ module.exports = (sequelize) => {
         defaultValue: [],
         allowNull: true,
       },
+      diskon: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+      },
+      diskon_type: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+      },
       status: {
         type: DataTypes.ENUM("active", "inactive", "isolated", "suspended"),
         defaultValue: "active",

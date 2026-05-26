@@ -61,3 +61,4 @@ ADD COLUMN is_registration TINYINT(1) DEFAULT 0 AFTER ticket_id;
 ALTER TABLE `packages` CHANGE `category` `category` ENUM('home','business','enterprise','custom','addon') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'home';
 ALTER TABLE customers ADD COLUMN addon_id JSON NULL;
 ALTER TABLE customer_registration ADD COLUMN addon_id JSON NULL;
+ALTER TABLE `customers` ADD `diskon` VARCHAR(50) NULL DEFAULT NULL AFTER `addon_id`, ADD `diskon_type` VARCHAR(50) NULL DEFAULT NULL AFTER `diskon`;

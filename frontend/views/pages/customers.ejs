@@ -342,6 +342,7 @@
                 <th class="col-hide-mob">No HP</th>
                 <th>Paket</th>
                 <th>Addon</th>
+                <th>Diskon (%/Rp)</th>
                 <th class="col-hide-mob">Biaya/Bln</th>
                 <th class="col-hide-mob">Aktivasi</th>
                 <th>Jatuh Tempo</th>
@@ -383,6 +384,22 @@
         <div><label class="flbl">Email</label><input type="email" class="finput" id="custEmail" placeholder="opsional"></div>
         <div><label class="flbl">Paket</label><select class="finput" id="custPackage"><option value="">Pilih paket</option></select></div>
         <div><label class="flbl">Add-on</label><select class="finput" id="custAddon"><option value="">Pilih add-on</option></select></div>
+        <div>
+          <label class="flbl">Diskon</label>
+
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="number" class="finput" id="custDiscount" placeholder="0" style="flex:1;">
+
+            <select class="finput" id="custDiscountType" style="width:110px;">
+              <option value="amount">Rp</option>
+              <option value="percent">%</option>
+            </select>
+          </div>
+
+          <div style="font-size:11px;color:var(--d-muted);margin-top:4px;">
+            Bisa diskon nominal (Rp) atau persentase (%)
+          </div>
+        </div>
         <div><label class="flbl">Jatuh Tempo <span style="font-size:10px;font-weight:400;text-transform:none;color:var(--d-muted)">(tanggal)</span></label>
           <input type="date" class="finput" id="custDueDate">
           <div style="font-size:11px;color:var(--d-muted);margin-top:3px">Sumber data reminder otomatis</div>
@@ -697,6 +714,10 @@ window.saveCustomerBtn = async function () {
         document.getElementById("custPackage")?.value || null,
       addon_id:
         document.getElementById("custAddon")?.value || null,
+      diskon:
+        document.getElementById("custDiscount")?.value || null,
+      diskon_type:
+        document.getElementById("custDiscountType")?.value || null,
       due_date:
         document.getElementById("custDueDate")?.value || null,
       installation_date:

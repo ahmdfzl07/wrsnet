@@ -180,6 +180,8 @@ window.editCustomer = async function (id) {
   _setVal("custAddress", c.address || "");
   _setVal("custPackage", c.package_id || "");
   _setVal("custAddon", c.addon_id || "");
+  _setVal("custDiscount", c.diskon || "");
+  _setVal("custDiscountType", c.diskon_type || "");
   _setVal("custDueDate", c.due_date || "");
   _setVal("custInstallDate", c.installation_date || "");
   _setVal("custPPPoE", c.pppoe_username || "");
@@ -202,6 +204,8 @@ window.editCustomer = async function (id) {
 
   await loadAddons();
   _setVal("custAddon", c.addon_id || "");
+  _setVal("custDiscount", c.diskon || "");
+  _setVal("custDiscountType", c.diskon_type || "");
 
   // Tampilkan panel akses portal & load creds (hanya di mode edit)
   const portalBox = document.getElementById("portalPanelBox");
@@ -815,7 +819,24 @@ async function loadCustomers() {
         })
         .reduce((a, b) => a + b, 0);
 
-      let totalPrice = basePrice + addonTotal;
+      let subtotal = basePrice + addonTotal;
+
+      let discount = 0;
+      let diskon = 0;
+
+      if (c.diskon_type === "percent") {
+        discount = subtotal * (Number(c.diskon || 0) / 100);
+
+        diskon = discount > 0 ? discount + " %" : "–";
+      } else {
+        discount = Number(c.diskon || 0);
+
+        diskon = discount > 0 ? "Rp " + discount.toLocaleString("id-ID") : "–";
+      }
+
+      discount = Math.min(discount, subtotal);
+
+      let totalPrice = subtotal - discount;
 
       var price =
         totalPrice > 0 ? "Rp " + totalPrice.toLocaleString("id-ID") : "–";
@@ -927,6 +948,9 @@ async function loadCustomers() {
         "</td>" +
         '<td style="font-weight:700;font-size:13px">' +
         addonName +
+        "</td>" +
+        '<td style="font-weight:700;font-size:13px">' +
+        diskon +
         "</td>" +
         '<td style="font-weight:700;color:#1a6ef5;font-size:13px">' +
         price +
@@ -1369,6 +1393,8 @@ async function _saveCustomerInner() {
     address: document.getElementById("custAddress")?.value || "",
     package_id: document.getElementById("custPackage")?.value || null,
     addon_id: document.getElementById("custAddon")?.value || null,
+    diskon: document.getElementById("custDiscount")?.value || null,
+    diskon_type: document.getElementById("custDiscountType")?.value || null,
     due_date: document.getElementById("custDueDate")?.value || null,
     installation_date:
       document.getElementById("custInstallDate")?.value || null,
@@ -1590,6 +1616,8 @@ function _clearForm() {
   });
   _setVal("custPackage", "");
   _setVal("custAddon", "");
+  _setVal("custDiscount", "");
+  _setVal("custDiscountType", "");
   _setVal("custDueDate", "");
   _setVal("custStatus", "active");
   const mkSel2 = document.getElementById("custMikrotikId");
