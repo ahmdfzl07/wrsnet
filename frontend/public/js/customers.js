@@ -107,6 +107,7 @@ window.openAddCustomer = async function () {
   if (ppBox) ppBox.style.display = "";
   document.getElementById("customerModal").classList.add("active");
   await loadPackages();
+  await loadAddons();
   const idField = document.getElementById("custId");
   if (idField) {
     idField.readOnly = false;
@@ -178,6 +179,7 @@ window.editCustomer = async function (id) {
   _setVal("custEmail", c.email || "");
   _setVal("custAddress", c.address || "");
   _setVal("custPackage", c.package_id || "");
+  _setVal("custAddon", c.addon_id || "");
   _setVal("custDueDate", c.due_date || "");
   _setVal("custInstallDate", c.installation_date || "");
   _setVal("custPPPoE", c.pppoe_username || "");
@@ -197,6 +199,9 @@ window.editCustomer = async function (id) {
   if (idField) idField.readOnly = true;
   await loadPackages();
   _setVal("custPackage", c.package_id || "");
+
+  await loadAddons();
+  _setVal("custAddon", c.addon_id || "");
 
   // Tampilkan panel akses portal & load creds (hanya di mode edit)
   const portalBox = document.getElementById("portalPanelBox");
@@ -702,6 +707,13 @@ async function loadCustomers() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  let dataPackages = [];
+  const res = await App.api("/packages");
+
+  if (res?.success) {
+    dataPackages = res.data;
+  }
+
   tbody.innerHTML = data.data
     .map(function (c) {
       var hash = 0;
@@ -792,12 +804,21 @@ async function loadCustomers() {
         stLabel = "Suspended";
       }
 
+      let basePrice = c.package?.price
+        ? Number(c.package.price)
+        : Number(c.monthly_fee || 0);
+
+      let addonTotal = (Array.isArray(c.addon_id) ? c.addon_id : [])
+        .map((id) => {
+          const pkg = dataPackages.find((p) => String(p.id) === String(id));
+          return pkg?.price ? Number(pkg.price) : 0;
+        })
+        .reduce((a, b) => a + b, 0);
+
+      let totalPrice = basePrice + addonTotal;
+
       var price =
-        c.package && c.package.price
-          ? "Rp " + Number(c.package.price).toLocaleString("id-ID")
-          : c.monthly_fee
-            ? "Rp " + Number(c.monthly_fee).toLocaleString("id-ID")
-            : "–";
+        totalPrice > 0 ? "Rp " + totalPrice.toLocaleString("id-ID") : "–";
 
       var isoBtn = "";
       if (c.status === "active")
@@ -817,10 +838,36 @@ async function loadCustomers() {
         : "";
       var pkgName =
         c.package && c.package.name
-          ? _esc(c.package.name)
+          ? _esc(c.package.name) +
+            " (" +
+            (c.package.price
+              ? "Rp " + Number(c.package.price).toLocaleString("id-ID") + ")"
+              : "Free")
           : c.package_name
             ? _esc(c.package_name)
             : "–";
+
+      const addonIds = Array.isArray(c.addon_id)
+        ? c.addon_id
+        : JSON.parse(c.addon_id || "[]");
+
+      const addonName = addonIds.length
+        ? addonIds
+            .map((id) => {
+              const pkg = dataPackages.find((p) => String(p.id) === String(id));
+              return pkg
+                ? `${_esc(pkg.name)}${
+                    pkg.price
+                      ? " (Rp " +
+                        Number(pkg.price).toLocaleString("id-ID") +
+                        ")"
+                      : " (Free)"
+                  }`
+                : null;
+            })
+            .filter(Boolean)
+            .join(", ")
+        : "–";
       var actDate = c.installation_date
         ? new Date(c.installation_date).toLocaleDateString("id-ID", {
             day: "2-digit",
@@ -861,7 +908,7 @@ async function loadCustomers() {
         "</div>" +
         "</td>" +
         '<td style="color:#6b7fa8">' +
-        _esc(c.phone || "–") +
+        _esc("testtt" || "–") +
         "</td>" +
         "<td>" +
         '<div style="font-weight:600;font-size:13px;color:#0d1b3e">' +
@@ -877,6 +924,9 @@ async function loadCustomers() {
             _esc(c.static_ip) +
             "</div>"
           : "") +
+        "</td>" +
+        '<td style="font-weight:700;font-size:13px">' +
+        addonName +
         "</td>" +
         '<td style="font-weight:700;color:#1a6ef5;font-size:13px">' +
         price +
@@ -970,19 +1020,37 @@ async function sendInvoice(customerId) {
 async function loadPackages() {
   const data = await App.api("/packages");
   const sel = document.getElementById("custPackage");
+
   if (!sel || !data?.success) return;
+
   sel.innerHTML =
     '<option value="">Pilih paket</option>' +
     data.data
+      .filter((p) => p.category !== "addon")
       .map(
         (p) =>
-          '<option value="' +
-          p.id +
-          '">' +
-          _esc(p.name) +
-          " — Rp " +
-          Number(p.price).toLocaleString("id-ID") +
-          "/bln</option>",
+          `<option value="${p.id}">
+          ${_esc(p.name)} — Rp ${Number(p.price).toLocaleString("id-ID")}/bln
+        </option>`,
+      )
+      .join("");
+}
+
+async function loadAddons() {
+  const data = await App.api("/packages");
+  const sel = document.getElementById("custAddon");
+
+  if (!sel || !data?.success) return;
+
+  sel.innerHTML =
+    '<option value="">Pilih add-on</option>' +
+    data.data
+      .filter((p) => p.is_active === 1 && p.category === "addon")
+      .map(
+        (p) =>
+          `<option value="${p.id}">
+          ${_esc(p.name)} — Rp ${Number(p.price).toLocaleString("id-ID")}/bln
+        </option>`,
       )
       .join("");
 }
@@ -1300,6 +1368,7 @@ async function _saveCustomerInner() {
     email: document.getElementById("custEmail")?.value || "",
     address: document.getElementById("custAddress")?.value || "",
     package_id: document.getElementById("custPackage")?.value || null,
+    addon_id: document.getElementById("custAddon")?.value || null,
     due_date: document.getElementById("custDueDate")?.value || null,
     installation_date:
       document.getElementById("custInstallDate")?.value || null,
@@ -1520,6 +1589,7 @@ function _clearForm() {
     if (el) el.value = "";
   });
   _setVal("custPackage", "");
+  _setVal("custAddon", "");
   _setVal("custDueDate", "");
   _setVal("custStatus", "active");
   const mkSel2 = document.getElementById("custMikrotikId");

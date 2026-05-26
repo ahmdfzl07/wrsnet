@@ -55,38 +55,38 @@ exports.register = async (req, res) => {
     );
 
     // ================= CREATE WORK ORDER =================
-    const wo = await WorkOrder.create(
-      {
-        type: "installation",
-        status: "pending",
-        priority: "medium",
+    // const wo = await WorkOrder.create(
+    //   {
+    //     type: "installation",
+    //     status: "pending",
+    //     priority: "medium",
 
-        title: "instalasi",
-        description: "Instalasi server untuk pelanggan baru",
+    //     title: "instalasi",
+    //     description: "Instalasi server untuk pelanggan baru",
 
-        customer_id: customer.id,
-        ticket_id: ticket.id,
-        is_registration: true,
+    //     customer_id: customer.id,
+    //     ticket_id: ticket.id,
+    //     is_registration: true,
 
-        location_address: customer.address,
-        latitude: customer.latitude,
-        longitude: customer.longitude,
+    //     location_address: customer.address,
+    //     latitude: customer.latitude,
+    //     longitude: customer.longitude,
 
-        scheduled_date: customer.installation_date || null,
-      },
-      { transaction: t },
-    );
+    //     scheduled_date: customer.installation_date || null,
+    //   },
+    //   { transaction: t },
+    // );
 
     // ================= COMMIT =================
     await t.commit();
 
     return res.json({
       success: true,
-      message: "Registrasi berhasil, ticket & WO dibuat",
+      message: "Registrasi berhasil, ticket sudah otomatis dibuat",
       data: {
         customer,
         ticket,
-        work_order: wo,
+        // work_order: wo,
       },
     });
   } catch (err) {

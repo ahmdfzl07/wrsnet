@@ -3,6 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
 const { Op } = require("sequelize");
+const db = require("../models");
 const {
   Ticket,
   TicketTimeline,
@@ -378,6 +379,24 @@ exports.create = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // PUT /api/tickets/:id
 // ─────────────────────────────────────────────────────────────
+async function generateCustomerId() {
+  const today = new Date();
+
+  const yy = String(today.getFullYear()).slice(-2);
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const dd = String(today.getDate()).padStart(2, "0");
+
+  const prefix = `${yy}${mm}${dd}`;
+
+  const count = await Customer.count({
+    where: db.Sequelize.literal(`DATE(created_at) = CURDATE()`),
+  });
+
+  const urut = String(count + 1).padStart(4, "0");
+
+  return prefix + urut;
+}
+
 exports.update = async (req, res) => {
   try {
     const ticket = await Ticket.findByPk(req.params.id);
@@ -427,6 +446,46 @@ exports.update = async (req, res) => {
         new_value: assignee?.name,
         content: `Ditugaskan ulang kepada ${assignee?.name || req.body.assigned_to}`,
       });
+    }
+
+    if (req.body.status === "closed" && ticket.is_registration == 1) {
+      const regis = await CustomerRegistration.findByPk(ticket.customer_id);
+
+      if (regis) {
+        const existing = await Customer.findOne({
+          where: { nik: regis.nik },
+        });
+
+        if (!existing) {
+          const customerId = await generateCustomerId();
+
+          await Customer.create({
+            customer_id: customerId,
+
+            name: regis.name,
+            phone: regis.phone,
+            email: regis.email,
+            installation_date: regis.installation_date,
+            province_id: regis.province_id,
+            kabupaten: regis.kabupaten,
+            kecamatan: regis.kecamatan,
+            kelurahan: regis.kelurahan,
+            rt: regis.rt,
+            rw: regis.rw,
+            address: regis.address,
+
+            nik: regis.nik,
+
+            latitude: regis.latitude,
+            longitude: regis.longitude,
+
+            package_id: regis.package_id,
+            addon_id: regis.addon_id,
+
+            status: "active",
+          });
+        }
+      }
     }
 
     res.json({

@@ -86,6 +86,11 @@ module.exports = (sequelize) => {
         allowNull: true,
         references: { model: "packages", key: "id" },
       },
+      addon_id: {
+        type: DataTypes.JSON,
+        defaultValue: [],
+        allowNull: true,
+      },
       status: {
         type: DataTypes.ENUM("active", "inactive", "isolated", "suspended"),
         defaultValue: "active",

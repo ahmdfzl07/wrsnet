@@ -404,43 +404,43 @@ exports.update = async (req, res) => {
 
     await wo.update(fields);
 
-    if (fields.status === "done" && wo.is_registration == 1) {
-      const regis = await CustomerRegistration.findByPk(wo.customer_id);
+    // if (fields.status === "done" && wo.is_registration == 1) {
+    //   const regis = await CustomerRegistration.findByPk(wo.customer_id);
 
-      if (regis) {
-        const existing = await Customer.findOne({
-          where: { nik: regis.nik },
-        });
+    //   if (regis) {
+    //     const existing = await Customer.findOne({
+    //       where: { nik: regis.nik },
+    //     });
 
-        if (!existing) {
-          const customerId = await generateCustomerId();
+    //     if (!existing) {
+    //       const customerId = await generateCustomerId();
 
-          await Customer.create({
-            customer_id: customerId,
+    //       await Customer.create({
+    //         customer_id: customerId,
 
-            name: regis.name,
-            phone: regis.phone,
-            email: regis.email,
-            province_id: regis.province_id,
-            kabupaten: regis.kabupaten,
-            kecamatan: regis.kecamatan,
-            kelurahan: regis.kelurahan,
-            rt: regis.rt,
-            rw: regis.rw,
-            address: regis.address,
+    //         name: regis.name,
+    //         phone: regis.phone,
+    //         email: regis.email,
+    //         province_id: regis.province_id,
+    //         kabupaten: regis.kabupaten,
+    //         kecamatan: regis.kecamatan,
+    //         kelurahan: regis.kelurahan,
+    //         rt: regis.rt,
+    //         rw: regis.rw,
+    //         address: regis.address,
 
-            nik: regis.nik,
+    //         nik: regis.nik,
 
-            latitude: regis.latitude,
-            longitude: regis.longitude,
+    //         latitude: regis.latitude,
+    //         longitude: regis.longitude,
 
-            package_id: regis.package_id,
+    //         package_id: regis.package_id,
 
-            status: "active",
-          });
-        }
-      }
-    }
+    //         status: "active",
+    //       });
+    //     }
+    //   }
+    // }
 
     const result = await WorkOrder.findByPk(wo.id, { include: INC });
 

@@ -226,6 +226,7 @@
   }
 
   #map {
+    height: 350px !important;
     border-radius: 16px;
     overflow: hidden;
     border: 1px solid rgba(255,255,255,0.1);
@@ -385,6 +386,7 @@
     <div class="step">
       <div class="grid md:grid-cols-2 gap-4">
         <select id="custPackage"></select>
+        <select id="custAddons" multiple></select>
         <input type="date" id="custInstallDate" class="input w-full" placeholder="Tanggal Instalasi">
       </div>
 
@@ -449,7 +451,7 @@
     if (!json?.success) return;
 
     const data = json.data
-      .filter(p => p.is_active == 1)
+      .filter(p => p.is_active == 1 && p.category !== "addon")
       .map(p => ({
         value: p.id,
         text: `${p.name} — Rp ${Number(p.price).toLocaleString("id-ID")}/bln`,
@@ -468,6 +470,46 @@
 
       placeholder: "Pilih paket...",
 
+      dropdownParent: "body",
+
+      render: {
+        option: function(data, escape) {
+          return `
+            <div class="flex justify-between items-center px-2 py-2">
+              <span>${escape(data.text)}</span>
+            </div>
+          `;
+        },
+        item: function(data, escape) {
+          return `<div>${escape(data.text)}</div>`;
+        }
+      }
+    });
+  }
+
+  let addonSelect;
+  async function loadAddons() {
+    const res = await fetch("/api/packages/public");
+    const json = await res.json();
+
+    if (!json?.success) return;
+
+    const data = json.data
+      .filter(p => p.is_active == 1 && p.category === "addon")
+      .map(p => ({
+        value: p.id,
+        text: `${p.name} — Rp ${Number(p.price).toLocaleString("id-ID")}`
+      }));
+
+    if (addonSelect) addonSelect.destroy();
+
+    addonSelect = new TomSelect("#custAddons", {
+      options: data,
+      valueField: "value",
+      labelField: "text",
+      searchField: ["text"],
+      maxItems: 2,
+      placeholder: "Pilih maksimal 2 add-on",
       dropdownParent: "body",
 
       render: {
@@ -583,65 +625,49 @@
   formRegister.addEventListener("submit", async function(e){
     e.preventDefault();
 
-    const btn = document.querySelector(".btn-primary");
-    const original = btn.innerHTML;
-
-    btn.innerHTML = "Memproses...";
-    btn.disabled = true;
-
-    try {
-
-      if(nik.value.length !== 16){
-        alert("NIK harus 16 digit!");
-        return;
-      }
-
-      const [lat, lng] = custCoordinates.value.split(',');
-
-      const data = {
-        nik: nik.value,
-        name: custName.value,
-        phone: custPhone.value,
-        email: custEmail.value,
-        address: custAddress.value,
-        province_id: custProvinsi.value,
-        kabupaten: custKabupaten.value,
-        kecamatan: custKecamatan.value,
-        kelurahan: custKelurahan.value,
-        rt: custRt.value,
-        rw: custRw.value,
-        package_id: custPackage.value,
-        installation_date: custInstallDate.value,
-        latitude: lat,
-        longitude: lng,
-        referral: custReferral.value,
-      };
-
-      const res = await fetch("/api/register/customer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      const result = await res.json();
-
-      if (!res.ok || !result.success) {
-        alert(result.message || "Gagal registrasi");
-        return;
-      }
-
-      btn.innerHTML = "Berhasil ✓";
-
-      setTimeout(()=>{
-        location.reload();
-      },1200);
-
-    } finally {
-      setTimeout(()=>{
-        btn.disabled = false;
-        btn.innerHTML = original;
-      },1200);
+    if(nik.value.length !== 16){
+      alert("NIK harus 16 digit!");
+      nik.classList.add("error");
+      return;
     }
+
+    const [lat, lng] = custCoordinates.value.split(',');
+
+    const data = {
+      nik: nik.value,
+      name: custName.value,
+      phone: custPhone.value,
+      email: custEmail.value,
+      address: custAddress.value,
+      province_id: custProvinsi.value,
+      kabupaten: custKabupaten.value,
+      kecamatan: custKecamatan.value,
+      kelurahan: custKelurahan.value,
+      rt: custRt.value,
+      rw: custRw.value,
+      package_id: custPackage.value,
+      addon_id: Array.from(custAddons.selectedOptions || []).map(o => o.value),
+      installation_date: custInstallDate.value,
+      latitude: lat,
+      longitude: lng,
+      referral: custReferral.value,
+    };
+
+    const res = await fetch("/api/register/customer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    const result = await res.json();
+
+    if (!res.ok || !result.success) {
+      alert(result.message || "Gagal registrasi");
+      return;
+    }
+
+    alert(result.message || "Berhasil daftar!");
+    location.reload();
   });
 
   let map, marker;
@@ -728,6 +754,7 @@
       ["HP", custPhone.value],
       ["Email", custEmail.value],
       ["Paket", custPackage.options[custPackage.selectedIndex]?.text],
+      ["Add On", Array.from(custAddons.selectedOptions || []).map(o => o.text).join(", ")],
       ["Tgl Instalasi", custInstallDate.value],
       ["Alamat", custAddress.value],
       ["Koordinat", custCoordinates.value]
@@ -746,6 +773,7 @@
   document.addEventListener("DOMContentLoaded", function () {
     loadProvinsi();
     loadPackages();
+    loadAddons();
 
     initMap();
     detectLocation();

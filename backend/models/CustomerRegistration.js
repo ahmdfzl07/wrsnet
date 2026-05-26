@@ -35,6 +35,11 @@ module.exports = (sequelize) => {
       email: DataTypes.STRING(150),
 
       package_id: DataTypes.INTEGER,
+      addon_id: {
+        type: DataTypes.JSON,
+        defaultValue: [],
+        allowNull: true,
+      },
 
       latitude: DataTypes.DECIMAL(10, 8),
       longitude: DataTypes.DECIMAL(11, 8),

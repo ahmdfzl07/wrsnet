@@ -58,3 +58,6 @@ ALTER TABLE `customer_registration` ADD `coordinates` VARCHAR(100) NULL DEFAULT 
 ALTER TABLE `tickets` ADD `is_registration` VARCHAR(10) NULL DEFAULT NULL AFTER `tags`;
 ALTER TABLE work_orders 
 ADD COLUMN is_registration TINYINT(1) DEFAULT 0 AFTER ticket_id;
+ALTER TABLE `packages` CHANGE `category` `category` ENUM('home','business','enterprise','custom','addon') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'home';
+ALTER TABLE customers ADD COLUMN addon_id JSON NULL;
+ALTER TABLE customer_registration ADD COLUMN addon_id JSON NULL;
