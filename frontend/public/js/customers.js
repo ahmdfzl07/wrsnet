@@ -827,7 +827,7 @@ async function loadCustomers() {
       if (c.diskon_type === "percent") {
         discount = subtotal * (Number(c.diskon || 0) / 100);
 
-        diskon = discount > 0 ? discount + " %" : "–";
+        diskon = Number(c.diskon || 0) + " %";
       } else {
         discount = Number(c.diskon || 0);
 
