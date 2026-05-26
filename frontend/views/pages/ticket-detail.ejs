@@ -542,6 +542,7 @@ function renderTicket(t){
     <span class="meta-item" style="background:${sc}28;border-color:${sc}55;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${sc}" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${SI[t.status]||''} ${SL[t.status]||t.status}</span>`;
 
   // Customer
+  console.log(t);
   if(t.customer){
     const c=t.customer;$('custCard').style.display='block';
     $('custGrid').innerHTML=`
@@ -551,11 +552,7 @@ function renderTicket(t){
       <div class="info-item"><div class="info-label">EMAIL</div><div class="info-value">${esc(c.email||'—')}</div></div>
       <div class="info-item" style="grid-column:1/-1;"><div class="info-label">ALAMAT LENGKAP</div><div class="info-value">${esc(c.address||'—')}</div></div>`;
   } else {
-    if(t.status === 'closed'){
-      const c=t.customer;$('custCard').style.display='block';
-    } else {
-      const c=t.customerRegistration;$('custCard').style.display='block';
-    }
+    const c=t.customerRegistration;$('custCard').style.display='block';
     $('custGrid').innerHTML=`
       <div class="info-item"><div class="info-label">NAMA LENGKAP</div><div class="info-value">${esc(c.name)}</div></div>
       <div class="info-item"><div class="info-label">NO. WHATSAPP</div><div class="info-value"><a href="https://wa.me/62${(c.phone||'').replace(/^0/,'')}" target="_blank"><i class="fab fa-whatsapp" style="color:#25d366;"></i> ${esc(c.phone||'—')}</a></div></div>
