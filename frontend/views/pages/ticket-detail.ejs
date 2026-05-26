@@ -545,6 +545,14 @@ function renderTicket(t){
   if(t.customer){
     const c=t.customer;$('custCard').style.display='block';
     $('custGrid').innerHTML=`
+      <div class="info-item" style="grid-column:1/-1;"><div class="info-label">ID PELANGGAN</div><div class="info-value">${esc(c.customer_id||'—')}</div></div>
+      <div class="info-item"><div class="info-label">NAMA LENGKAP</div><div class="info-value">${esc(c.name)}</div></div>
+      <div class="info-item"><div class="info-label">NO. WHATSAPP</div><div class="info-value"><a href="https://wa.me/62${(c.phone||'').replace(/^0/,'')}" target="_blank"><i class="fab fa-whatsapp" style="color:#25d366;"></i> ${esc(c.phone||'—')}</a></div></div>
+      <div class="info-item"><div class="info-label">EMAIL</div><div class="info-value">${esc(c.email||'—')}</div></div>
+      <div class="info-item" style="grid-column:1/-1;"><div class="info-label">ALAMAT LENGKAP</div><div class="info-value">${esc(c.address||'—')}</div></div>`;
+  } else {
+    const c=t.customerRegistration;$('custCard').style.display='block';
+    $('custGrid').innerHTML=`
       <div class="info-item"><div class="info-label">NAMA LENGKAP</div><div class="info-value">${esc(c.name)}</div></div>
       <div class="info-item"><div class="info-label">NO. WHATSAPP</div><div class="info-value"><a href="https://wa.me/62${(c.phone||'').replace(/^0/,'')}" target="_blank"><i class="fab fa-whatsapp" style="color:#25d366;"></i> ${esc(c.phone||'—')}</a></div></div>
       <div class="info-item"><div class="info-label">EMAIL</div><div class="info-value">${esc(c.email||'—')}</div></div>

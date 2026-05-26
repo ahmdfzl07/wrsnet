@@ -134,14 +134,31 @@ function includeBase() {
     {
       model: Customer,
       as: "customer",
-      attributes: ["id", "name", "phone", "address", "latitude", "longitude"],
+      attributes: [
+        "id",
+        "customer_id",
+        "name",
+        "phone",
+        "email",
+        "address",
+        "latitude",
+        "longitude",
+      ],
       required: false,
     },
 
     {
       model: CustomerRegistration,
       as: "customerRegistration",
-      attributes: ["id", "name", "phone", "address", "latitude", "longitude"],
+      attributes: [
+        "id",
+        "name",
+        "phone",
+        "email",
+        "address",
+        "latitude",
+        "longitude",
+      ],
       required: false,
     },
 
