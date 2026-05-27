@@ -4,12 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
-  <link
-  rel="stylesheet"
-  href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css"/>
-  <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
+
+  <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
   <style>
     :root {
       --d-bg:#eef2f9; --d-card:#fff; --d-border:#e0e7f3;
@@ -183,6 +182,25 @@
     .xc-spark { flex-shrink: 0; width: 72px; height: 36px; }
     .xc-spark svg { width: 72px; height: 36px; }
     @media(max-width:1400px){ .xc-val { font-size: 26px; } }
+
+    .addon-box {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .addon-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      box-sizing: border-box;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
@@ -383,7 +401,11 @@
         <div><label class="flbl">No HP / WA *</label><input type="text" class="finput" id="custPhone" placeholder="08xx / 628xx"></div>
         <div><label class="flbl">Email</label><input type="email" class="finput" id="custEmail" placeholder="opsional"></div>
         <div><label class="flbl">Paket</label><select class="finput" id="custPackage"><option value="">Pilih paket</option></select></div>
-        <div><label class="flbl">Add-on</label><select class="finput" id="custAddon"><option value="">Pilih add-on</option></select></div>
+        <!-- <div><label class="flbl">Add-on</label><select class="finput" id="custAddon" multiple></select></div> -->
+        <div>
+          <label class="flbl">Add-on</label>
+          <div id="addonList" class="addon-box"></div>
+        </div>
         <div>
           <label class="flbl">Diskon</label>
 
@@ -703,6 +725,9 @@ window.saveCustomerBtn = async function () {
 
   btn.disabled = true;
   btn.innerText = "Menyimpan...";
+  const selectedAddons = Array.from(
+    document.querySelectorAll("#addonList input[type='checkbox']:checked")
+  ).map(cb => String(cb.value));
 
   try {
     const body = {
@@ -712,8 +737,7 @@ window.saveCustomerBtn = async function () {
       email: document.getElementById("custEmail")?.value || "",
       package_id:
         document.getElementById("custPackage")?.value || null,
-      addon_id:
-        document.getElementById("custAddon")?.value || null,
+      addon_id: selectedAddons.length ? selectedAddons : [],
       diskon:
         document.getElementById("custDiscount")?.value || null,
       diskon_type:
@@ -786,11 +810,6 @@ window.saveCustomerBtn = async function () {
       : "/api/customers";
 
     const method = isEdit ? "PUT" : "POST";
-
-    console.log("MODE:", isEdit ? "EDIT" : "CREATE");
-    console.log("METHOD:", method);
-    console.log("URL:", url);
-    console.log("EDIT ID:", _custEditId);
 
     const res = await fetch(url, {
       method: method,

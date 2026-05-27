@@ -203,7 +203,8 @@ window.editCustomer = async function (id) {
   _setVal("custPackage", c.package_id || "");
 
   await loadAddons();
-  _setVal("custAddon", c.addon_id || "");
+  setAddonValues(c.addon_id || []);
+  // _setVal("custAddon", c.addon_id || "");
   _setVal("custDiscount", c.diskon || "");
   _setVal("custDiscountType", c.diskon_type || "");
 
@@ -1060,23 +1061,104 @@ async function loadPackages() {
       .join("");
 }
 
+// let addonSelect;
+// async function loadAddons() {
+//   const data = await App.api("/packages");
+//   let old = document.getElementById("custAddon");
+
+//   if (!old || !data?.success) return;
+
+//   const addons = data.data
+//     .filter((p) => p.is_active && (p.category || "").toLowerCase() === "addon")
+//     .map((p) => ({
+//       value: String(p.id),
+//       text: `${p.name} — Rp ${Number(p.price).toLocaleString("id-ID")}/bln`,
+//     }));
+
+//   console.log("ADDONS FINAL:", addons);
+
+//   const parent = old.parentNode;
+
+//   if (addonSelect) {
+//     addonSelect.destroy();
+//     addonSelect = null;
+//   }
+
+//   old.remove();
+
+//   const fresh = document.createElement("select");
+//   fresh.id = "custAddon";
+//   fresh.className = "finput";
+//   fresh.multiple = true;
+
+//   parent.appendChild(fresh);
+
+//   addonSelect = new TomSelect("#custAddon", {
+//     options: addons,
+//     valueField: "value",
+//     labelField: "text",
+//     searchField: ["text"],
+
+//     maxItems: 2,
+//     plugins: ["remove_button"],
+
+//     placeholder: "Pilih add-on (max 2)...",
+//     dropdownParent: document.body,
+
+//     onInitialize() {
+//       console.log("TomSelect FIXED:", this.options);
+//     },
+//   });
+// }
+
+let selectedAddons = [];
 async function loadAddons() {
   const data = await App.api("/packages");
-  const sel = document.getElementById("custAddon");
+  if (!data?.success) return;
 
-  if (!sel || !data?.success) return;
+  const addons = data.data.filter(
+    (p) => p.is_active && (p.category || "").toLowerCase() === "addon",
+  );
 
-  sel.innerHTML =
-    '<option value="">Pilih add-on</option>' +
-    data.data
-      .filter((p) => p.is_active === 1 && p.category === "addon")
-      .map(
-        (p) =>
-          `<option value="${p.id}">
-          ${_esc(p.name)} — Rp ${Number(p.price).toLocaleString("id-ID")}/bln
-        </option>`,
-      )
-      .join("");
+  const container = document.getElementById("addonList");
+
+  container.innerHTML = addons
+    .map(
+      (p) => `
+    <label class="addon-item">
+      <input type="checkbox" value="${p.id}">
+      <span>
+        ${_esc(p.name)} — Rp ${Number(p.price).toLocaleString("id-ID")}/bln
+      </span>
+    </label>
+  `,
+    )
+    .join("");
+
+  container.addEventListener("change", handleAddonChange);
+}
+
+function handleAddonChange() {
+  const container = document.getElementById("addonList");
+  const checked = [...container.querySelectorAll("input:checked")];
+
+  if (checked.length > 2) {
+    checked[checked.length - 1].checked = false;
+    alert("Maksimal pilih 2 add-on");
+    return;
+  }
+
+  selectedAddons = checked.map((i) => i.value);
+}
+
+function setAddonValues(values = []) {
+  const container = document.getElementById("addonList");
+
+  [...container.querySelectorAll("input")].forEach((input) => {
+    input.checked = values.includes(input.value);
+  });
+
+  selectedAddons = values;
 }
 
 // ── SAVE ─────────────────────────────────────────────────────
@@ -1392,7 +1474,7 @@ async function _saveCustomerInner() {
     email: document.getElementById("custEmail")?.value || "",
     address: document.getElementById("custAddress")?.value || "",
     package_id: document.getElementById("custPackage")?.value || null,
-    addon_id: document.getElementById("custAddon")?.value || null,
+    addon_id: selectedAddons,
     diskon: document.getElementById("custDiscount")?.value || null,
     diskon_type: document.getElementById("custDiscountType")?.value || null,
     due_date: document.getElementById("custDueDate")?.value || null,
