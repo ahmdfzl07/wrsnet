@@ -542,22 +542,210 @@ function renderTicket(t){
     <span class="meta-item" style="background:${sc}28;border-color:${sc}55;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${sc}" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${SI[t.status]||''} ${SL[t.status]||t.status}</span>`;
 
   // Customer
-  console.log(t);
   if(t.customer){
-    const c=t.customer;$('custCard').style.display='block';
+    const c=t.customer;
+    const pkg = c?.package;
+    const addons = c?.addons || [];
+
+    const basePrice = Number(pkg?.price || 0);
+    const totalAddonPrice = addons.reduce((sum, a) => {
+      return sum + Number(a.price || 0);
+    }, 0);
+    const grandTotal = basePrice + totalAddonPrice;
+
+    $('custCard').style.display='block';
     $('custGrid').innerHTML=`
       <div class="info-item" style="grid-column:1/-1;"><div class="info-label">ID PELANGGAN</div><div class="info-value">${esc(c.customer_id||'—')}</div></div>
       <div class="info-item"><div class="info-label">NAMA LENGKAP</div><div class="info-value">${esc(c.name)}</div></div>
       <div class="info-item"><div class="info-label">NO. WHATSAPP</div><div class="info-value"><a href="https://wa.me/62${(c.phone||'').replace(/^0/,'')}" target="_blank"><i class="fab fa-whatsapp" style="color:#25d366;"></i> ${esc(c.phone||'—')}</a></div></div>
       <div class="info-item"><div class="info-label">EMAIL</div><div class="info-value">${esc(c.email||'—')}</div></div>
-      <div class="info-item" style="grid-column:1/-1;"><div class="info-label">ALAMAT LENGKAP</div><div class="info-value">${esc(c.address||'—')}</div></div>`;
+      <div class="info-item" style="grid-column:1/-1;"><div class="info-label">ALAMAT LENGKAP</div><div class="info-value">${esc(c.address||'—')}</div></div>
+
+      ${
+        pkg
+          ? `
+          <div class="info-item" style="grid-column:1/-1;margin-top:8px;">
+            <div class="info-label" style="font-size:13px;font-weight:700;color:#374151;">
+              <i class="fas fa-box"></i> INFORMASI PAKET
+            </div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">PAKET INTERNET</div>
+            <div class="info-value" style="font-weight:600;color:#2563eb;">
+              ${esc(pkg.name)}
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">KECEPATAN</div>
+            <div class="info-value">
+              ↓ ${pkg.speed_down ? esc(pkg.speed_down) + ' Mbps' : '—'} 
+              / 
+              ↑ ${pkg.speed_up ? esc(pkg.speed_up) + ' Mbps' : '—'}
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">HARGA</div>
+            <div class="info-value">
+              Rp ${Number(pkg.price).toLocaleString('id-ID')}
+            </div>
+          </div>
+          `
+          : ''
+      }
+      ${
+        addons.length
+          ? `
+          <div class="info-item" style="grid-column:1/-1;">
+            <div class="info-label">ADDON</div>
+            <div class="info-value">
+              ${addons
+                .map(a => `
+                  <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                    <div>
+                      <div>${esc(a.name)}</div>
+                      <div style="font-size:12px;color:#6b7280;">
+                        ↓ ${a.speed_down ? esc(a.speed_down) + ' Mbps' : '-'} 
+                        / 
+                        ↑ ${a.speed_up ? esc(a.speed_up) + ' Mbps' : '-'}
+                      </div>
+                    </div>
+                    <div style="color:#16a34a;font-weight:500;">
+                      Rp ${Number(a.price).toLocaleString('id-ID')}
+                    </div>
+                  </div>
+                `)
+                .join('')}
+            </div>
+          </div>
+          `
+          : ''
+      }
+      ${
+        (pkg || addons.length)
+          ? `
+          <div class="info-item" style="grid-column:1/-1;border-top:1px dashed #e5e7eb;padding-top:8px;margin-top:8px;">
+            <div class="info-label">TOTAL HARGA</div>
+            <div class="info-value" style="font-size:16px;font-weight:700;color:#16a34a;">
+              Rp ${grandTotal.toLocaleString('id-ID')}
+            </div>
+          </div>
+          `
+          : ''
+      }
+    `;
   } else {
-    const c=t.customerRegistration;$('custCard').style.display='block';
+    const c = t.customerRegistration;
+    const pkg = c?.package;
+    const addons = c?.addons || [];
+
+    const basePrice = Number(pkg?.price || 0);
+    const totalAddonPrice = addons.reduce((sum, a) => {
+      return sum + Number(a.price || 0);
+    }, 0);
+    const grandTotal = basePrice + totalAddonPrice;
+
+    $('custCard').style.display='block';
     $('custGrid').innerHTML=`
-      <div class="info-item"><div class="info-label">NAMA LENGKAP</div><div class="info-value">${esc(c.name)}</div></div>
-      <div class="info-item"><div class="info-label">NO. WHATSAPP</div><div class="info-value"><a href="https://wa.me/62${(c.phone||'').replace(/^0/,'')}" target="_blank"><i class="fab fa-whatsapp" style="color:#25d366;"></i> ${esc(c.phone||'—')}</a></div></div>
-      <div class="info-item"><div class="info-label">EMAIL</div><div class="info-value">${esc(c.email||'—')}</div></div>
-      <div class="info-item" style="grid-column:1/-1;"><div class="info-label">ALAMAT LENGKAP</div><div class="info-value">${esc(c.address||'—')}</div></div>`;
+      <div class="info-item">
+        <div class="info-label">NAMA LENGKAP</div>
+        <div class="info-value">${esc(c.name)}</div>
+      </div>
+
+      <div class="info-item">
+        <div class="info-label">NO. WHATSAPP</div>
+        <div class="info-value">
+          <a href="https://wa.me/62${(c.phone||'').replace(/^0/,'')}" target="_blank">
+            <i class="fab fa-whatsapp" style="color:#25d366;"></i> ${esc(c.phone||'—')}
+          </a>
+        </div>
+      </div>
+
+      <div class="info-item">
+        <div class="info-label">EMAIL</div>
+        <div class="info-value">${esc(c.email||'—')}</div>
+      </div>
+
+      <div class="info-item" style="grid-column:1/-1;">
+        <div class="info-label">ALAMAT LENGKAP</div>
+        <div class="info-value">${esc(c.address||'—')}</div>
+      </div>
+
+      ${
+        pkg
+          ? `
+          <div class="info-item" style="grid-column:1/-1;margin-top:8px;">
+            <div class="info-label" style="font-size:13px;font-weight:700;color:#374151;">
+              <i class="fas fa-box"></i> INFORMASI PAKET
+            </div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">PAKET INTERNET</div>
+            <div class="info-value" style="font-weight:600;color:#2563eb;">
+              ${esc(pkg.name)}
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">KECEPATAN</div>
+            <div class="info-value">
+              ↓ ${pkg.speed_down ? esc(pkg.speed_down) + ' Mbps' : '—'} 
+              / 
+              ↑ ${pkg.speed_up ? esc(pkg.speed_up) + ' Mbps' : '—'}
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">HARGA</div>
+            <div class="info-value">
+              Rp ${Number(pkg.price).toLocaleString('id-ID')}
+            </div>
+          </div>
+          `
+          : ''
+      }
+      ${
+        addons.length
+          ? `
+          <div class="info-item" style="grid-column:1/-1;">
+            <div class="info-label">ADDON</div>
+            <div class="info-value">
+              ${addons
+                .map(a => `
+                  <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                    <div>
+                      <div>${esc(a.name)}</div>
+                      <div style="font-size:12px;color:#6b7280;">
+                        ↓ ${a.speed_down ? esc(a.speed_down) + ' Mbps' : '-'} 
+                        / 
+                        ↑ ${a.speed_up ? esc(a.speed_up) + ' Mbps' : '-'}
+                      </div>
+                    </div>
+                    <div style="color:#16a34a;font-weight:500;">
+                      Rp ${Number(a.price).toLocaleString('id-ID')}
+                    </div>
+                  </div>
+                `)
+                .join('')}
+            </div>
+          </div>
+          `
+          : ''
+      }
+      ${
+        (pkg || addons.length)
+          ? `
+          <div class="info-item" style="grid-column:1/-1;border-top:1px dashed #e5e7eb;padding-top:8px;margin-top:8px;">
+            <div class="info-label">TOTAL HARGA</div>
+            <div class="info-value" style="font-size:16px;font-weight:700;color:#16a34a;">
+              Rp ${grandTotal.toLocaleString('id-ID')}
+            </div>
+          </div>
+          `
+          : ''
+      }
+    `;
   }
 
   // Detail grid

@@ -106,6 +106,10 @@ WorkOrder.belongsTo(CustomerRegistration, {
   foreignKey: "customer_id",
   as: "customerRegistration",
 });
+CustomerRegistration.belongsTo(Package, {
+  foreignKey: "package_id",
+  as: "package",
+});
 
 // ===== ASSOCIATIONS =====
 // InfrastructureLink associations

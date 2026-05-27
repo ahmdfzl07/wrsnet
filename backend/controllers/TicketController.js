@@ -9,6 +9,7 @@ const {
   TicketTimeline,
   Customer,
   CustomerRegistration,
+  Package,
   User,
   InfrastructurePoint,
 } = require("../models");
@@ -143,8 +144,17 @@ function includeBase() {
         "address",
         "latitude",
         "longitude",
+        "package_id",
+        "addon_id",
       ],
       required: false,
+      include: [
+        {
+          model: Package,
+          as: "package",
+          attributes: ["id", "name", "speed_down", "speed_up", "price"],
+        },
+      ],
     },
 
     {
@@ -158,8 +168,17 @@ function includeBase() {
         "address",
         "latitude",
         "longitude",
+        "package_id",
+        "addon_id",
       ],
       required: false,
+      include: [
+        {
+          model: Package,
+          as: "package",
+          attributes: ["id", "name", "speed_down", "speed_up", "price"],
+        },
+      ],
     },
 
     {
@@ -274,6 +293,37 @@ exports.stats = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // GET /api/tickets/:id
 // ─────────────────────────────────────────────────────────────
+async function attachAddons(target) {
+  if (!target || !target.addon_id) return;
+
+  let addonIds = [];
+
+  if (Array.isArray(target.addon_id)) {
+    addonIds = target.addon_id;
+  } else if (typeof target.addon_id === "string") {
+    try {
+      addonIds = JSON.parse(target.addon_id);
+    } catch {
+      addonIds = target.addon_id.split(",").map((id) => id.trim());
+    }
+  }
+
+  addonIds = addonIds.map((id) => Number(id)).filter((id) => !isNaN(id));
+
+  if (addonIds.length > 0) {
+    const addons = await Package.findAll({
+      where: {
+        id: { [Op.in]: addonIds },
+      },
+      attributes: ["id", "name", "speed_down", "speed_up", "price"],
+    });
+
+    target.dataValues.addons = addons;
+  } else {
+    target.dataValues.addons = [];
+  }
+}
+
 exports.show = async (req, res) => {
   try {
     const ticket = await Ticket.findByPk(req.params.id, {
@@ -308,18 +358,32 @@ exports.show = async (req, res) => {
           include: [
             { model: User, as: "user", attributes: ["id", "name", "email"] },
           ],
-          separate: true, // pakai separate query supaya order ASC bisa jalan
+          separate: true,
           order: [["created_at", "ASC"]],
         },
       ],
     });
-    if (!ticket)
-      return res
-        .status(404)
-        .json({ success: false, message: "Ticket tidak ditemukan" });
-    res.json({ success: true, data: ticket });
+
+    if (!ticket) {
+      return res.status(404).json({
+        success: false,
+        message: "Ticket tidak ditemukan",
+      });
+    }
+
+    await attachAddons(ticket.customerRegistration);
+    await attachAddons(ticket.customer);
+
+    return res.json({
+      success: true,
+      data: ticket,
+    });
   } catch (e) {
-    res.status(500).json({ success: false, message: e.message });
+    console.error("ERROR SHOW TICKET:", e);
+    return res.status(500).json({
+      success: false,
+      message: e.message,
+    });
   }
 };
 
