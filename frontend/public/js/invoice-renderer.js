@@ -237,6 +237,8 @@
       status: status,
       statusLabel: statusLabel,
       bank_accounts: d.bank_accounts || [],
+      addon_detail: d.addon_detail || [],
+      addon_total: d.addon_total || 0,
     };
   }
 
@@ -469,6 +471,40 @@
   function renderItems(cfg, p) {
     var periodeStr =
       (MONTHS_ID[p.period_month] || p.period_month) + " " + p.period_year;
+    var addonRows = "";
+
+    if (p.addon_detail && p.addon_detail.length) {
+      addonRows = p.addon_detail
+        .map((a, i) => {
+          return (
+            "<tr>" +
+            '<td style="padding:14px;border-bottom:1px solid #f1f5f9;color:#94a3b8;font-size:12px;">' +
+            String(i + 2).padStart(2, "0") +
+            "</td>" +
+            '<td style="padding:14px;border-bottom:1px solid #f1f5f9;font-size:12px;color:' +
+            cfg.text +
+            ';">' +
+            '<div style="font-weight:600;">Addon: ' +
+            escHtml(a.name) +
+            "</div>" +
+            "</td>" +
+            '<td style="padding:14px;border-bottom:1px solid #f1f5f9;text-align:center;color:#64748b;font-size:12px;">1</td>' +
+            '<td style="padding:14px;border-bottom:1px solid #f1f5f9;text-align:right;color:' +
+            cfg.text +
+            ';font-size:12px;">' +
+            fmtRp(a.price) +
+            "</td>" +
+            '<td style="padding:14px;border-bottom:1px solid #f1f5f9;text-align:right;color:' +
+            cfg.text +
+            ';font-size:12px;font-weight:700;">' +
+            fmtRp(a.price) +
+            "</td>" +
+            "</tr>"
+          );
+        })
+        .join("");
+    }
+
     return (
       "" +
       '<table style="width:100%;border-collapse:collapse;margin-top:30px;font-size:12px;">' +
@@ -508,6 +544,7 @@
       fmtRp(p.subtotal) +
       "</td>" +
       "</tr>" +
+      addonRows +
       "</tbody>" +
       "</table>"
     );
@@ -627,8 +664,19 @@
   }
 
   function renderFooter(cfg, p) {
+    var footerBrands =
+      '<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">' +
+      '<a href="#" class="footer-brand">' +
+      '<img src="https://e.ebilling.id:2096/img/logo/3275WRSNET%201%20(REMOVE%20BACKGROUND).png" ' +
+      'alt="WRSNET Logo" style="height:34px;object-fit:contain;">' +
+      "</a>" +
+      '<div style="width:1px;height:28px;background:#e2e8f0;"></div>' +
+      '<a href="https://gmdp.net.id" target="_blank" class="footer-brand">' +
+      '<img src="https://gmdp.net.id/build/assets/gmdp%20logo-Cm7eDGKF.webp" ' +
+      'alt="GDMP Logo" style="height:34px;object-fit:contain;">' +
+      "</a>" +
+      "</div>";
     return (
-      "" +
       '<div style="margin-top:30px;padding-top:18px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:flex-start;gap:30px;">' +
       '<div style="font-size:11px;color:#64748b;line-height:1.7;flex:1;">' +
       (cfg.thankYouText
@@ -652,7 +700,8 @@
           "</div>" +
           "</div>"
         : "") +
-      "</div>"
+      "</div>" +
+      footerBrands
     );
   }
 
