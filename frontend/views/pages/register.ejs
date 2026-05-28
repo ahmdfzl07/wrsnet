@@ -707,23 +707,85 @@
     });
   }
 
+  function getUserLocationOnly(){
+    if (!navigator.geolocation) {
+      console.warn("No geolocation support");
+      initMap(-6.2, 106.816);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        initMap(lat, lng);
+      },
+      (err) => {
+        console.warn("GPS gagal:", err.message);
+
+        initMap(-6.2, 106.816);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      }
+    );
+  }
+
   function setCoordinates(lat, lng){
     const val = lat.toFixed(6) + ',' + lng.toFixed(6);
     custCoordinates.value = val;
   }
 
   function detectLocation(){
-    if(navigator.geolocation){
-      navigator.geolocation.getCurrentPosition(pos => {
+    if (!navigator.geolocation) {
+      console.warn("Geolocation tidak didukung");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
 
-        map.setView([lat, lng], 15);
+        if (!map || !marker) return;
+
+        map.setView([lat, lng], 17);
+
         marker.setLatLng([lat, lng]);
         setCoordinates(lat, lng);
-      });
-    }
+      },
+      (err) => {
+        console.warn("User menolak lokasi / error:", err.message);
+
+        if (map && marker) {
+          map.setView([defaultLat, defaultLng], 12);
+          marker.setLatLng([defaultLat, defaultLng]);
+          setCoordinates(defaultLat, defaultLng);
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 0
+      }
+    );
   }
+
+  // function detectLocation(){
+  //   if(navigator.geolocation){
+  //     navigator.geolocation.getCurrentPosition(pos => {
+  //       const lat = pos.coords.latitude;
+  //       const lng = pos.coords.longitude;
+
+  //       map.setView([lat, lng], 15);
+  //       marker.setLatLng([lat, lng]);
+  //       setCoordinates(lat, lng);
+  //     });
+  //   }
+  // }
 
   let step = 0;
   const steps = document.querySelectorAll(".step");
@@ -782,8 +844,9 @@
     loadPackages();
     loadAddons();
 
-    initMap();
-    detectLocation();
+    getUserLocationOnly();
+    // initMap();
+    // detectLocation();
     updateProgress();
   });
 </script>
