@@ -49,6 +49,7 @@ const ActivityLogController = require("../controllers/ActivityLogController");
 const ResourceController = require("../controllers/ResourceController");
 const TopologyController = require("../controllers/TopologyController");
 const CustomerRegistrationController = require("../controllers/CustomerRegistrationController");
+
 const axios = require("axios");
 const db = require("../models");
 const Customer = db.Customer;
@@ -2990,8 +2991,10 @@ router.post("/qontak/send-invoice", async (req, res) => {
 router.post("/payment/create", async (req, res) => {
   try {
     const crypto = require("crypto");
+    const axios = require("axios");
+    const { pickGateway, normalizeMethod } = require("../utils/helpers");
 
-    const { invoice_id, provider, method, admin_fee } = req.body;
+    const { invoice_id, method } = req.body;
 
     const invoice = await Invoice.findByPk(invoice_id, {
       include: [{ model: Customer, as: "customer" }],
@@ -3005,27 +3008,33 @@ router.post("/payment/create", async (req, res) => {
     }
 
     const amount = parseInt(invoice.total);
-    //     const adminFee = parseInt(admin_fee || 0);
-    // const amount = parseInt(invoice.total) + adminFee;
 
+    let selectedMethod = method || "QRIS";
+    const provider = pickGateway(selectedMethod);
+
+    selectedMethod = normalizeMethod(provider, selectedMethod);
+
+    const cryptoObj = crypto;
+
+    // =========================
+    // DUITKU
+    // =========================
     if (provider === "duitku") {
       const merchantCode = process.env.DUITKU_MERCHANT_CODE;
       const apiKey = process.env.DUITKU_API_KEY;
 
       const merchantOrderId = `INV-${invoice.id}-${Date.now()}`;
 
-      const signature = crypto
+      const signature = cryptoObj
         .createHash("md5")
         .update(merchantCode + merchantOrderId + amount + apiKey)
         .digest("hex");
 
       const payload = {
-        merchantCode: merchantCode,
+        merchantCode,
         paymentAmount: amount,
-
-        paymentMethod: method,
-
-        merchantOrderId: merchantOrderId,
+        paymentMethod: selectedMethod,
+        merchantOrderId,
         productDetails: "Tagihan Internet " + invoice.invoice_number,
 
         customerVaName: invoice.customer?.name || "Customer",
@@ -3035,18 +3044,14 @@ router.post("/payment/create", async (req, res) => {
         callbackUrl: process.env.APP_URL + "/api/payment/duitku/callback",
         returnUrl: process.env.APP_URL + "/payment-success",
 
-        signature: signature,
+        signature,
         expiryPeriod: 1440,
       };
 
       const response = await axios.post(
         "https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry",
         payload,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
+        { headers: { "Content-Type": "application/json" } },
       );
 
       const paymentUrl =
@@ -3065,24 +3070,24 @@ router.post("/payment/create", async (req, res) => {
         provider: "duitku",
         payment_url: paymentUrl,
         reference: response.data.reference,
-        data: response.data,
       });
     }
 
+    // =========================
+    // TRIPAY
+    // =========================
     if (provider === "tripay") {
-      const merchantRef = "INV-" + invoice.id + "-" + Date.now();
+      const merchantRef = `INV-${invoice.id}-${Date.now()}`;
 
-      const signature = crypto
+      const signature = cryptoObj
         .createHmac("sha256", process.env.TRIPAY_PRIVATE_KEY)
         .update(process.env.TRIPAY_MERCHANT_CODE + merchantRef + amount)
         .digest("hex");
 
-      const selectedMethod = method || "BRIVA";
-
       const payload = {
         method: selectedMethod,
         merchant_ref: merchantRef,
-        amount: amount,
+        amount,
 
         customer_name: invoice.customer?.name || "Customer",
         customer_email: invoice.customer?.email || "customer@gmail.com",
@@ -3101,11 +3106,10 @@ router.post("/payment/create", async (req, res) => {
         return_url: process.env.APP_URL + "/payment-success",
         expired_time: Math.floor(Date.now() / 1000) + 86400,
 
-        signature: signature,
+        signature,
       };
 
       const response = await axios.post(
-        // "https://tripay.co.id/api/transaction/create",
         "https://tripay.co.id/api-sandbox/transaction/create",
         payload,
         {
@@ -3122,17 +3126,120 @@ router.post("/payment/create", async (req, res) => {
       });
     }
 
+    // =========================
+    // MIDTRANS (placeholder)
+    // =========================
+    if (provider === "midtrans") {
+      const axios = require("axios");
+      const crypto = require("crypto");
+
+      const orderId = `INV-${invoice.id}-${Date.now()}`;
+
+      const parameter = {
+        transaction_details: {
+          order_id: orderId,
+          gross_amount: amount,
+        },
+
+        customer_details: {
+          first_name: invoice.customer?.name || "Customer",
+          email: invoice.customer?.email || "customer@gmail.com",
+          phone: invoice.customer?.phone || "",
+        },
+
+        item_details: [
+          {
+            id: "internet",
+            price: amount,
+            quantity: 1,
+            name: "Tagihan Internet " + invoice.invoice_number,
+          },
+        ],
+      };
+
+      try {
+        const serverKey = process.env.MIDTRANS_SERVER_KEY;
+
+        const auth = Buffer.from(serverKey + ":").toString("base64");
+
+        const response = await axios.post(
+          "https://app.sandbox.midtrans.com/snap/v1/transactions",
+          parameter,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              Authorization: "Basic " + auth,
+            },
+          },
+        );
+
+        return res.json({
+          success: true,
+          provider: "midtrans",
+          payment_url: response.data.redirect_url,
+          token: response.data.token,
+          order_id: orderId,
+        });
+      } catch (err) {
+        console.log("MIDTRANS ERROR:", err?.response?.data || err);
+
+        return res.status(500).json({
+          success: false,
+          message: "Midtrans gagal membuat transaksi",
+          error: err?.response?.data || err.message,
+        });
+      }
+    }
+
     return res.status(400).json({
       success: false,
       message: "Provider tidak valid",
     });
   } catch (err) {
-    console.log("ERROR:", err?.response?.data || err);
+    console.log("========== PAYMENT ERROR ==========");
 
-    return res.status(500).json({
+    const status = err?.response?.status || 500;
+    const data = err?.response?.data;
+
+    console.log("STATUS:", status);
+    console.log("DATA:", data);
+    console.log("MESSAGE:", err.message);
+    console.log("URL:", err?.config?.url);
+
+    console.log("===================================");
+
+    let message = "Gagal membuat pembayaran";
+
+    if (status === 503) {
+      message = "Payment gateway sedang sibuk (503). Coba beberapa saat lagi.";
+    }
+
+    if (status === 400) {
+      message = data?.message || "Request tidak valid ke payment gateway";
+    }
+
+    if (status === 401) {
+      message = "API Key payment salah / tidak valid";
+    }
+
+    if (status === 403) {
+      message = "Akses payment gateway ditolak";
+    }
+
+    if (status === 422) {
+      message = "Data pembayaran tidak sesuai format";
+    }
+
+    if (!navigator?.onLine) {
+      message = "Koneksi internet bermasalah";
+    }
+
+    return res.status(status).json({
       success: false,
-      message: "Gagal membuat pembayaran",
-      error: err?.response?.data || err.message,
+      message,
+      error: data || err.message,
+      provider_error: true,
     });
   }
 });
@@ -3142,30 +3249,19 @@ router.post("/payment/tripay/callback", async (req, res) => {
     const data = req.body;
 
     if (data.status === "PAID") {
-      const invoiceId = data.merchant_ref.split("-")[1];
+      const parts = data.merchant_ref.split("-");
+      const invoiceId = parts[1];
 
       await Invoice.update(
-        {
-          status: "paid",
-          paid_at: new Date(),
-        },
-        {
-          where: {
-            id: invoiceId,
-          },
-        },
+        { status: "paid", paid_at: new Date() },
+        { where: { id: invoiceId } },
       );
     }
 
-    return res.json({
-      success: true,
-    });
+    return res.json({ success: true });
   } catch (err) {
     console.log(err);
-
-    return res.status(500).json({
-      success: false,
-    });
+    return res.status(500).json({ success: false });
   }
 });
 
@@ -3174,30 +3270,19 @@ router.post("/payment/duitku/callback", async (req, res) => {
     const data = req.body;
 
     if (data.resultCode === "00") {
-      const invoiceId = data.merchantOrderId.split("-")[1];
+      const parts = data.merchantOrderId.split("-");
+      const invoiceId = parts[1];
 
       await Invoice.update(
-        {
-          status: "paid",
-          paid_at: new Date(),
-        },
-        {
-          where: {
-            id: invoiceId,
-          },
-        },
+        { status: "paid", paid_at: new Date() },
+        { where: { id: invoiceId } },
       );
     }
 
-    return res.json({
-      success: true,
-    });
+    return res.json({ success: true });
   } catch (err) {
     console.log(err);
-
-    return res.status(500).json({
-      success: false,
-    });
+    return res.status(500).json({ success: false });
   }
 });
 

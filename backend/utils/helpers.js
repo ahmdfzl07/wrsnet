@@ -167,6 +167,57 @@ const sanitizeSnmpValue = (varbind) => {
   return varbind.value;
 };
 
+// pay
+function pickGateway(method) {
+  const route = {
+    BRIVA: "tripay",
+    BCAVA: "tripay",
+    BNIVA: "tripay",
+    MANDIRIVA: "tripay",
+    QRIS: "tripay",
+
+    DANA: "duitku",
+    OVO: "duitku",
+    SHOPEEPAY: "duitku",
+
+    ALFAMART: "midtrans",
+    INDOMARET: "midtrans",
+  };
+
+  return route[method] || "duitku";
+}
+
+function normalizeMethod(provider, method) {
+  const map = {
+    tripay: {
+      BRIVA: "BRIVA",
+      BCAVA: "BCAVA",
+      MANDIRIVA: "MANDIRIVA",
+      BNIVA: "BNIVA",
+      QRIS: "QRIS",
+    },
+
+    duitku: {
+      DANA: "DA",
+      OVO: "OV",
+      SHOPEEPAY: "SP",
+      QRIS: "QR",
+      BRIVA: "BR",
+      BCAVA: "BC",
+      MANDIRIVA: "M2",
+      BNIVA: "I1",
+    },
+
+    midtrans: {
+      ALFAMART: "alfamart",
+      INDOMARET: "indomaret",
+      QRIS: "qris",
+    },
+  };
+
+  return map[provider]?.[method] || method;
+}
+
 module.exports = {
   generateCustomerId,
   generateUniqueCustomerId,
@@ -178,4 +229,6 @@ module.exports = {
   paginate,
   paginateResponse,
   sanitizeSnmpValue,
+  pickGateway,
+  normalizeMethod,
 };
