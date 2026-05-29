@@ -168,18 +168,8 @@ module.exports = (sequelize) => {
         allowNull: true,
       },
 
-      kabupaten: {
-        type: DataTypes.STRING(20),
-        allowNull: true,
-      },
-
       kecamatan: {
         type: DataTypes.STRING(100),
-        allowNull: true,
-      },
-
-      kecamatan: {
-        type: DataTypes.STRING(20),
         allowNull: true,
       },
 
@@ -188,8 +178,13 @@ module.exports = (sequelize) => {
         allowNull: true,
       },
 
-      kelurahan: {
-        type: DataTypes.STRING(20),
+      rt: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+      },
+
+      rw: {
+        type: DataTypes.STRING(50),
         allowNull: true,
       },
 

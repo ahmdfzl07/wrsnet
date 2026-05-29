@@ -62,3 +62,4 @@ ALTER TABLE `packages` CHANGE `category` `category` ENUM('home','business','ente
 ALTER TABLE customers ADD COLUMN addon_id JSON NULL;
 ALTER TABLE customer_registration ADD COLUMN addon_id JSON NULL;
 ALTER TABLE `customers` ADD `diskon` VARCHAR(50) NULL DEFAULT NULL AFTER `addon_id`, ADD `diskon_type` VARCHAR(50) NULL DEFAULT NULL AFTER `diskon`;
+ALTER TABLE `customers` ADD `rt` VARCHAR(50) NULL DEFAULT NULL AFTER `kelurahan`, ADD `rw` VARCHAR(50) NULL DEFAULT NULL AFTER `rt`;

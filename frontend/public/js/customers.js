@@ -108,6 +108,12 @@ window.openAddCustomer = async function () {
   document.getElementById("customerModal").classList.add("active");
   await loadPackages();
   await loadAddons();
+
+  await loadProvinsi();
+  await loadKabupaten();
+  await loadKecamatan();
+  await loadKelurahan();
+
   const idField = document.getElementById("custId");
   if (idField) {
     idField.readOnly = false;
@@ -201,6 +207,14 @@ window.editCustomer = async function (id) {
   if (idField) idField.readOnly = true;
   await loadPackages();
   _setVal("custPackage", c.package_id || "");
+
+  await loadProvinsi(c.province_id);
+  await loadKabupaten(c.province_id, c.kabupaten);
+  await loadKecamatan(c.kabupaten, c.kecamatan);
+  await loadKelurahan(c.kecamatan, c.kelurahan);
+
+  _setVal("custRt", c.rt || "");
+  _setVal("custRw", c.rw || "");
 
   await loadAddons();
   setAddonValues(c.addon_id || []);
@@ -1059,6 +1073,150 @@ async function loadPackages() {
         </option>`,
       )
       .join("");
+}
+
+const API = window.location.origin + "/api/wilayah";
+
+let provinsiSelect;
+let kabupatenSelect;
+let kecamatanSelect;
+let kelurahanSelect;
+async function loadProvinsi(selectedValue = "") {
+  const res = await fetch("/api/wilayah/provinsi");
+  const data = await res.json();
+
+  const options = data.map((item) => ({
+    value: String(item.id),
+    text: item.name,
+  }));
+
+  if (provinsiSelect) {
+    provinsiSelect.destroy();
+  }
+
+  provinsiSelect = new TomSelect("#custProvinsi", {
+    options: options,
+    valueField: "value",
+    labelField: "text",
+    searchField: "text",
+    onChange(value) {
+      if (value) {
+        loadKabupaten(value);
+      }
+    },
+  });
+
+  if (selectedValue) {
+    provinsiSelect.setValue(String(selectedValue), true);
+  }
+}
+
+async function loadKabupaten(provinsiId, selectedValue = "") {
+  if (!provinsiId) return;
+
+  const res = await fetch(`${API}/kabupaten/${provinsiId}`);
+  const resJson = await res.json();
+
+  const data = Array.isArray(resJson) ? resJson : resJson.data || [];
+
+  const options = data.map((item) => ({
+    value: String(item.id),
+    text: item.name,
+  }));
+
+  if (kabupatenSelect) kabupatenSelect.destroy();
+
+  kabupatenSelect = new TomSelect("#custKabupaten", {
+    options,
+    valueField: "value",
+    labelField: "text",
+    searchField: "text",
+    onChange(value) {
+      if (value) loadKecamatan(value);
+    },
+  });
+
+  if (selectedValue) {
+    kabupatenSelect.setValue(String(selectedValue), true);
+  }
+}
+
+async function loadKecamatan(kabupatenId, selectedValue = "") {
+  if (!kabupatenId) {
+    console.warn("kabupatenId kosong, skip loadKecamatan");
+    return;
+  }
+
+  const res = await fetch(`${API}/kecamatan/${kabupatenId}`);
+  const resJson = await res.json();
+
+  const data = resJson.data || resJson;
+
+  if (!Array.isArray(data)) {
+    console.error("Data kecamatan bukan array:", data);
+    return;
+  }
+
+  const options = data.map((item) => ({
+    value: String(item.id),
+    text: item.name,
+  }));
+
+  if (kecamatanSelect) kecamatanSelect.destroy();
+
+  kecamatanSelect = new TomSelect("#custKecamatan", {
+    options,
+    valueField: "value",
+    labelField: "text",
+    searchField: "text",
+    onChange(value) {
+      if (value) loadKelurahan(value);
+    },
+  });
+
+  if (selectedValue) {
+    kecamatanSelect.setValue(String(selectedValue), true);
+  }
+}
+
+async function loadKelurahan(kecamatanId, selectedValue = "") {
+  if (!kecamatanId) {
+    console.warn("kecamatanId kosong, skip loadKelurahan");
+    return;
+  }
+
+  const res = await fetch(`${API}/kelurahan/${kecamatanId}`);
+  const resJson = await res.json();
+
+  const data = resJson.data || resJson;
+
+  if (!Array.isArray(data)) {
+    console.error("Data kelurahan bukan array:", data);
+    return;
+  }
+
+  const options = data.map((item) => ({
+    value: String(item.id),
+    text: item.name,
+    code: item.id,
+  }));
+
+  if (kelurahanSelect) kelurahanSelect.destroy();
+
+  kelurahanSelect = new TomSelect("#custKelurahan", {
+    options,
+    valueField: "value",
+    labelField: "text",
+    searchField: "text",
+    onChange(value) {
+      const selected = this.options[value];
+      document.getElementById("custKodeLokasi").value = selected?.code || "";
+    },
+  });
+
+  if (selectedValue) {
+    kelurahanSelect.setValue(String(selectedValue), true);
+  }
 }
 
 // let addonSelect;

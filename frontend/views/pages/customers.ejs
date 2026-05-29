@@ -759,39 +759,20 @@ window.saveCustomerBtn = async function () {
       address:
         document.getElementById("custAddress")?.value || "",
 
-      province:
-        document.getElementById("custProvinsi")
-          ?.selectedOptions[0]?.text || "",
-
       province_id:
         document.getElementById("custProvinsi")?.value || "",
-
       kabupaten:
-        document.getElementById("custKabupaten")
-          ?.selectedOptions[0]?.text || "",
-
-      kabupaten_id:
         document.getElementById("custKabupaten")?.value || "",
-
       kecamatan:
-        document.getElementById("custKecamatan")
-          ?.selectedOptions[0]?.text || "",
-
-      kecamatan_id:
         document.getElementById("custKecamatan")?.value || "",
-
       kelurahan:
-        document.getElementById("custKelurahan")
-          ?.selectedOptions[0]?.text || "",
-
-      kelurahan_id:
         document.getElementById("custKelurahan")?.value || "",
 
       latitude:
-      document.getElementById("custLatitude")?.value || null,
+        document.getElementById("custLatitude")?.value || null,
 
-    longitude:
-      document.getElementById("custLongitude")?.value || null,
+      longitude:
+        document.getElementById("custLongitude")?.value || null,
 
       rt:
         document.getElementById("custRt")?.value || "",
@@ -1531,13 +1512,13 @@ function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-const API =
-  window.location.origin +
-  "/api/wilayah";
+// const API =
+//   window.location.origin +
+//   "/api/wilayah";
 
-let kabupatenSelect;
-let kecamatanSelect;
-let kelurahanSelect;
+// let kabupatenSelect;
+// let kecamatanSelect;
+// let kelurahanSelect;
 
 custNik.addEventListener("input", function(){
   this.value = this.value.replace(/\D/g,'');
@@ -1546,205 +1527,205 @@ custNik.addEventListener("input", function(){
   }
 });
 
-async function loadKabupaten(
-  provinsiId
-) {
+// async function loadKabupaten(
+//   provinsiId
+// ) {
 
-  const res = await fetch(
-    `${API}/kabupaten/${provinsiId}`
-  );
+//   const res = await fetch(
+//     `${API}/kabupaten/${provinsiId}`
+//   );
 
-  const data = await res.json();
+//   const data = await res.json();
 
-  const kabupaten =
-    document.getElementById(
-      "custKabupaten"
-    );
+//   const kabupaten =
+//     document.getElementById(
+//       "custKabupaten"
+//     );
 
-  kabupaten.innerHTML =
-    '<option value="">Pilih Kabupaten</option>';
+//   kabupaten.innerHTML =
+//     '<option value="">Pilih Kabupaten</option>';
 
-  data.forEach(item => {
+//   data.forEach(item => {
 
-    kabupaten.innerHTML += `
-      <option value="${item.id}">
-        ${item.name}
-      </option>
-    `;
-  });
+//     kabupaten.innerHTML += `
+//       <option value="${item.id}">
+//         ${item.name}
+//       </option>
+//     `;
+//   });
 
-  if (kabupatenSelect) {
-    kabupatenSelect.destroy();
-  }
+//   if (kabupatenSelect) {
+//     kabupatenSelect.destroy();
+//   }
 
-  kabupatenSelect =
-    new TomSelect(
-      "#custKabupaten",
-      {
-        create: false,
+//   kabupatenSelect =
+//     new TomSelect(
+//       "#custKabupaten",
+//       {
+//         create: false,
 
-        sortField: {
-          field: "text",
-          direction: "asc",
-        },
+//         sortField: {
+//           field: "text",
+//           direction: "asc",
+//         },
 
-        onChange(value) {
+//         onChange(value) {
 
-          if (value) {
-            loadKecamatan(value);
-          }
-        },
-      }
-    );
-}
+//           if (value) {
+//             loadKecamatan(value);
+//           }
+//         },
+//       }
+//     );
+// }
 
-async function loadKecamatan(
-  kabupatenId
-) {
+// async function loadKecamatan(
+//   kabupatenId
+// ) {
 
-  const res = await fetch(
-    `${API}/kecamatan/${kabupatenId}`
-  );
+//   const res = await fetch(
+//     `${API}/kecamatan/${kabupatenId}`
+//   );
 
-  const data = await res.json();
+//   const data = await res.json();
 
-  const kecamatan =
-    document.getElementById(
-      "custKecamatan"
-    );
+//   const kecamatan =
+//     document.getElementById(
+//       "custKecamatan"
+//     );
 
-  kecamatan.innerHTML =
-    '<option value="">Pilih Kecamatan</option>';
+//   kecamatan.innerHTML =
+//     '<option value="">Pilih Kecamatan</option>';
 
-  data.forEach(item => {
+//   data.forEach(item => {
 
-    kecamatan.innerHTML += `
-      <option value="${item.id}">
-        ${item.name}
-      </option>
-    `;
-  });
+//     kecamatan.innerHTML += `
+//       <option value="${item.id}">
+//         ${item.name}
+//       </option>
+//     `;
+//   });
 
-  if (kecamatanSelect) {
-    kecamatanSelect.destroy();
-  }
+//   if (kecamatanSelect) {
+//     kecamatanSelect.destroy();
+//   }
 
-  kecamatanSelect =
-    new TomSelect(
-      "#custKecamatan",
-      {
-        create: false,
+//   kecamatanSelect =
+//     new TomSelect(
+//       "#custKecamatan",
+//       {
+//         create: false,
 
-        onChange(value) {
+//         onChange(value) {
 
-          if (value) {
-            loadKelurahan(value);
-          }
-        },
-      }
-    );
-}
+//           if (value) {
+//             loadKelurahan(value);
+//           }
+//         },
+//       }
+//     );
+// }
 
-async function loadKelurahan(
-  kecamatanId
-) {
+// async function loadKelurahan(
+//   kecamatanId
+// ) {
 
-  const res = await fetch(
-    `${API}/kelurahan/${kecamatanId}`
-  );
+//   const res = await fetch(
+//     `${API}/kelurahan/${kecamatanId}`
+//   );
 
-  const data = await res.json();
+//   const data = await res.json();
 
-  const kelurahan =
-    document.getElementById(
-      "custKelurahan"
-    );
+//   const kelurahan =
+//     document.getElementById(
+//       "custKelurahan"
+//     );
 
-  kelurahan.innerHTML =
-    '<option value="">Pilih Kelurahan</option>';
+//   kelurahan.innerHTML =
+//     '<option value="">Pilih Kelurahan</option>';
 
-  data.forEach(item => {
+//   data.forEach(item => {
 
-    kelurahan.innerHTML += `
-      <option
-        value="${item.id}"
-        data-code="${item.id}"
-      >
-        ${item.name}
-      </option>
-    `;
-  });
+//     kelurahan.innerHTML += `
+//       <option
+//         value="${item.id}"
+//         data-code="${item.id}"
+//       >
+//         ${item.name}
+//       </option>
+//     `;
+//   });
 
-  if (kelurahanSelect) {
-    kelurahanSelect.destroy();
-  }
+//   if (kelurahanSelect) {
+//     kelurahanSelect.destroy();
+//   }
 
-  kelurahanSelect =
-    new TomSelect(
-      "#custKelurahan",
-      {
-        create: false,
+//   kelurahanSelect =
+//     new TomSelect(
+//       "#custKelurahan",
+//       {
+//         create: false,
 
-        onChange(value) {
+//         onChange(value) {
 
-          const select =
-            document.getElementById(
-              "custKelurahan"
-            );
+//           const select =
+//             document.getElementById(
+//               "custKelurahan"
+//             );
 
-          const code =
-            select.options[
-              select.selectedIndex
-            ]?.dataset?.code;
+//           const code =
+//             select.options[
+//               select.selectedIndex
+//             ]?.dataset?.code;
 
-          document.getElementById(
-            "custKodeLokasi"
-          ).value = code || "";
-        },
-      }
-    );
-}
+//           document.getElementById(
+//             "custKodeLokasi"
+//           ).value = code || "";
+//         },
+//       }
+//     );
+// }
 
-async function loadProvinsi() {
+// async function loadProvinsi() {
 
-  const res = await fetch(
-    "/api/wilayah/provinsi"
-  );
+//   const res = await fetch(
+//     "/api/wilayah/provinsi"
+//   );
 
-  const data = await res.json();
+//   const data = await res.json();
 
-  const provinsi =
-    document.getElementById(
-      "custProvinsi"
-    );
+//   const provinsi =
+//     document.getElementById(
+//       "custProvinsi"
+//     );
 
-  provinsi.innerHTML =
-    '<option value="">Pilih Provinsi</option>';
+//   provinsi.innerHTML =
+//     '<option value="">Pilih Provinsi</option>';
 
-  data.forEach(item => {
+//   data.forEach(item => {
 
-    provinsi.innerHTML += `
-      <option value="${item.id}">
-        ${item.name}
-      </option>
-    `;
-  });
+//     provinsi.innerHTML += `
+//       <option value="${item.id}">
+//         ${item.name}
+//       </option>
+//     `;
+//   });
 
-  new TomSelect(
-    "#custProvinsi",
-    {
-      onChange(value) {
+//   new TomSelect(
+//     "#custProvinsi",
+//     {
+//       onChange(value) {
 
-        if (value) {
-          loadKabupaten(value);
-        }
-      },
-    }
-  );
-}
+//         if (value) {
+//           loadKabupaten(value);
+//         }
+//       },
+//     }
+//   );
+// }
 
+// loadProvinsi();
 
-loadProvinsi();
 </script>
 
 </body>
