@@ -3064,6 +3064,7 @@ router.post("/payment/create", async (req, res) => {
           data: response.data,
         });
       }
+      console.log(response.data);
 
       return res.json({
         success: true,
@@ -3130,10 +3131,22 @@ router.post("/payment/create", async (req, res) => {
     // MIDTRANS (placeholder)
     // =========================
     if (provider === "midtrans") {
-      const axios = require("axios");
-      const crypto = require("crypto");
-
       const orderId = `INV-${invoice.id}-${Date.now()}`;
+
+      let enabledPayments = [];
+      let customConfig = {};
+
+      if (selectedMethod === "alfamart") {
+        enabledPayments = ["alfamart"];
+      }
+
+      if (selectedMethod === "indomaret") {
+        enabledPayments = ["indomaret"];
+      }
+
+      if (selectedMethod === "qris") {
+        enabledPayments = ["qris"];
+      }
 
       const parameter = {
         transaction_details: {
@@ -3155,41 +3168,38 @@ router.post("/payment/create", async (req, res) => {
             name: "Tagihan Internet " + invoice.invoice_number,
           },
         ],
+
+        enabled_payments: enabledPayments,
+
+        credit_card: {
+          secure: true,
+        },
+
+        callbacks: {
+          finish: process.env.APP_URL + "/payment-success",
+        },
       };
 
-      try {
-        const serverKey = process.env.MIDTRANS_SERVER_KEY;
+      const serverKey = process.env.MIDTRANS_SERVER_KEY;
+      const auth = Buffer.from(serverKey + ":").toString("base64");
 
-        const auth = Buffer.from(serverKey + ":").toString("base64");
-
-        const response = await axios.post(
-          "https://app.sandbox.midtrans.com/snap/v1/transactions",
-          parameter,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-              Authorization: "Basic " + auth,
-            },
+      const response = await axios.post(
+        "https://app.sandbox.midtrans.com/snap/v1/transactions",
+        parameter,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Basic " + auth,
           },
-        );
+        },
+      );
 
-        return res.json({
-          success: true,
-          provider: "midtrans",
-          payment_url: response.data.redirect_url,
-          token: response.data.token,
-          order_id: orderId,
-        });
-      } catch (err) {
-        console.log("MIDTRANS ERROR:", err?.response?.data || err);
-
-        return res.status(500).json({
-          success: false,
-          message: "Midtrans gagal membuat transaksi",
-          error: err?.response?.data || err.message,
-        });
-      }
+      return res.json({
+        success: true,
+        provider: "midtrans",
+        payment_url: response.data.redirect_url,
+        token: response.data.token,
+      });
     }
 
     return res.status(400).json({

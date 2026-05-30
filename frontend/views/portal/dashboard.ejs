@@ -777,6 +777,42 @@
           height:36px;
         }
       }
+      .pm-loading-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.6);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 99999;
+        }
+
+        .pm-loading-box {
+          background: #fff;
+          padding: 25px;
+          border-radius: 12px;
+          text-align: center;
+          width: 220px;
+        }
+
+        .spinner {
+          width: 40px;
+          height: 40px;
+          border: 4px solid #eee;
+          border-top: 4px solid #2d6cdf;
+          border-radius: 50%;
+          margin: 0 auto 10px;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
+        .pm-loading-box .text {
+          font-size: 14px;
+          color: #333;
+        }
   </style>
 </head>
 <body>
@@ -1547,6 +1583,12 @@
     <p style="font-size:11px;color:var(--muted);text-align:left;margin-top:14px;line-height:1.5">
     Untuk laporan gangguan, gunakan menu <b>Tiket</b> agar bisa dilacak.
     </p>
+  </div>
+</div>
+<div id="paymentLoading" class="pm-loading-overlay" style="display:none;">
+  <div class="pm-loading-box">
+    <div class="spinner"></div>
+    <div class="text">Memproses pembayaran...</div>
   </div>
 </div>
 
@@ -2507,41 +2549,51 @@ function renderPaymentAccordion() {
   const container = document.getElementById("payAccordion");
 
   const groups = [
+    // VIRTUAL ACCOUNT
     {
       key: "va",
       title: "Virtual Account",
       methods: [
-        { code: "BRIVA", name: "BRI VA", logo: "https://assets.tripay.co.id/upload/payment-icon/8WQ3APST5s1579461828.png", fee: 4250 },
+        { code: "BRIVA", name: "BRI VA", logo: "https://assets.tripay.co.id/upload/payment-icon/8WQ3APST5s1579461828.png", fee: 3000 },
         { code: "BCAVA", name: "BCA VA", logo: "https://upload.wikimedia.org/wikipedia/commons/5/5c/Bank_Central_Asia.svg", fee: 5500 },
-        { code: "MANDIRIVA", name: "Mandiri VA", logo: "https://assets.tripay.co.id/upload/payment-icon/T9Z012UE331583531536.png", fee: 4250 },
-        { code: "BNIVA", name: "BNI VA", logo: "https://assets.tripay.co.id/upload/payment-icon/n22Qsh8jMa1583433577.png", fee: 4250 }
+        { code: "MANDIRIVA", name: "Mandiri VA", logo: "https://assets.tripay.co.id/upload/payment-icon/T9Z012UE331583531536.png", fee: 3000 },
+        { code: "BNIVA", name: "BNI VA", logo: "https://assets.tripay.co.id/upload/payment-icon/n22Qsh8jMa1583433577.png", fee: 3000 },
+        { code: "CIMBVA", name: "CIMB Niaga VA", logo: "https://sandbox.duitku.com/Images/v2/cimb.png", fee: 3000 },
+        { code: "BSIVA", name: "BSI VA", logo: "https://sandbox.duitku.com/Images/v2/bsi.png", fee: 3000 },
+        { code: "ATM_BERSAMA", name: "ATM Bersama", logo: "https://sandbox.duitku.com/Images/v2/cc-cimb-aggregator.svg", fee: 3000 },
       ]
     },
 
+    // E-WALLET
     {
       key: "ewallet",
       title: "E-Wallet",
       methods: [
-        { code: "DANA", name: "DANA", logo: "https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg", fee: 0 },
-        { code: "OVO", name: "OVO", logo: "https://assets.tripay.co.id/upload/payment-icon/fH6Y7wDT171586199243.png", fee: 4500 },
-        { code: "SHOPEEPAY", name: "ShopeePay", logo: "https://upload.wikimedia.org/wikipedia/commons/f/fe/Shopee.svg", fee: 0 }
+        { code: "DANA", name: "DANA", logo: "https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg", fee: "1.67%" },
+        { code: "SHOPEEPAY", name: "ShopeePay", logo: "https://upload.wikimedia.org/wikipedia/commons/f/fe/Shopee.svg", fee: "3%" },
+        { code: "GOPAY", name: "GoPay", logo: "https://upload.wikimedia.org/wikipedia/commons/8/86/Gopay_logo.svg", fee: "2%" },
+        { code: "OVO", name: "OVO", logo: "https://upload.wikimedia.org/wikipedia/commons/e/eb/Logo_ovo_purple.svg", fee: "3%" },
+        { code: "LINKAJA", name: "LinkAja", logo: "https://upload.wikimedia.org/wikipedia/commons/8/85/LinkAja.svg", fee: "1.67%" },
       ]
     },
 
+    // QRIS
     {
       key: "qris",
       title: "QRIS",
       methods: [
-        { code: "QRIS", name: "QRIS All Payment", logo: "https://assets.tripay.co.id/upload/payment-icon/BpE4BPVyIw1605597490.png", fee: 1800 }
+        { code: "QRIS", name: "QRIS All Payment", logo: "https://assets.tripay.co.id/upload/payment-icon/BpE4BPVyIw1605597490.png", fee: "0.70%" }
       ]
     },
 
+    // RETAIL
     {
       key: "retail",
       title: "Retail",
       methods: [
-        { code: "ALFAMART", name: "Alfamart", logo: "https://assets.tripay.co.id/upload/payment-icon/jiGZMKp2RD1583433506.png", fee: 3500 },
-        { code: "INDOMARET", name: "Indomaret", logo: "https://assets.tripay.co.id/upload/payment-icon/zNzuO5AuLw1583513974.png", fee: 3500 }
+        { code: "ALFAMART", name: "Alfamart", logo: "https://assets.tripay.co.id/upload/payment-icon/jiGZMKp2RD1583433506.png", fee: 2500 },
+        { code: "INDOMARET", name: "Indomaret", logo: "https://assets.tripay.co.id/upload/payment-icon/zNzuO5AuLw1583513974.png", fee: 3500 },
+        { code: "ALFAMIDI", name: "Alfamidi", logo: "https://www.alfamidiku.com/assets/images/logo.png", fee: 3500 }
       ]
     }
   ];
@@ -2586,12 +2638,16 @@ function renderPaymentAccordion() {
                 onchange="selectPaymentMethod('${m.code}')"
               >
 
-              <img src="${m.logo}" class="pm-radio-logo">
+              <img src="${m.logo}" class="pm-radio-logo" onerror="this.style.display='none'">
 
               <div>
                 <div class="pm-method-name">${m.name}</div>
                 <div class="pm-method-fee">
-                  Admin ${fmtRp(m.fee)}
+                  Admin ${
+                    typeof m.fee === "number"
+                      ? fmtRp(m.fee)
+                      : m.fee
+                  }
                 </div>
               </div>
 
@@ -2635,6 +2691,9 @@ function selectPaymentMethod(method) {
 
 async function payAuto() {
   try {
+
+    document.getElementById("paymentLoading").style.display = "flex";
+
     const response = await fetch("/api/payment/create", {
       method: "POST",
       headers: {
@@ -2649,17 +2708,20 @@ async function payAuto() {
     const res = await response.json();
 
     if (!res.success) {
+      document.getElementById("paymentLoading").style.display = "none";
       alert(res.message);
       return;
     }
 
-    window.location.href = res.payment_url;
+    setTimeout(() => {
+      window.location.href = res.payment_url;
+    }, 500);
 
   } catch (err) {
-
     console.error(err);
-    alert("Gagal pembayaran");
 
+    document.getElementById("paymentLoading").style.display = "none";
+    alert("Gagal pembayaran");
   }
 }
 

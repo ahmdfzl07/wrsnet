@@ -170,18 +170,29 @@ const sanitizeSnmpValue = (varbind) => {
 // pay
 function pickGateway(method) {
   const route = {
-    BRIVA: "tripay",
+    // VA
+    ATM_BERSAMA: "duitku",
     BCAVA: "tripay",
-    BNIVA: "tripay",
-    MANDIRIVA: "tripay",
+    BNIVA: "duitku",
+    BRIVA: "duitku",
+    MANDIRIVA: "duitku",
+    CIMBVA: "duitku",
+    BSIVA: "duitku",
+
+    // E-WALLET
+    DANA: "duitku",
+    SHOPEEPAY: "tripay",
+    GOPAY: "midtrans",
+    OVO: "tripay",
+    LINKAJA: "duitku",
+
+    // QRIS
     QRIS: "tripay",
 
-    DANA: "duitku",
-    OVO: "duitku",
-    SHOPEEPAY: "duitku",
-
-    ALFAMART: "midtrans",
-    INDOMARET: "midtrans",
+    // RETAIL
+    ALFAMART: "duitku",
+    INDOMARET: "tripay",
+    ALFAMIDI: "tripay",
   };
 
   return route[method] || "duitku";
@@ -189,29 +200,36 @@ function pickGateway(method) {
 
 function normalizeMethod(provider, method) {
   const map = {
+    // TRIPAY
     tripay: {
-      BRIVA: "BRIVA",
       BCAVA: "BCAVA",
-      MANDIRIVA: "MANDIRIVA",
-      BNIVA: "BNIVA",
+      SHOPEEPAY: "SHOPEEPAY",
+      OVO: "OVO",
+      INDOMARET: "INDOMARET",
+      ALFAMIDI: "ALFAMIDI",
       QRIS: "QRIS",
     },
 
+    // DUITKU
     duitku: {
-      DANA: "DA",
-      OVO: "OV",
-      SHOPEEPAY: "SP",
-      QRIS: "QR",
+      ATM_BERSAMA: "VC",
       BRIVA: "BR",
-      BCAVA: "BC",
-      MANDIRIVA: "M2",
       BNIVA: "I1",
+      MANDIRIVA: "M2",
+      CIMBVA: "B1",
+      BSIVA: "BV",
+
+      DANA: "DA",
+      LINKAJA: "LA",
+
+      QRIS: "QR",
+
+      ALFAMART: "FT",
     },
 
+    // MIDTRANS
     midtrans: {
-      ALFAMART: "alfamart",
-      INDOMARET: "indomaret",
-      QRIS: "qris",
+      GOPAY: "gopay",
     },
   };
 
