@@ -39,25 +39,13 @@ app.set("trust proxy", true);
 const server = http.createServer(app);
 
 const isProd = process.env.APP_ENV === "production";
-// const allowedOrigins = isProd
-//   ? [process.env.APP_URL, process.env.CLIENT_URL]
-//   : ["http://localhost:3000"];
-
-// const io = new Server(server, {
-//   cors: {
-//     origin: allowedOrigins,
-//     methods: ["GET", "POST"],
-//     credentials: true,
-//   },
-// });
+const allowedOrigins = isProd
+  ? [process.env.APP_URL, process.env.CLIENT_URL]
+  : ["http://localhost:3000"];
 
 const io = new Server(server, {
   cors: {
-    origin: [
-      "https://portal.wrsnet.id",
-      "https://admin.wrsnet.id",
-      "http://localhost:3000",
-    ],
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
