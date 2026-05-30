@@ -721,129 +721,136 @@ window.custCardClick = function(el) {
 // }
 
 window.saveCustomerBtn = async function () {
-  const btn = document.getElementById("saveCustomerBtn");
+  return _saveCustomerInner();
+  // const btn = document.getElementById("saveCustomerBtn");
 
-  btn.disabled = true;
-  btn.innerText = "Menyimpan...";
-  const selectedAddons = Array.from(
-    document.querySelectorAll("#addonList input[type='checkbox']:checked")
-  ).map(cb => String(cb.value));
+  // btn.disabled = true;
+  // btn.innerText = "Menyimpan...";
+  // const selectedAddons = Array.from(
+  //   document.querySelectorAll("#addonList input[type='checkbox']:checked")
+  // ).map(cb => String(cb.value));
 
-  try {
-    const body = {
-      nik: document.getElementById("custNik").value,
-      name: document.getElementById("custName").value,
-      phone: document.getElementById("custPhone").value,
-      email: document.getElementById("custEmail")?.value || "",
-      package_id:
-        document.getElementById("custPackage")?.value || null,
-      addon_id: selectedAddons.length ? selectedAddons : [],
-      diskon:
-        document.getElementById("custDiscount")?.value || null,
-      diskon_type:
-        document.getElementById("custDiscountType")?.value || null,
-      due_date:
-        document.getElementById("custDueDate")?.value || null,
-      installation_date:
-        document.getElementById("custInstallDate")?.value || null,
-      pppoe_username:
-        document.getElementById("custPPPoE")?.value || "",
-      ont_sn:
-        document.getElementById("custOntSn")?.value || "",
-      static_ip:
-        document.getElementById("custStaticIP")?.value || null,
-      mikrotik_id:
-        document.getElementById("custMikrotikId")?.value || null,
-      status:
-        document.getElementById("custStatus")?.value || "active",
-      address:
-        document.getElementById("custAddress")?.value || "",
+  // try {
+  //   const custId =
+  //     document.getElementById("ppCid")?.value?.trim() ||
+  //     document.getElementById("custId")?.value?.trim() ||
+  //     "";
 
-      province_id:
-        document.getElementById("custProvinsi")?.value || "",
-      kabupaten:
-        document.getElementById("custKabupaten")?.value || "",
-      kecamatan:
-        document.getElementById("custKecamatan")?.value || "",
-      kelurahan:
-        document.getElementById("custKelurahan")?.value || "",
+  //   const body = {
+  //     customer_id: custId ? custId.toUpperCase() : null,
+  //     nik: document.getElementById("custNik").value,
+  //     name: document.getElementById("custName").value,
+  //     phone: document.getElementById("custPhone").value,
+  //     email: document.getElementById("custEmail")?.value || "",
+  //     package_id:
+  //       document.getElementById("custPackage")?.value || null,
+  //     addon_id: selectedAddons.length ? selectedAddons : [],
+  //     diskon:
+  //       document.getElementById("custDiscount")?.value || null,
+  //     diskon_type:
+  //       document.getElementById("custDiscountType")?.value || null,
+  //     due_date:
+  //       document.getElementById("custDueDate")?.value || null,
+  //     installation_date:
+  //       document.getElementById("custInstallDate")?.value || null,
+  //     pppoe_username:
+  //       document.getElementById("custPPPoE")?.value || "",
+  //     ont_sn:
+  //       document.getElementById("custOntSn")?.value || "",
+  //     static_ip:
+  //       document.getElementById("custStaticIP")?.value || null,
+  //     mikrotik_id:
+  //       document.getElementById("custMikrotikId")?.value || null,
+  //     status:
+  //       document.getElementById("custStatus")?.value || "active",
+  //     address:
+  //       document.getElementById("custAddress")?.value || "",
 
-      latitude:
-        document.getElementById("custLatitude")?.value || null,
+  //     province_id:
+  //       document.getElementById("custProvinsi")?.value || "",
+  //     kabupaten:
+  //       document.getElementById("custKabupaten")?.value || "",
+  //     kecamatan:
+  //       document.getElementById("custKecamatan")?.value || "",
+  //     kelurahan:
+  //       document.getElementById("custKelurahan")?.value || "",
 
-      longitude:
-        document.getElementById("custLongitude")?.value || null,
+  //     latitude:
+  //       document.getElementById("custLatitude")?.value || null,
 
-      rt:
-        document.getElementById("custRt")?.value || "",
+  //     longitude:
+  //       document.getElementById("custLongitude")?.value || null,
 
-      rw:
-        document.getElementById("custRw")?.value || "",
-    };
+  //     rt:
+  //       document.getElementById("custRt")?.value || "",
 
-    // =========================
-    // MODE EDIT / CREATE
-    // =========================
-    const isEdit = !!_custEditId;
+  //     rw:
+  //       document.getElementById("custRw")?.value || "",
+  //   };
 
-    const url = isEdit
-      ? `/api/customers/${_custEditId}`
-      : "/api/customers";
+  //   // =========================
+  //   // MODE EDIT / CREATE
+  //   // =========================
+  //   const isEdit = !!_custEditId;
 
-    const method = isEdit ? "PUT" : "POST";
+  //   const url = isEdit
+  //     ? `/api/customers/${_custEditId}`
+  //     : "/api/customers";
 
-    const res = await fetch(url, {
-      method: method,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+  //   const method = isEdit ? "PUT" : "POST";
 
-    const result = await res.json();
+  //   const res = await fetch(url, {
+  //     method: method,
+  //     headers: {
+  //       "Content-Type": "application/json",
+  //     },
+  //     body: JSON.stringify(body),
+  //   });
 
-    if (result.success) {
-      App.showToast(
-        isEdit
-          ? "Customer berhasil diupdate"
-          : "Customer berhasil ditambahkan",
-        "success"
-      );
+  //   const result = await res.json();
 
-      closeModal();
+  //   if (result.success) {
+  //     App.showToast(
+  //       isEdit
+  //         ? "Customer berhasil diupdate"
+  //         : "Customer berhasil ditambahkan",
+  //       "success"
+  //     );
 
-      // reset edit id
-      _custEditId = null;
+  //     closeModal();
 
-      // reset title modal
-      const ttl = document.getElementById("customerModalTitle");
-      if (ttl) ttl.innerText = "Tambah Customer";
+  //     // reset edit id
+  //     _custEditId = null;
 
-      // show kembali box WA & PPPoE
-      const waBox = document.getElementById("waWelcomeBox");
-      if (waBox) waBox.style.display = "flex";
+  //     // reset title modal
+  //     const ttl = document.getElementById("customerModalTitle");
+  //     if (ttl) ttl.innerText = "Tambah Customer";
 
-      const ppBox = document.getElementById("pppoeCreateBox");
-      if (ppBox) ppBox.style.display = "block";
+  //     // show kembali box WA & PPPoE
+  //     const waBox = document.getElementById("waWelcomeBox");
+  //     if (waBox) waBox.style.display = "flex";
 
-      loadCustomers();
-    } else {
-      App.showToast(
-        result.message || "Gagal menyimpan customer",
-        "error"
-      );
-    }
-  } catch (err) {
-    console.error(err);
+  //     const ppBox = document.getElementById("pppoeCreateBox");
+  //     if (ppBox) ppBox.style.display = "block";
 
-    App.showToast(
-      err.message || "Terjadi kesalahan",
-      "error"
-    );
-  }
+  //     loadCustomers();
+  //   } else {
+  //     App.showToast(
+  //       result.message || "Gagal menyimpan customer",
+  //       "error"
+  //     );
+  //   }
+  // } catch (err) {
+  //   console.error(err);
 
-  btn.disabled = false;
-  btn.innerText = "Simpan Customer";
+  //   App.showToast(
+  //     err.message || "Terjadi kesalahan",
+  //     "error"
+  //   );
+  // }
+
+  // btn.disabled = false;
+  // btn.innerText = "Simpan Customer";
 };
 
 /* ── Customer name link → profile page ── */

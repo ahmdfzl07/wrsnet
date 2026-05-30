@@ -944,7 +944,7 @@ async function loadCustomers() {
         "</div>" +
         "</td>" +
         '<td style="color:#6b7fa8">' +
-        _esc("testtt" || "–") +
+        _esc(c.phone || "–") +
         "</td>" +
         "<td>" +
         '<div style="font-weight:600;font-size:13px;color:#0d1b3e">' +
@@ -1658,6 +1658,7 @@ async function _saveCustomerInner() {
   if (data?.success) {
     // Sync kredensial portal (cuma jalan di mode edit, panel hidden = no-op)
     const ppRes = await ppSaveCredentials();
+
     if (!ppRes.ok) {
       // Customer sudah ter-save, tapi update kredensial portal gagal.
       // Jangan close modal — biar admin bisa lihat error & retry.
@@ -2449,6 +2450,7 @@ async function ppSaveCredentials() {
   }
   // portal_enabled
   if (enabled) payload.portal_enabled = !!enabled.checked;
+  console.log("PP CID DIKIRIM:", payload.customer_id);
 
   try {
     const r = await App.api(
@@ -2458,6 +2460,7 @@ async function ppSaveCredentials() {
         body: JSON.stringify(payload),
       },
     );
+
     if (r && r.success) {
       // Kalau ada password baru di-set, tampilkan modal hasil supaya admin bisa salin
       if (r.data && r.data.new_password) {
