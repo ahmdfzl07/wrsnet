@@ -599,7 +599,7 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-// const socket = io("http://103.150.81.147:3000/", {
+// const socket = io("https://admin.wrsnet.id//", {
 //   auth: { token: localStorage.getItem("token") }
 // });
 
@@ -610,7 +610,7 @@ const isLocal =
 const socket = io(
   isLocal
     ? "http://localhost:3001"
-    : "http://103.150.81.147:3000",
+    : "https://admin.wrsnet.id/",
   {
     auth: {
       token: localStorage.getItem("token"),
