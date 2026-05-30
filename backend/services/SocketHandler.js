@@ -1,22 +1,20 @@
 "use strict";
 
-/**
- * SocketHandler.js - ENHANCED
- * Ditambahkan: subscription room untuk ONT monitoring
- */
-
 const jwt = require("jsonwebtoken");
 const logger = require("../utils/logger");
 
 module.exports = (io) => {
-  // Authentication middleware for Socket.IO
+  // AUTH MIDDLEWARE
   io.use((socket, next) => {
     const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+
     if (!token) return next(new Error("Authentication required"));
+
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       socket.userId = decoded.id;
       socket.userRole = decoded.role;
+      socket.clientType = socket.handshake.auth?.client || "unknown";
       next();
     } catch (err) {
       next(new Error("Invalid token"));
@@ -24,126 +22,58 @@ module.exports = (io) => {
   });
 
   io.on("connection", (socket) => {
-    logger.debug(`Socket connected: ${socket.id} (user: ${socket.userId})`);
+    logger.debug(`Socket connected: ${socket.id} (${socket.clientType})`);
 
+    // setiap user masuk room personal
     socket.join(`user_${socket.userId}`);
 
-    // ================== LIVE CHAT ==================
-    const db = require("../models");
-    const LiveMessage = db.LiveMessage;
-
-    // SocketHandler.js
-
-    socket.on("chat:join", (room) => {
-      if (!room) return;
-
-      socket.join(room);
-
-      logger.debug(`Join room: ${room}`);
+    // =========================
+    // 🔥 GLOBAL CHAT BRIDGE
+    // =========================
+    socket.on("chat:join_global", () => {
+      socket.join("global_chat");
+      logger.debug(`Joined global_chat: ${socket.id}`);
     });
 
-    socket.on("chat:leave", (room) => {
-      if (!room) return;
-
-      socket.leave(room);
+    socket.on("chat:leave_global", () => {
+      socket.leave("global_chat");
     });
 
+    // =========================
+    // 💬 SEND CHAT
+    // =========================
     socket.on("chat:send", async (data) => {
-      const { room, name, user_id, type, message } = data;
-
-      const saved = await LiveMessage.create({
-        room,
-        name,
-        user_id,
-        type,
-        message,
-        is_read: false,
-      });
+      const { room, message } = data;
 
       const payload = {
-        id: saved.id,
         room,
-        name,
-        user_id,
-        type,
         message,
-        is_read: saved.is_read,
-        created_at: saved.created_at,
+        from: socket.clientType,
+        userId: socket.userId,
+        created_at: new Date(),
       };
 
-      io.to(room).emit("chat:receive", payload);
+      // 🔥 INI KUNCI: kirim ke semua client portal + admin
+      io.to("global_chat").emit("chat:receive", payload);
     });
 
-    // send tagihan via qontak
-    // socket.on("send-invoice", async ({ customer_id }) => {
-    //   try {
-    //     const customer = await Customer.findByPk(customer_id);
-
-    //     if (!customer) {
-    //       socket.emit("send-invoice-result", {
-    //         success: false,
-    //         message: "Customer tidak ditemukan",
-    //       });
-    //       return;
-    //     }
-
-    //     const payload = {
-    //       to_number: customer.phone,
-    //       message_template_id: "TEMPLATE_ID_QONTAK",
-    //       channel_integration_id: "CHANNEL_ID",
-    //       language: { code: "id" },
-    //       parameters: {
-    //         body: [{ key: "1", value: customer.name }],
-    //       },
-    //     };
-
-    //     const response = await axios.post(
-    //       "https://service-chat.qontak.com/api/open/v1/templates/whatsapp/dispatch",
-    //       payload,
-    //       {
-    //         headers: {
-    //           Authorization: `Bearer ${process.env.QONTAK_TOKEN}`,
-    //           "Content-Type": "application/json",
-    //         },
-    //       },
-    //     );
-
-    //     socket.emit("send-invoice-result", {
-    //       success: true,
-    //       data: response.data,
-    //     });
-    //   } catch (err) {
-    //     console.log(err);
-    //     // console.error(err.response?.data || err.message);
-
-    //     // socket.emit("send-invoice-result", {
-    //     //   success: false,
-    //     //   message: "Gagal kirim invoice",
-    //     // });
-    //   }
-    // });
-
-    // Device monitoring
+    // =========================
+    // DEVICE MONITORING (tetap)
+    // =========================
     socket.on("device:subscribe", (deviceId) =>
       socket.join(`device_${deviceId}`),
     );
+
     socket.on("device:unsubscribe", (deviceId) =>
       socket.leave(`device_${deviceId}`),
     );
 
-    // General monitoring dashboard
-    socket.on("monitoring:subscribe", () => socket.join("monitoring"));
-    socket.on("monitoring:unsubscribe", () => socket.leave("monitoring"));
-
-    // ─── ONT Monitoring (NEW) ─────────────────────────────
+    // =========================
+    // ONT MONITORING (tetap)
+    // =========================
     socket.on("ont:subscribe", () => socket.join("ont_monitoring"));
-    socket.on("ont:unsubscribe", () => socket.leave("ont_monitoring"));
 
-    // Subscribe ke ONT tertentu (untuk detail view)
-    socket.on("ont:subscribe_device", (ontId) => socket.join(`ont_${ontId}`));
-    socket.on("ont:unsubscribe_device", (ontId) =>
-      socket.leave(`ont_${ontId}`),
-    );
+    socket.on("ont:unsubscribe", () => socket.leave("ont_monitoring"));
 
     socket.on("disconnect", () => {
       logger.debug(`Socket disconnected: ${socket.id}`);
