@@ -1631,6 +1631,18 @@ async function _saveCustomerInner() {
     phone,
     email: document.getElementById("custEmail")?.value || "",
     address: document.getElementById("custAddress")?.value || "",
+
+    province_id: document.getElementById("custProvinsi")?.value || "",
+    kabupaten: document.getElementById("custKabupaten")?.value || "",
+    kecamatan: document.getElementById("custKecamatan")?.value || "",
+    kelurahan: document.getElementById("custKelurahan")?.value || "",
+
+    latitude: document.getElementById("custLatitude")?.value || null,
+    longitude: document.getElementById("custLongitude")?.value || null,
+
+    rt: document.getElementById("custRt")?.value || "",
+    rw: document.getElementById("custRw")?.value || "",
+
     package_id: document.getElementById("custPackage")?.value || null,
     addon_id: selectedAddons,
     diskon: document.getElementById("custDiscount")?.value || null,
