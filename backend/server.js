@@ -68,7 +68,7 @@ app.use(
 
 app.use(
   cors({
-    origin: process.env.APP_URL || "https://admin.wrsnet.id/",
+    origin: process.env.APP_URL || "http://admin.wrsnet.id/",
     credentials: true,
   }),
 );
