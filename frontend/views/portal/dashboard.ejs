@@ -1911,30 +1911,56 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 var PANELS = ['chat','home','billing','traffic','ont','wifi','upgrade','profil','tickets'];
 var BN_MAP  = { chat:'chat', home:'home', billing:'billing', traffic:'traffic', ont:'traffic', wifi:'wifi', upgrade:'wifi', profil:'profil', tickets:'profil' };
 
+const APP_ENV = "<%= process.env.APP_ENV %>";
+
+const ADMIN_URL = "https://admin.wrsnet.id/portal";
+const PORTAL_URL = "https://portal.wrsnet.id/portal";
+
+const CURRENT_HOST = window.location.origin;
+
 let HAS_OPENED_CHAT = false;
 function navTo(id) {
-  currentPanel = id;
+  const host = window.location.hostname;
 
-  // Show/hide panels
+  const isAdmin = host.includes("admin.wrsnet.id");
+  const isPortal = host.includes("portal.wrsnet.id");
+
+  if (id === "chat") {
+
+    if (!isAdmin) {
+      window.location.replace("https://admin.wrsnet.id/portal#chat");
+      return;
+    }
+
+    showPanel("chat");
+    return;
+  }
+
+  if (isAdmin && id !== "chat") {
+    window.location.replace("https://portal.wrsnet.id/portal");
+    return;
+  }
+
+  showPanel(id);
+}
+
+function showPanel(id) {
   PANELS.forEach(function(p) {
-    var el = document.getElementById('panel-'+p);
+    var el = document.getElementById('panel-' + p);
     if (el) el.classList.toggle('active', p === id);
   });
 
-  // Sync quick-menu (8 items)
   ['chat','home','billing','traffic','wifi','upgrade','profil','tickets'].forEach(function(p) {
     var el = document.getElementById('qm-'+p);
-    if (el) el.classList.toggle('active', p === id || (id === 'ont' && p === 'traffic'));
+    if (el) el.classList.toggle('active', p === id);
   });
 
-  // Sync bottom nav
   Object.keys(BN_MAP).forEach(function(panel) {
     var bnKey = BN_MAP[panel];
     var el = document.getElementById('bn-'+bnKey);
     if (el) el.classList.toggle('active', bnKey === BN_MAP[id]);
   });
 
-  // Scroll to content
   var c = document.querySelector('.content');
   if (c) window.scrollTo({ top: c.offsetTop - 10, behavior: 'smooth' });
 
@@ -1944,8 +1970,6 @@ function navTo(id) {
   }
 
   if (id === 'upgrade') loadUpgrade();
-
-  // Lazy-load
   if (id === 'traffic') loadTraffic();
   if (id === 'ont') loadSignal();
   if (id === 'billing') loadBilling();
@@ -1953,6 +1977,16 @@ function navTo(id) {
   if (id === 'profil') fillProfil();
   if (id === 'tickets') loadTickets();
 }
+
+window.addEventListener('load', function () {
+  const hash = window.location.hash.replace('#', '');
+
+  if (hash === 'chat') {
+    navTo('chat');
+  } else if (hash) {
+    navTo(hash);
+  }
+});
 
 // ══════════════════════════════════════════════════════════════
 // DASHBOARD
