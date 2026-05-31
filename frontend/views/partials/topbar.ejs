@@ -636,7 +636,6 @@ let LAST_DATE = null;
 function authFetch(url, options = {}) {
   const token = localStorage.getItem("token");
   const payload = JSON.parse(atob(token.split('.')[1]));
-  console.log(payload);
 
   return fetch(url, {
     ...options,
