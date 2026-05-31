@@ -603,6 +603,8 @@
 //   auth: { token: localStorage.getItem("token") }
 // });
 
+
+
 const isLocal =
   window.location.hostname === "localhost" ||
   window.location.hostname === "127.0.0.1";
@@ -631,6 +633,21 @@ const MY_ID = CUSTOMER_ID ?? USER_ID;
 let CURRENT_ROOM = null;
 let LAST_DATE = null;
 
+function authFetch(url, options = {}) {
+  const token = localStorage.getItem("token");
+  const payload = JSON.parse(atob(token.split('.')[1]));
+  console.log(payload);
+
+  return fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+      ...(options.headers || {})
+    }
+  });
+}
+
 function toggleChatPanel() {
   const panel = document.getElementById("chatPanel");
   if (panel.classList.contains("show")) {
@@ -645,7 +662,7 @@ function toggleChatPanel() {
 }
 
 function loadChatRooms() {
-  fetch("/portal/api/chat-rooms")
+  authFetch("/portal/api/chat-rooms")
     .then(res => res.json())
     .then(data => {
       const list = document.getElementById("chatRoomList");
@@ -688,7 +705,7 @@ function openChatRoom(room, name) {
 
   document.getElementById("chatBadge").style.display = "none";
 
-  fetch("/portal/api/chat/read", {
+  authFetch("/portal/api/chat/read", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({ room })
@@ -700,7 +717,7 @@ function openChatRoom(room, name) {
 function loadChatRoom(room) {
   const box = document.getElementById("chatBox");
 
-  fetch(`/portal/api/chat/${room}`)
+  authFetch(`/portal/api/chat/${room}`)
     .then(res => res.json())
     .then(data => {
       box.innerHTML = "";
@@ -851,7 +868,7 @@ function updateChatBadge(dataRooms) {
 }
 
 function loadUnreadBadge() {
-  fetch("/portal/api/chat-rooms")
+  authFetch("/portal/api/chat-rooms")
     .then(res => res.json())
     .then(data => {
       updateChatBadge(data);
