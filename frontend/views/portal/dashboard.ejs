@@ -1589,6 +1589,10 @@
   <div class="pm-loading-box">
     <div class="spinner"></div>
     <div class="text">Memproses pembayaran...</div>
+
+    <div style="margin-top:15px;">
+      <button onclick="closeLoading()" class="btn btn-secondary">Tutup</button>
+    </div>
   </div>
 </div>
 
@@ -1918,6 +1922,8 @@ const PORTAL_URL = "https://portal.wrsnet.id/portal";
 
 const CURRENT_HOST = window.location.origin;
 
+console.log(APP_ENV);
+
 let HAS_OPENED_CHAT = false;
 function navTo(id) {
   const host = window.location.hostname;
@@ -2116,15 +2122,17 @@ async function loadDashboard() {
       document.getElementById('homeInvCard').style.display = '';
       var h = '';
       d.invoices.forEach(function(inv) {
-        var sc = inv.status === 'overdue' ? 'overdue' : 'unpaid';
-        var sl = inv.status === 'overdue' ? 'Jatuh Tempo' : 'Belum Bayar';
-        h += '<div class="inv-item">' +
-          '<div class="inv-left"><div class="inv-period">' + mn(inv.period_month) + ' ' + inv.period_year + '</div>' +
-          '<div class="inv-due">Due: ' + fmtDate(inv.due_date) + '</div></div>' +
-          '<div class="inv-right"><div class="inv-amount">' + fmtRp(inv.total || inv.amount) + '</div>' +
-          '<div class="inv-badge inv-' + sc + '">' + sl + '</div></div>' +
-          '<button class="btn-pay" onclick=\'openPayModal(' + JSON.stringify(inv).replace(/'/g, '&#39;') + ')\'>Bayar</button>' +
-          '</div>';
+        if (inv.amount > 0) {
+          var sc = inv.status === 'overdue' ? 'overdue' : 'unpaid';
+          var sl = inv.status === 'overdue' ? 'Jatuh Tempo' : 'Belum Bayar';
+          h += '<div class="inv-item">' +
+            '<div class="inv-left"><div class="inv-period">' + mn(inv.period_month) + ' ' + inv.period_year + '</div>' +
+            '<div class="inv-due">Due: ' + fmtDate(inv.due_date) + '</div></div>' +
+            '<div class="inv-right"><div class="inv-amount">' + fmtRp(inv.total || inv.amount) + '</div>' +
+            '<div class="inv-badge inv-' + sc + '">' + sl + '</div></div>' +
+            '<button class="btn-pay" onclick=\'openPayModal(' + JSON.stringify(inv).replace(/'/g, '&#39;') + ')\'>Bayar</button>' +
+            '</div>';
+        }
       });
       document.getElementById('homeInvList').innerHTML = h;
     }
@@ -2176,17 +2184,19 @@ async function loadBilling() {
     } else {
       var h = '';
       invs.forEach(function(inv) {
-        var sc = inv.status === 'paid' ? 'paid' : inv.status === 'overdue' ? 'overdue' : inv.status === 'cancelled' ? 'cancelled' : 'unpaid';
-        var sl = { paid:'Lunas', overdue:'Jatuh Tempo', unpaid:'Belum Bayar', cancelled:'Dibatalkan' }[sc] || sc;
-        h += '<div class="inv-item">' +
-          '<div class="inv-left"><div class="inv-period">' + mn(inv.period_month) + ' ' + inv.period_year + '</div>' +
-          '<div class="inv-due">Due: ' + fmtDate(inv.due_date) + (inv.invoice_number ? ' · ' + inv.invoice_number : '') + '</div></div>' +
-          '<div class="inv-right"><div class="inv-amount">' + fmtRp(inv.total||inv.amount) + '</div>' +
-          '<div class="inv-badge inv-' + sc + '">' + sl + '</div></div>' +
-          (sc !== 'paid' && sc !== 'cancelled'
-            ? '<button class="btn-pay" onclick=\'openPayModal(' + JSON.stringify(inv).replace(/'/g, '&#39;') + ')\'>Bayar</button>'
-            : '') +
-          '</div>';
+        if (inv.amount > 0) {
+          var sc = inv.status === 'paid' ? 'paid' : inv.status === 'overdue' ? 'overdue' : inv.status === 'cancelled' ? 'cancelled' : 'unpaid';
+          var sl = { paid:'Lunas', overdue:'Jatuh Tempo', unpaid:'Belum Bayar', cancelled:'Dibatalkan' }[sc] || sc;
+          h += '<div class="inv-item">' +
+            '<div class="inv-left"><div class="inv-period">' + mn(inv.period_month) + ' ' + inv.period_year + '</div>' +
+            '<div class="inv-due">Due: ' + fmtDate(inv.due_date) + (inv.invoice_number ? ' · ' + inv.invoice_number : '') + '</div></div>' +
+            '<div class="inv-right"><div class="inv-amount">' + fmtRp(inv.total||inv.amount) + '</div>' +
+            '<div class="inv-badge inv-' + sc + '">' + sl + '</div></div>' +
+            (sc !== 'paid' && sc !== 'cancelled'
+              ? '<button class="btn-pay" onclick=\'openPayModal(' + JSON.stringify(inv).replace(/'/g, '&#39;') + ')\'>Bayar</button>'
+              : '') +
+            '</div>';
+        }
       });
       document.getElementById('billingList').innerHTML = h;
     }
@@ -2721,6 +2731,12 @@ function toggleGroup(key) {
 
 function selectPaymentMethod(method) {
   selectedPaymentMethod = method;
+}
+
+let paymentController = null;
+
+function closeLoading() {
+  document.getElementById("paymentLoading").style.display = "none";
 }
 
 async function payAuto() {
