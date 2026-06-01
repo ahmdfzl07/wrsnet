@@ -1,35 +1,50 @@
-const IsolirService = require('../services/IsolirService');
-const { sequelize } = require('../models');
+const IsolirService = require("../services/IsolirService");
+const { sequelize } = require("../models");
 
 class IsolirController {
-
   async stats(req, res) {
     try {
-      const [[isolated]]   = await sequelize.query("SELECT COUNT(*) AS cnt FROM customers WHERE isolir_status='isolated'");
+      const [[isolated]] = await sequelize.query(
+        "SELECT COUNT(*) AS cnt FROM customers WHERE isolir_status='isolated'",
+      );
       // "Eligible" = pelanggan yang bisa diisolir = punya static_ip ATAU pppoe_username + mikrotik_id
-      const [[withIP]]     = await sequelize.query(
+      const [[withIP]] = await sequelize.query(
         `SELECT COUNT(*) AS cnt FROM customers
          WHERE status='active' AND mikrotik_id IS NOT NULL
            AND ( (static_ip IS NOT NULL AND static_ip!='')
-              OR (pppoe_username IS NOT NULL AND pppoe_username!='') )`
+              OR (pppoe_username IS NOT NULL AND pppoe_username!='') )`,
       );
       // Devices: count dari devices (master), filter MikroTik router aktif yang punya extension isolir
-      const [[devices]]    = await sequelize.query(
+      const [[devices]] = await sequelize.query(
         `SELECT COUNT(*) AS total, SUM(md.status='online') AS online
          FROM mikrotik_devices md
          INNER JOIN devices d ON d.id = md.device_id
-         WHERE d.is_active=1 AND d.type='router'`
+         WHERE d.is_active=1 AND d.type='router'`,
       );
-      const [[recentLog]]  = await sequelize.query("SELECT COUNT(*) AS cnt FROM isolir_logs WHERE created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
-      const [[autoEnabled]]= await sequelize.query("SELECT value FROM app_settings WHERE `key`='isolir_auto_enable'").catch(()=>[[{value:'0'}]]);
-      res.json({ success: true, data: {
-        isolated:    parseInt(isolated?.cnt||0),
-        with_ip:     parseInt(withIP?.cnt||0),
-        devices:     { total: parseInt(devices?.total||0), online: parseInt(devices?.online||0) },
-        log_24h:     parseInt(recentLog?.cnt||0),
-        auto_enabled: autoEnabled?.value === '1'
-      }});
-    } catch(e) { res.status(500).json({ success:false, message:e.message }); }
+      const [[recentLog]] = await sequelize.query(
+        "SELECT COUNT(*) AS cnt FROM isolir_logs WHERE created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)",
+      );
+      const [[autoEnabled]] = await sequelize
+        .query(
+          "SELECT value FROM app_settings WHERE `key`='isolir_auto_enable'",
+        )
+        .catch(() => [[{ value: "0" }]]);
+      res.json({
+        success: true,
+        data: {
+          isolated: parseInt(isolated?.cnt || 0),
+          with_ip: parseInt(withIP?.cnt || 0),
+          devices: {
+            total: parseInt(devices?.total || 0),
+            online: parseInt(devices?.online || 0),
+          },
+          log_24h: parseInt(recentLog?.cnt || 0),
+          auto_enabled: autoEnabled?.value === "1",
+        },
+      });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 
   async listDevices(req, res) {
@@ -60,20 +75,26 @@ class IsolirController {
          INNER JOIN devices d ON d.id = md.device_id
          WHERE d.type='router'
          ORDER BY d.name`,
-        { type: sequelize.QueryTypes.SELECT }
+        { type: sequelize.QueryTypes.SELECT },
       );
 
       // Tambahkan derived 'port' untuk kompatibilitas UI: port yang ditampilkan
       // = port koneksi efektif (rest_port kalau REST, binary_port kalau native).
-      rows.forEach(r => {
-        const isRest = (r.api_protocol === 'rest-http' || r.api_protocol === 'rest-https');
+      rows.forEach((r) => {
+        const isRest =
+          r.api_protocol === "rest-http" || r.api_protocol === "rest-https";
         r.port = isRest ? r.api_port : r.binary_port;
-        r.use_ssl = (r.api_protocol === 'rest-https' || r.api_protocol === 'api-ssl') ? 1 : 0;
-        r.connection_type = isRest ? 'REST' : 'API Binary';
+        r.use_ssl =
+          r.api_protocol === "rest-https" || r.api_protocol === "api-ssl"
+            ? 1
+            : 0;
+        r.connection_type = isRest ? "REST" : "API Binary";
       });
 
-      res.json({ success:true, data: rows });
-    } catch(e) { res.status(500).json({ success:false, message:e.message }); }
+      res.json({ success: true, data: rows });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 
   // ── Daftar devices (router MikroTik) dari tabel devices yang bisa dipakai isolir
@@ -106,11 +127,13 @@ class IsolirController {
          ORDER BY d.name`,
         {
           replacements: includeId ? [includeId] : [],
-          type: sequelize.QueryTypes.SELECT
-        }
+          type: sequelize.QueryTypes.SELECT,
+        },
       );
-      res.json({ success:true, data: rows });
-    } catch(e) { res.status(500).json({ success:false, message:e.message }); }
+      res.json({ success: true, data: rows });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 
   // Save extension isolir (hanya field isolir-specific).
@@ -120,52 +143,75 @@ class IsolirController {
   async saveDevice(req, res) {
     try {
       const {
-        id, device_id,
+        id,
+        device_id,
         binary_port = 8728,
-        wan_interface = 'ether1',
-        notes = '',
-        isolir_page_url = null
+        wan_interface = "ether1",
+        notes = "",
+        isolir_page_url = null,
       } = req.body;
 
       // Validasi: device_id wajib (referensi ke devices.id)
       const devId = parseInt(device_id);
       if (!devId) {
-        return res.status(400).json({ success:false, message:'Pilih device dari halaman Device Management terlebih dahulu' });
+        return res.status(400).json({
+          success: false,
+          message:
+            "Pilih device dari halaman Device Management terlebih dahulu",
+        });
       }
 
       // Pastikan devId valid: ada di devices, type=router, brand/name MikroTik, aktif
       const devCheck = await sequelize.query(
         `SELECT id, name, ip_address, is_active, type, brand
          FROM devices WHERE id=? LIMIT 1`,
-        { replacements: [devId], type: sequelize.QueryTypes.SELECT }
+        { replacements: [devId], type: sequelize.QueryTypes.SELECT },
       );
       const dev = devCheck[0];
       if (!dev) {
-        return res.status(400).json({ success:false, message:'Device tidak ditemukan' });
+        return res
+          .status(400)
+          .json({ success: false, message: "Device tidak ditemukan" });
       }
-      if (dev.type !== 'router') {
-        return res.status(400).json({ success:false, message:'Device terpilih bukan tipe router' });
+      if (dev.type !== "router") {
+        return res.status(400).json({
+          success: false,
+          message: "Device terpilih bukan tipe router",
+        });
       }
       // Filter MikroTik dilonggarkan: brand starts with 'mikrotik' (case-insensitive,
       // trimmed) OR name mengandung 'mikrotik'. Reject hanya kalau keduanya negatif.
       // Ini supaya device dengan brand=NULL tapi name "MIKROTIK GTA" tetap diizinkan.
-      const brandNorm = String(dev.brand || '').trim().toLowerCase();
-      const nameNorm  = String(dev.name  || '').trim().toLowerCase();
-      const isMikroTik = brandNorm.startsWith('mikrotik') || nameNorm.includes('mikrotik');
+      const brandNorm = String(dev.brand || "")
+        .trim()
+        .toLowerCase();
+      const nameNorm = String(dev.name || "")
+        .trim()
+        .toLowerCase();
+      const isMikroTik =
+        brandNorm.startsWith("mikrotik") || nameNorm.includes("mikrotik");
       if (!isMikroTik) {
         return res.status(400).json({
           success: false,
-          message: 'Device terpilih bukan MikroTik (brand="' + (dev.brand || 'NULL') + '", name="' + dev.name + '"). Set brand di /devices ke "MikroTik" atau ubah nama-nya.'
+          message:
+            'Device terpilih bukan MikroTik (brand="' +
+            (dev.brand || "NULL") +
+            '", name="' +
+            dev.name +
+            '"). Set brand di /devices ke "MikroTik" atau ubah nama-nya.',
         });
       }
       if (dev.is_active != 1) {
-        return res.status(400).json({ success:false, message:'Device terpilih tidak aktif (nonaktif di /devices)' });
+        return res.status(400).json({
+          success: false,
+          message: "Device terpilih tidak aktif (nonaktif di /devices)",
+        });
       }
 
       const binPort = parseInt(binary_port) || 8728;
-      const wan     = String(wan_interface || 'ether1').trim();
-      const url     = isolir_page_url ? String(isolir_page_url).trim() : null;
-      const ntext   = notes ? String(notes).trim() : null;
+      const wan = String(wan_interface || "ether1").trim();
+      const url = isolir_page_url ? String(isolir_page_url).trim() : null;
+      const ntext = notes ? String(notes).trim() : null;
 
       // ── Validasi URL halaman isolir (kalau di-set per-device) ──
       // HTTPS tidak akan jalan di dst-nat. Tolak di server-side.
@@ -173,13 +219,15 @@ class IsolirController {
         if (/^https:\/\//i.test(url)) {
           return res.status(400).json({
             success: false,
-            message: 'URL halaman isolir per-device tidak boleh HTTPS. MikroTik dst-nat tidak bisa redirect ke HTTPS. Wajib pakai http:// dengan IP LAN. Contoh: http://192.168.1.100:3000/p/isolir'
+            message:
+              "URL halaman isolir per-device tidak boleh HTTPS. MikroTik dst-nat tidak bisa redirect ke HTTPS. Wajib pakai http:// dengan IP LAN. Contoh: http://192.168.1.100:3000/p/isolir",
           });
         }
         if (!/^https?:\/\//i.test(url)) {
           return res.status(400).json({
             success: false,
-            message: 'URL halaman isolir harus diawali "http://". Contoh: http://192.168.1.100:3000/p/isolir'
+            message:
+              'URL halaman isolir harus diawali "http://". Contoh: http://192.168.1.100:3000/p/isolir',
           });
         }
       }
@@ -187,51 +235,74 @@ class IsolirController {
       if (id) {
         // UPDATE: pastikan extension ada, dan device_id tidak konflik dengan extension lain
         const conflict = await sequelize.query(
-          'SELECT id FROM mikrotik_devices WHERE device_id=? AND id != ? LIMIT 1',
-          { replacements: [devId, id], type: sequelize.QueryTypes.SELECT }
+          "SELECT id FROM mikrotik_devices WHERE device_id=? AND id != ? LIMIT 1",
+          { replacements: [devId, id], type: sequelize.QueryTypes.SELECT },
         );
         if (conflict.length > 0) {
-          return res.status(400).json({ success:false, message:'Device ini sudah dipakai extension isolir lain (id=' + conflict[0].id + ')' });
+          return res.status(400).json({
+            success: false,
+            message:
+              "Device ini sudah dipakai extension isolir lain (id=" +
+              conflict[0].id +
+              ")",
+          });
         }
         await sequelize.query(
           `UPDATE mikrotik_devices
            SET device_id=?, binary_port=?, wan_interface=?, isolir_page_url=?, notes=?
            WHERE id=?`,
-          { replacements: [devId, binPort, wan, url, ntext, id] }
+          { replacements: [devId, binPort, wan, url, ntext, id] },
         );
-        return res.json({ success:true, message:'Extension isolir diperbarui' });
+        return res.json({
+          success: true,
+          message: "Extension isolir diperbarui",
+        });
       } else {
         // INSERT baru — pastikan device_id belum dipakai (UNIQUE constraint).
         const existing = await sequelize.query(
-          'SELECT id FROM mikrotik_devices WHERE device_id=? LIMIT 1',
-          { replacements: [devId], type: sequelize.QueryTypes.SELECT }
+          "SELECT id FROM mikrotik_devices WHERE device_id=? LIMIT 1",
+          { replacements: [devId], type: sequelize.QueryTypes.SELECT },
         );
         if (existing.length > 0) {
           return res.status(400).json({
-            success:false,
-            message:'Device "' + dev.name + '" sudah punya extension isolir (id=' + existing[0].id + '). Edit extension yang sudah ada saja.'
+            success: false,
+            message:
+              'Device "' +
+              dev.name +
+              '" sudah punya extension isolir (id=' +
+              existing[0].id +
+              "). Edit extension yang sudah ada saja.",
           });
         }
         await sequelize.query(
           `INSERT INTO mikrotik_devices
            (device_id, binary_port, wan_interface, isolir_page_url, notes, status)
            VALUES (?, ?, ?, ?, ?, 'unknown')`,
-          { replacements: [devId, binPort, wan, url, ntext] }
+          { replacements: [devId, binPort, wan, url, ntext] },
         );
-        return res.json({ success:true, message:'Extension isolir ditambahkan untuk "' + dev.name + '"' });
-      }
-    } catch(e) {
-      if (/Duplicate entry|uk_device_id/i.test(e.message || '')) {
-        return res.status(400).json({ success:false, message:'Device ini sudah dipakai extension isolir lain' });
-      }
-      // Schema belum termigrasi — kolom legacy NOT NULL masih ada
-      if (/cannot be null|doesn't have a default value/i.test(e.message || '')) {
-        return res.status(500).json({
-          success: false,
-          message: 'Migrasi skema isolir belum selesai. Tunggu 5-10 detik dan coba lagi. Kalau persisten, restart PM2 dan cek log untuk pesan [IsolirService] migrate...'
+        return res.json({
+          success: true,
+          message: 'Extension isolir ditambahkan untuk "' + dev.name + '"',
         });
       }
-      res.status(500).json({ success:false, message:e.message });
+    } catch (e) {
+      if (/Duplicate entry|uk_device_id/i.test(e.message || "")) {
+        return res.status(400).json({
+          success: false,
+          message: "Device ini sudah dipakai extension isolir lain",
+        });
+      }
+      // Schema belum termigrasi — kolom legacy NOT NULL masih ada
+      if (
+        /cannot be null|doesn't have a default value/i.test(e.message || "")
+      ) {
+        return res.status(500).json({
+          success: false,
+          message:
+            "Migrasi skema isolir belum selesai. Tunggu 5-10 detik dan coba lagi. Kalau persisten, restart PM2 dan cek log untuk pesan [IsolirService] migrate...",
+        });
+      }
+      res.status(500).json({ success: false, message: e.message });
     }
   }
 
@@ -240,27 +311,45 @@ class IsolirController {
   async deleteDevice(req, res) {
     try {
       // Clear FK customer (isolir_logs tetap, hanya soft-decouple)
-      await sequelize.query("UPDATE customers SET mikrotik_id=NULL WHERE mikrotik_id=?", { replacements: [req.params.id] });
+      await sequelize.query(
+        "UPDATE customers SET mikrotik_id=NULL WHERE mikrotik_id=?",
+        { replacements: [req.params.id] },
+      );
       // Cleanup bypass per-router (cascade manual karena tidak ada FK constraint)
-      await sequelize.query("DELETE FROM isolir_bypass_router WHERE device_id=?", { replacements: [req.params.id] }).catch(()=>{});
+      await sequelize
+        .query("DELETE FROM isolir_bypass_router WHERE device_id=?", {
+          replacements: [req.params.id],
+        })
+        .catch(() => {});
       // Hapus extension row
-      await sequelize.query("DELETE FROM mikrotik_devices WHERE id=?", { replacements: [req.params.id] });
-      res.json({ success:true, message:'Extension isolir dihapus. Device di /devices tetap ada.' });
-    } catch(e) { res.status(500).json({ success:false, message:e.message }); }
+      await sequelize.query("DELETE FROM mikrotik_devices WHERE id=?", {
+        replacements: [req.params.id],
+      });
+      res.json({
+        success: true,
+        message: "Extension isolir dihapus. Device di /devices tetap ada.",
+      });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 
   async testConnection(req, res) {
     try {
       const result = await IsolirService.testConnection(req.params.id);
-      res.json({ success:true, ...result });
-    } catch(e) { res.json({ success:false, message:e.message }); }
+      res.json({ success: true, ...result });
+    } catch (e) {
+      res.json({ success: false, message: e.message });
+    }
   }
 
   async setupFirewall(req, res) {
     try {
       const result = await IsolirService.setupFirewall(req.params.id);
       res.json(result);
-    } catch(e) { res.json({ success:false, message:e.message }); }
+    } catch (e) {
+      res.json({ success: false, message: e.message });
+    }
   }
 
   async listIsolated(req, res) {
@@ -279,14 +368,20 @@ class IsolirController {
          LEFT JOIN packages pkg        ON pkg.id=c.package_id
          WHERE c.isolir_status IN ('isolated','restoring')
          ORDER BY c.isolir_at DESC`,
-        { type: sequelize.QueryTypes.SELECT }
+        { type: sequelize.QueryTypes.SELECT },
       );
       // Tag method per row (static / pppoe) — untuk badge di UI
-      rows.forEach(r => {
-        r.isolir_method = r.static_ip ? 'static' : (r.pppoe_username ? 'pppoe' : 'unknown');
+      rows.forEach((r) => {
+        r.isolir_method = r.static_ip
+          ? "static"
+          : r.pppoe_username
+            ? "pppoe"
+            : "unknown";
       });
-      res.json({ success:true, data: rows });
-    } catch(e) { res.status(500).json({ success:false, message:e.message }); }
+      res.json({ success: true, data: rows });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 
   async listEligible(req, res) {
@@ -303,13 +398,19 @@ class IsolirController {
          WHERE (c.static_ip IS NOT NULL AND c.static_ip != '')
             OR (c.pppoe_username IS NOT NULL AND c.pppoe_username != '')
          ORDER BY c.name ASC`,
-        { type: sequelize.QueryTypes.SELECT }
+        { type: sequelize.QueryTypes.SELECT },
       );
-      rows.forEach(r => {
-        r.isolir_method = r.static_ip ? 'static' : (r.pppoe_username ? 'pppoe' : 'unknown');
+      rows.forEach((r) => {
+        r.isolir_method = r.static_ip
+          ? "static"
+          : r.pppoe_username
+            ? "pppoe"
+            : "unknown";
       });
-      res.json({ success:true, data: rows });
-    } catch(e) { res.status(500).json({ success:false, message:e.message }); }
+      res.json({ success: true, data: rows });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 
   // ── Daftar pelanggan akan & sudah jatuh tempo ────────────────
@@ -317,11 +418,13 @@ class IsolirController {
   async dueAlerts(req, res) {
     try {
       // Ambil grace days untuk highlight "sudah lewat grace period"
-      const graceRow = await sequelize.query(
-        "SELECT value FROM app_settings WHERE `key`='isolir_grace_days'",
-        { type: sequelize.QueryTypes.SELECT }
-      ).catch(() => []);
-      const graceDays = parseInt(graceRow[0]?.value || '0');
+      const graceRow = await sequelize
+        .query(
+          "SELECT value FROM app_settings WHERE `key`='isolir_grace_days'",
+          { type: sequelize.QueryTypes.SELECT },
+        )
+        .catch(() => []);
+      const graceDays = parseInt(graceRow[0]?.value || "0");
 
       // Customer yang punya invoice unpaid/overdue dengan due_date dalam 7 hari ke depan
       // ATAU due_date sudah lewat (overdue). Eligible untuk isolir = punya (static_ip ATAU pppoe_username) + mikrotik_id
@@ -335,16 +438,17 @@ class IsolirController {
             i.id AS invoice_id, i.invoice_number, i.due_date, i.status AS invoice_status,
             i.amount AS invoice_amount,
             DATEDIFF(CURDATE(), i.due_date) AS days_overdue
-         FROM customers c
-         LEFT JOIN packages pkg          ON pkg.id = c.package_id
-         LEFT JOIN mikrotik_devices md   ON md.id  = c.mikrotik_id
-         LEFT JOIN devices d             ON d.id   = md.device_id
-         INNER JOIN invoices i           ON i.customer_id = c.id
-         WHERE i.status IN ('unpaid','overdue')
-           AND DATE(i.due_date) <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)
-           AND c.status != 'inactive'
-         ORDER BY i.due_date ASC, c.name ASC`,
-        { type: sequelize.QueryTypes.SELECT }
+          FROM customers c
+          LEFT JOIN packages pkg          ON pkg.id = c.package_id
+          LEFT JOIN mikrotik_devices md   ON md.id  = c.mikrotik_id
+          LEFT JOIN devices d             ON d.id   = md.device_id
+          INNER JOIN invoices i           ON i.customer_id = c.id
+          WHERE i.status IN ('unpaid','overdue')
+            AND i.amount > 0
+            AND DATE(i.due_date) <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+            AND c.status != 'inactive'
+          ORDER BY i.due_date ASC, c.name ASC`,
+        { type: sequelize.QueryTypes.SELECT },
       );
 
       // Klasifikasi: upcoming (akan jatuh tempo, due_date masih di masa depan/hari ini)
@@ -352,7 +456,7 @@ class IsolirController {
       //              eligible (sudah lewat grace, siap di-isolir otomatis)
       //              isolated (sudah ter-isolir)
       const upcoming = [];
-      const overdue  = [];
+      const overdue = [];
       const eligible = [];
       const isolated = [];
 
@@ -360,34 +464,38 @@ class IsolirController {
         // Eligible untuk isolir: punya MIKROTIK + (static_ip ATAU pppoe_username)
         const hasMethod = !!(r.static_ip || r.pppoe_username);
         const isEligibleForIsolir = !!(hasMethod && r.mikrotik_id);
-        const isolirMethod = r.static_ip ? 'static' : (r.pppoe_username ? 'pppoe' : null);
+        const isolirMethod = r.static_ip
+          ? "static"
+          : r.pppoe_username
+            ? "pppoe"
+            : null;
         const overdueDays = parseInt(r.days_overdue) || 0;
         const item = {
-          id:              r.id,
-          customer_id:     r.customer_id,
-          name:            r.name,
-          phone:           r.phone,
-          static_ip:       r.static_ip,
-          pppoe_username:  r.pppoe_username,
-          isolir_method:   isolirMethod,
-          isolir_status:   r.isolir_status,
-          status:          r.status,
-          mikrotik_id:     r.mikrotik_id,
-          package_name:    r.package_name,
-          package_price:   parseFloat(r.package_price) || 0,
-          router_name:     r.router_name,
-          invoice_id:      r.invoice_id,
-          invoice_number:  r.invoice_number,
-          invoice_amount:  parseFloat(r.invoice_amount) || 0,
-          invoice_status:  r.invoice_status,
-          due_date:        r.due_date,
-          days_overdue:    overdueDays,
-          can_isolir:      isEligibleForIsolir,
-          missing_ip:      !hasMethod,     // dipertahankan: arti = "tidak ada method isolir sama sekali"
-          missing_router:  !r.mikrotik_id
+          id: r.id,
+          customer_id: r.customer_id,
+          name: r.name,
+          phone: r.phone,
+          static_ip: r.static_ip,
+          pppoe_username: r.pppoe_username,
+          isolir_method: isolirMethod,
+          isolir_status: r.isolir_status,
+          status: r.status,
+          mikrotik_id: r.mikrotik_id,
+          package_name: r.package_name,
+          package_price: parseFloat(r.package_price) || 0,
+          router_name: r.router_name,
+          invoice_id: r.invoice_id,
+          invoice_number: r.invoice_number,
+          invoice_amount: parseFloat(r.invoice_amount) || 0,
+          invoice_status: r.invoice_status,
+          due_date: r.due_date,
+          days_overdue: overdueDays,
+          can_isolir: isEligibleForIsolir,
+          missing_ip: !hasMethod, // dipertahankan: arti = "tidak ada method isolir sama sekali"
+          missing_router: !r.mikrotik_id,
         };
 
-        if (r.isolir_status === 'isolated') {
+        if (r.isolir_status === "isolated") {
           isolated.push(item);
         } else if (overdueDays > graceDays) {
           eligible.push(item);
@@ -402,42 +510,56 @@ class IsolirController {
         success: true,
         grace_days: graceDays,
         data: {
-          upcoming,    // akan jatuh tempo (≤7 hari ke depan, belum lewat)
-          overdue,     // sudah lewat tapi masih dalam grace period
-          eligible,    // sudah lewat grace — siap diisolir
-          isolated     // sudah ter-isolir
+          upcoming, // akan jatuh tempo (≤7 hari ke depan, belum lewat)
+          overdue, // sudah lewat tapi masih dalam grace period
+          eligible, // sudah lewat grace — siap diisolir
+          isolated, // sudah ter-isolir
         },
         counts: {
           upcoming: upcoming.length,
-          overdue:  overdue.length,
+          overdue: overdue.length,
           eligible: eligible.length,
-          isolated: isolated.length
-        }
+          isolated: isolated.length,
+        },
       });
-    } catch(e) {
-      res.status(500).json({ success:false, message:e.message });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
     }
   }
 
   async isolir(req, res) {
     try {
-      const result = await IsolirService.isolirCustomer(req.params.id, 'admin', req.user?.id);
+      const result = await IsolirService.isolirCustomer(
+        req.params.id,
+        "admin",
+        req.user?.id,
+      );
       res.json(result);
-    } catch(e) { res.json({ success:false, message:e.message }); }
+    } catch (e) {
+      res.json({ success: false, message: e.message });
+    }
   }
 
   async restore(req, res) {
     try {
-      const result = await IsolirService.restoreCustomer(req.params.id, 'admin', req.user?.id);
+      const result = await IsolirService.restoreCustomer(
+        req.params.id,
+        "admin",
+        req.user?.id,
+      );
       res.json(result);
-    } catch(e) { res.json({ success:false, message:e.message }); }
+    } catch (e) {
+      res.json({ success: false, message: e.message });
+    }
   }
 
   async runAutoIsolir(req, res) {
     try {
       const result = await IsolirService.runAutoIsolir();
-      res.json({ success:true, ...result });
-    } catch(e) { res.json({ success:false, message:e.message }); }
+      res.json({ success: true, ...result });
+    } catch (e) {
+      res.json({ success: false, message: e.message });
+    }
   }
 
   async getLogs(req, res) {
@@ -452,38 +574,47 @@ class IsolirController {
          LEFT JOIN mikrotik_devices md ON md.id=il.device_id
          LEFT JOIN devices d         ON d.id = md.device_id
          ORDER BY il.created_at DESC LIMIT ?`,
-        { replacements: [limit], type: sequelize.QueryTypes.SELECT }
+        { replacements: [limit], type: sequelize.QueryTypes.SELECT },
       );
-      res.json({ success:true, data: rows });
-    } catch(e) { res.status(500).json({ success:false, message:e.message }); }
+      res.json({ success: true, data: rows });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 
   async getSettings(req, res) {
     try {
-      const rows = await sequelize.query(
-        `SELECT \`key\`, value FROM app_settings WHERE \`key\` IN (
+      const rows = await sequelize
+        .query(
+          `SELECT \`key\`, value FROM app_settings WHERE \`key\` IN (
            'isolir_grace_days','isolir_notify_wa','isolir_page_url','isolir_auto_enable',
            'isolir_page_title','isolir_page_subtitle','isolir_page_color',
            'isolir_page_footer','isolir_page_help_text','isolir_page_show_invoices'
          )`,
-        { type: sequelize.QueryTypes.SELECT }
-      ).catch(() => []);
+          { type: sequelize.QueryTypes.SELECT },
+        )
+        .catch(() => []);
       const cfg = {};
-      rows.forEach(r => { cfg[r.key] = r.value; });
-      res.json({ success:true, data: cfg });
-    } catch(e) { res.status(500).json({ success:false, message:e.message }); }
+      rows.forEach((r) => {
+        cfg[r.key] = r.value;
+      });
+      res.json({ success: true, data: cfg });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 
   async saveSettings(req, res) {
     try {
       // ── Server-side validator URL halaman isolir ──
       // Jangan trust client. HTTPS dst-nat tidak akan jalan, jadi tolak di sini.
-      const rawUrl = String(req.body.isolir_page_url || '').trim();
+      const rawUrl = String(req.body.isolir_page_url || "").trim();
       if (rawUrl) {
         if (/^https:\/\//i.test(rawUrl)) {
           return res.status(400).json({
             success: false,
-            message: 'URL halaman isolir tidak boleh HTTPS. MikroTik dst-nat tidak bisa redirect ke HTTPS karena TLS handshake akan gagal. Wajib pakai http:// dengan IP LAN. Contoh: http://192.168.1.100:3000/p/isolir'
+            message:
+              "URL halaman isolir tidak boleh HTTPS. MikroTik dst-nat tidak bisa redirect ke HTTPS karena TLS handshake akan gagal. Wajib pakai http:// dengan IP LAN. Contoh: http://192.168.1.100:3000/p/isolir",
           });
         }
         // Kalau ada nilai tapi tidak ada protocol, anggap dia ketik tanpa "http://"
@@ -491,29 +622,39 @@ class IsolirController {
         if (!/^https?:\/\//i.test(rawUrl)) {
           return res.status(400).json({
             success: false,
-            message: 'URL halaman isolir harus diawali "http://". Contoh: http://192.168.1.100:3000/p/isolir'
+            message:
+              'URL halaman isolir harus diawali "http://". Contoh: http://192.168.1.100:3000/p/isolir',
           });
         }
       }
 
       const allowed = [
-        'isolir_grace_days','isolir_notify_wa','isolir_page_url','isolir_auto_enable',
+        "isolir_grace_days",
+        "isolir_notify_wa",
+        "isolir_page_url",
+        "isolir_auto_enable",
         // Customisasi tampilan halaman isolir publik (/p/isolir):
-        'isolir_page_title',        // judul utama (default: "Layanan Anda Sedang Diisolir")
-        'isolir_page_subtitle',     // sub-deskripsi di hero
-        'isolir_page_color',        // warna utama hex (default: #1a6ef5)
-        'isolir_page_footer',       // teks footer tambahan
-        'isolir_page_help_text',    // teks bantuan setelah daftar tagihan
-        'isolir_page_show_invoices' // '1'/'0' tampilkan rincian tagihan atau tidak
+        "isolir_page_title", // judul utama (default: "Layanan Anda Sedang Diisolir")
+        "isolir_page_subtitle", // sub-deskripsi di hero
+        "isolir_page_color", // warna utama hex (default: #1a6ef5)
+        "isolir_page_footer", // teks footer tambahan
+        "isolir_page_help_text", // teks bantuan setelah daftar tagihan
+        "isolir_page_show_invoices", // '1'/'0' tampilkan rincian tagihan atau tidak
       ];
       for (const key of allowed) {
         if (req.body[key] !== undefined) {
-          const { AppSetting } = require('../models');
-          await AppSetting.upsert({ key, value: String(req.body[key]), type: 'string' });
+          const { AppSetting } = require("../models");
+          await AppSetting.upsert({
+            key,
+            value: String(req.body[key]),
+            type: "string",
+          });
         }
       }
-      res.json({ success:true, message:'Settings disimpan' });
-    } catch(e) { res.status(500).json({ success:false, message:e.message }); }
+      res.json({ success: true, message: "Settings disimpan" });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 
   // ════════════════════════════════════════════════════════════════
@@ -523,68 +664,87 @@ class IsolirController {
   // ── Global bypass (berlaku untuk semua router) ──
   async listGlobalBypass(req, res) {
     try {
-      const FW = require('../services/IsolirFirewallV2');
+      const FW = require("../services/IsolirFirewallV2");
       const rows = await FW.listGlobalBypass();
       res.json({ success: true, data: rows });
-    } catch (e) { res.status(500).json({ success:false, message:e.message }); }
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 
   async addGlobalBypass(req, res) {
     try {
-      const FW = require('../services/IsolirFirewallV2');
+      const FW = require("../services/IsolirFirewallV2");
       await FW.addGlobalBypass({
         address: req.body.address,
-        label:   req.body.label,
-        category: req.body.category
+        label: req.body.label,
+        category: req.body.category,
       });
-      res.json({ success: true, message: 'Bypass global ditambahkan' });
-    } catch (e) { res.status(400).json({ success:false, message:e.message }); }
+      res.json({ success: true, message: "Bypass global ditambahkan" });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
   }
 
   async deleteGlobalBypass(req, res) {
     try {
-      const FW = require('../services/IsolirFirewallV2');
+      const FW = require("../services/IsolirFirewallV2");
       await FW.deleteGlobalBypass(req.params.id);
-      res.json({ success: true, message: 'Bypass global dihapus' });
-    } catch (e) { res.status(500).json({ success:false, message:e.message }); }
+      res.json({ success: true, message: "Bypass global dihapus" });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 
   // ── Per-router bypass ──
   async listRouterBypass(req, res) {
     try {
-      const FW = require('../services/IsolirFirewallV2');
+      const FW = require("../services/IsolirFirewallV2");
       const rows = await FW.listRouterBypass(req.params.id);
       res.json({ success: true, data: rows });
-    } catch (e) { res.status(500).json({ success:false, message:e.message }); }
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 
   async addRouterBypass(req, res) {
     try {
-      const FW = require('../services/IsolirFirewallV2');
+      const FW = require("../services/IsolirFirewallV2");
       await FW.addRouterBypass(req.params.id, {
         address: req.body.address,
-        label:   req.body.label
+        label: req.body.label,
       });
-      res.json({ success: true, message: 'Bypass per-router ditambahkan' });
-    } catch (e) { res.status(400).json({ success:false, message:e.message }); }
+      res.json({ success: true, message: "Bypass per-router ditambahkan" });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
   }
 
   async deleteRouterBypass(req, res) {
     try {
-      const FW = require('../services/IsolirFirewallV2');
+      const FW = require("../services/IsolirFirewallV2");
       await FW.deleteRouterBypass(req.params.id, req.params.entryId);
-      res.json({ success: true, message: 'Bypass per-router dihapus' });
-    } catch (e) { res.status(500).json({ success:false, message:e.message }); }
+      res.json({ success: true, message: "Bypass per-router dihapus" });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 
   // ── Sync bypass list ke MikroTik (tanpa rebuild rules) ──
   async syncBypass(req, res) {
     try {
-      const IsolirService = require('../services/IsolirService');
-      const FW = require('../services/IsolirFirewallV2');
+      const IsolirService = require("../services/IsolirService");
+      const FW = require("../services/IsolirFirewallV2");
       // Pakai loadDeviceWithMaster supaya dapet auth dari devices (master)
-      const device = await IsolirService.loadDeviceWithMaster(req.params.id, true);
-      if (!device) return res.status(404).json({ success:false, message:'Device tidak ditemukan atau tidak aktif' });
+      const device = await IsolirService.loadDeviceWithMaster(
+        req.params.id,
+        true,
+      );
+      if (!device)
+        return res.status(404).json({
+          success: false,
+          message: "Device tidak ditemukan atau tidak aktif",
+        });
 
       const api = await IsolirService.connectDevice(device);
       try {
@@ -592,19 +752,27 @@ class IsolirController {
         res.json({
           success: true,
           message: `Bypass synced: ${result.total} entry (added ${result.added}, removed ${result.removed})`,
-          ...result
+          ...result,
         });
-      } finally { try { api.close(); } catch(_){} }
-    } catch (e) { res.status(500).json({ success:false, message:e.message }); }
+      } finally {
+        try {
+          api.close();
+        } catch (_) {}
+      }
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 
   // ── Merged bypass preview (apa yang akan di-sync ke router ini) ──
   async previewMergedBypass(req, res) {
     try {
-      const FW = require('../services/IsolirFirewallV2');
+      const FW = require("../services/IsolirFirewallV2");
       const merged = await FW.getMergedBypassList(req.params.id);
       res.json({ success: true, data: merged, count: merged.length });
-    } catch (e) { res.status(500).json({ success:false, message:e.message }); }
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 
   // ════════════════════════════════════════════════════════════════
@@ -614,41 +782,45 @@ class IsolirController {
   // Preview hasil scan tanpa save — tampilkan di modal admin
   async previewRouterDetection(req, res) {
     try {
-      const Matcher = require('../services/MikrotikRouterMatcher');
+      const Matcher = require("../services/MikrotikRouterMatcher");
       const preview = await Matcher.previewBatchDetect();
       res.json({ success: true, data: preview });
     } catch (e) {
-      res.status(500).json({ success:false, message:e.message });
+      res.status(500).json({ success: false, message: e.message });
     }
   }
 
   // Apply hasil detection — simpan mikrotik_id ke customer terpilih
   async applyRouterDetection(req, res) {
     try {
-      const Matcher = require('../services/MikrotikRouterMatcher');
-      const decisions = Array.isArray(req.body?.decisions) ? req.body.decisions : [];
+      const Matcher = require("../services/MikrotikRouterMatcher");
+      const decisions = Array.isArray(req.body?.decisions)
+        ? req.body.decisions
+        : [];
       if (decisions.length === 0) {
-        return res.status(400).json({ success:false, message:'Tidak ada customer terpilih' });
+        return res
+          .status(400)
+          .json({ success: false, message: "Tidak ada customer terpilih" });
       }
       const result = await Matcher.applyBatchDetect(decisions);
       res.json({
         success: true,
         message: `${result.applied} customer di-assign router, ${result.failed} gagal`,
-        ...result
+        ...result,
       });
     } catch (e) {
-      res.status(500).json({ success:false, message:e.message });
+      res.status(500).json({ success: false, message: e.message });
     }
   }
 
   // Detect 1 customer on-demand (tombol per-card di Pelanggan Jatuh Tempo)
   async detectSingleCustomer(req, res) {
     try {
-      const Matcher = require('../services/MikrotikRouterMatcher');
+      const Matcher = require("../services/MikrotikRouterMatcher");
       const result = await Matcher.detectSingle(req.params.customerId);
       res.json({ success: result.success, ...result });
     } catch (e) {
-      res.status(500).json({ success:false, message:e.message });
+      res.status(500).json({ success: false, message: e.message });
     }
   }
 }

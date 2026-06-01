@@ -75,65 +75,86 @@
     .dd-title{font-size:16px;}
   }
   `;
-  const style = document.createElement('style');
-  style.id = 'digs-dialog-styles';
+  const style = document.createElement("style");
+  style.id = "digs-dialog-styles";
   style.textContent = css;
   document.head.appendChild(style);
 
   // ── Icon SVG per type ──
   const ICONS = {
     info: '<svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
-    success: '<svg fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>',
-    warning: '<svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>',
-    error: '<svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>'
+    success:
+      '<svg fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>',
+    warning:
+      '<svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>',
+    error:
+      '<svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>',
   };
 
   function esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
   }
   // Allow basic inline tags (<strong>, <code>, <br>) di message — input dari Claude/dev, bukan dari user.
   // Tetap escape user-content (log lines) sepenuhnya.
   function richEsc(s) {
-    return String(s == null ? '' : s);
+    return String(s == null ? "" : s);
   }
   function classifyLog(line) {
     const s = String(line);
-    if (/^[✓✔]|berhasil|selesai|synced|created|added|OK/i.test(s)) return 'ok';
-    if (/^[⚠]|warning|warn/i.test(s)) return 'warn';
-    if (/^[✗✘×]|gagal|error|fail/i.test(s)) return 'err';
-    return '';
+    if (/^[✓✔]|berhasil|selesai|synced|created|added|OK/i.test(s)) return "ok";
+    if (/^[⚠]|warning|warn/i.test(s)) return "warn";
+    if (/^[✗✘×]|gagal|error|fail/i.test(s)) return "err";
+    return "";
   }
 
   // ── Core open/close ──
   function open(opts) {
     return new Promise((resolve) => {
-      const { type='info', title='', message='', bullets=null, log=null,
-              isConfirm=false, confirmText='OK', cancelText='Batal' } = opts;
+      const {
+        type = "info",
+        title = "",
+        message = "",
+        bullets = null,
+        log = null,
+        isConfirm = false,
+        confirmText = "OK",
+        cancelText = "Batal",
+      } = opts;
 
-      const ov = document.createElement('div');
-      ov.className = 'dd-ov';
+      const ov = document.createElement("div");
+      ov.className = "dd-ov";
 
-      const iconClass = ['info','success','warning','error'].includes(type) ? type : 'info';
+      const iconClass = ["info", "success", "warning", "error"].includes(type)
+        ? type
+        : "info";
       const confirmBtnClass =
-        type === 'success' ? 'dd-btn-success'
-        : type === 'warning' ? 'dd-btn-warning'
-        : type === 'error' ? 'dd-btn-danger'
-        : 'dd-btn-primary';
+        type === "success"
+          ? "dd-btn-success"
+          : type === "warning"
+            ? "dd-btn-warning"
+            : type === "error"
+              ? "dd-btn-danger"
+              : "dd-btn-primary";
 
-      let bulletsHtml = '';
+      let bulletsHtml = "";
       if (Array.isArray(bullets) && bullets.length) {
-        bulletsHtml = '<ul class="dd-bullets">' +
-          bullets.map(b => `<li>${esc(b)}</li>`).join('') +
-          '</ul>';
+        bulletsHtml =
+          '<ul class="dd-bullets">' +
+          bullets.map((b) => `<li>${esc(b)}</li>`).join("") +
+          "</ul>";
       }
 
-      let logHtml = '';
+      let logHtml = "";
       if (Array.isArray(log) && log.length) {
-        const lines = log.map(l => {
-          const cls = classifyLog(l);
-          return `<span class="dd-log-line ${cls}">${esc(l)}</span>`;
-        }).join('');
+        const lines = log
+          .map((l) => {
+            const cls = classifyLog(l);
+            return `<span class="dd-log-line ${cls}">${esc(l)}</span>`;
+          })
+          .join("");
         logHtml = `
           <div class="dd-log-toggle" data-toggle="log">
             <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
@@ -150,9 +171,9 @@
             <h3 class="dd-title">${esc(title)}</h3>
             <p class="dd-msg">${richEsc(message)}</p>
           </div>
-          ${(bulletsHtml || logHtml) ? `<div class="dd-body">${bulletsHtml}${logHtml}</div>` : ''}
+          ${bulletsHtml || logHtml ? `<div class="dd-body">${bulletsHtml}${logHtml}</div>` : ""}
           <div class="dd-ft">
-            ${isConfirm ? `<button class="dd-btn dd-btn-ghost" data-act="cancel">${esc(cancelText)}</button>` : ''}
+            ${isConfirm ? `<button class="dd-btn dd-btn-ghost" data-act="cancel">${esc(cancelText)}</button>` : ""}
             <button class="dd-btn ${confirmBtnClass}" data-act="ok">${esc(confirmText)}</button>
           </div>
         </div>
@@ -161,28 +182,37 @@
       document.body.appendChild(ov);
       // Trigger reflow for animation
       void ov.offsetWidth;
-      ov.classList.add('open');
+      ov.classList.add("open");
 
       const close = (val) => {
-        ov.classList.remove('open');
-        setTimeout(() => { ov.remove(); resolve(val); }, 200);
+        ov.classList.remove("open");
+        setTimeout(() => {
+          ov.remove();
+          resolve(val);
+        }, 200);
       };
       const onKey = (e) => {
-        if (e.key === 'Escape') { document.removeEventListener('keydown', onKey); close(false); }
-        if (e.key === 'Enter')  { document.removeEventListener('keydown', onKey); close(true); }
+        if (e.key === "Escape") {
+          document.removeEventListener("keydown", onKey);
+          close(false);
+        }
+        if (e.key === "Enter") {
+          document.removeEventListener("keydown", onKey);
+          close(true);
+        }
       };
-      document.addEventListener('keydown', onKey);
+      document.addEventListener("keydown", onKey);
 
-      ov.addEventListener('click', (e) => {
+      ov.addEventListener("click", (e) => {
         // Toggle log expand
         const tog = e.target.closest('[data-toggle="log"]');
         if (tog) {
-          tog.classList.toggle('open');
-          tog.nextElementSibling.classList.toggle('open');
+          tog.classList.toggle("open");
+          tog.nextElementSibling.classList.toggle("open");
           // Update text
-          const span = tog.querySelector('span');
+          const span = tog.querySelector("span");
           if (span) {
-            const isOpen = tog.classList.contains('open');
+            const isOpen = tog.classList.contains("open");
             span.textContent = isOpen
               ? `Sembunyikan detail log (${log.length} entri)`
               : `Lihat detail log (${log.length} entri)`;
@@ -190,12 +220,16 @@
           return;
         }
         // Klik luar dialog → cancel
-        if (e.target === ov) { document.removeEventListener('keydown', onKey); close(false); return; }
+        if (e.target === ov) {
+          document.removeEventListener("keydown", onKey);
+          close(false);
+          return;
+        }
         // Klik tombol
-        const btn = e.target.closest('[data-act]');
+        const btn = e.target.closest("[data-act]");
         if (btn) {
-          document.removeEventListener('keydown', onKey);
-          close(btn.dataset.act === 'ok');
+          document.removeEventListener("keydown", onKey);
+          close(btn.dataset.act === "ok");
         }
       });
 
@@ -210,15 +244,19 @@
   window.DigsDialog = {
     alert: (opts) => open({ ...opts, isConfirm: false }),
     confirm: (opts) => open({ ...opts, isConfirm: true }),
-    info:    (msg, title='Informasi')   => open({ type:'info',    title, message: msg, isConfirm:false }),
-    success: (msg, title='Berhasil')    => open({ type:'success', title, message: msg, isConfirm:false }),
-    warning: (msg, title='Peringatan')  => open({ type:'warning', title, message: msg, isConfirm:false }),
-    error:   (msg, title='Error')       => open({ type:'error',   title, message: msg, isConfirm:false })
+    info: (msg, title = "Informasi") =>
+      open({ type: "info", title, message: msg, isConfirm: false }),
+    success: (msg, title = "Berhasil") =>
+      open({ type: "success", title, message: msg, isConfirm: false }),
+    warning: (msg, title = "Peringatan") =>
+      open({ type: "warning", title, message: msg, isConfirm: false }),
+    error: (msg, title = "Error") =>
+      open({ type: "error", title, message: msg, isConfirm: false }),
   };
 })();
 
 function _calcDueDate(billingDay, installDate) {
-  const bd  = Math.min(parseInt(billingDay) || 1, 28);
+  const bd = Math.min(parseInt(billingDay) || 1, 28);
   // Referensi: pakai installation_date jika ada
   const ref = installDate ? new Date(installDate) : new Date();
   // Coba tgl billing_day di bulan yang sama dengan referensi
@@ -227,32 +265,68 @@ function _calcDueDate(billingDay, installDate) {
   if (candidate <= ref) {
     candidate = new Date(ref.getFullYear(), ref.getMonth() + 1, bd);
   }
-  return candidate.toLocaleDateString('id-ID', {day:'2-digit', month:'2-digit', year:'numeric'});
+  return candidate.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
-function _setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
-function _setBar(id,r){const e=document.getElementById(id);if(e)e.style.width=Math.min(Math.max((r||0)*100,2),100)+'%';}
-function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function _fmtDt(d){if(!d)return'–';const dt=new Date(d);return dt.toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'2-digit'})+' '+dt.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});}
-function _fmtDate(d){
-  if(!d) return '–';
+function _setText(id, v) {
+  const e = document.getElementById(id);
+  if (e) e.textContent = v;
+}
+function _setBar(id, r) {
+  const e = document.getElementById(id);
+  if (e) e.style.width = Math.min(Math.max((r || 0) * 100, 2), 100) + "%";
+}
+function _esc(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+function _fmtDt(d) {
+  if (!d) return "–";
+  const dt = new Date(d);
+  return (
+    dt.toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+    }) +
+    " " +
+    dt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+  );
+}
+function _fmtDate(d) {
+  if (!d) return "–";
   // handle YYYY-MM-DD string or Date object
-  const s = typeof d === 'string' ? d.substring(0,10) : d;
-  const dt = new Date(s + 'T00:00:00');
-  if (isNaN(dt)) return String(d).substring(0,10);
-  return dt.toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const s = typeof d === "string" ? d.substring(0, 10) : d;
+  const dt = new Date(s + "T00:00:00");
+  if (isNaN(dt)) return String(d).substring(0, 10);
+  return dt.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
-function _days(d){
-  if(!d) return 0;
-  const s = typeof d === 'string' ? d.substring(0,10) : String(d).substring(0,10);
-  return Math.max(0, Math.round((Date.now() - new Date(s+'T00:00:00')) / 86400000));
+function _days(d) {
+  if (!d) return 0;
+  const s =
+    typeof d === "string" ? d.substring(0, 10) : String(d).substring(0, 10);
+  return Math.max(
+    0,
+    Math.round((Date.now() - new Date(s + "T00:00:00")) / 86400000),
+  );
 }
 
-let _tab = 'isolated';
-let _devices = [], _eligible = [];
+let _tab = "isolated";
+let _devices = [],
+  _eligible = [];
 
-document.addEventListener('DOMContentLoaded', () => {
-  if (typeof App !== 'undefined') App.init();
+document.addEventListener("DOMContentLoaded", () => {
+  if (typeof App !== "undefined") App.init();
   loadStats();
   loadDevices();
   loadIsolated();
@@ -264,48 +338,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── Stats ─────────────────────────────────────────────────────
 async function loadStats() {
-  const d = await App.api('/isolir/stats');
+  const d = await App.api("/isolir/stats");
   if (!d?.success) return;
   const { isolated, with_ip, devices, log_24h, auto_enabled } = d.data;
-  _setText('scIsolated', isolated);
-  _setText('scIsolatedSub', isolated + ' dari ' + with_ip + ' pelanggan eligible');
-  _setBar('scIsolatedBar', isolated / Math.max(with_ip, 1));
-  _setText('scWithIP', with_ip);
-  _setText('scDevices', devices.online + '/' + devices.total);
-  _setText('scDevicesSub', devices.total + ' device terdaftar');
-  _setBar('scDevicesBar', devices.online / Math.max(devices.total, 1));
-  _setText('scLog24', log_24h);
+  _setText("scIsolated", isolated);
+  _setText(
+    "scIsolatedSub",
+    isolated + " dari " + with_ip + " pelanggan eligible",
+  );
+  _setBar("scIsolatedBar", isolated / Math.max(with_ip, 1));
+  _setText("scWithIP", with_ip);
+  _setText("scDevices", devices.online + "/" + devices.total);
+  _setText("scDevicesSub", devices.total + " device terdaftar");
+  _setBar("scDevicesBar", devices.online / Math.max(devices.total, 1));
+  _setText("scLog24", log_24h);
 }
 
 // ── Devices ───────────────────────────────────────────────────
 async function loadDevices() {
-  const d = await App.api('/isolir/devices');
+  const d = await App.api("/isolir/devices");
   _devices = d?.data || [];
-  const el = document.getElementById('deviceList');
+  const el = document.getElementById("deviceList");
   if (!el) return;
   if (!_devices.length) {
-    el.innerHTML = '<div class="empty-state">'
-      + '<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>'
-      + '<p>Belum ada router untuk isolir</p>'
-      + '<p style="font-size:11px;color:var(--d-muted);margin-top:4px;">Tambahkan router MikroTik di <a href="/devices" style="color:#1d4ed8;text-decoration:underline;">Device Management</a> dulu, lalu klik <strong>+ Tambah</strong> di sini.</p>'
-      + '</div>';
+    el.innerHTML =
+      '<div class="empty-state">' +
+      '<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>' +
+      "<p>Belum ada router untuk isolir</p>" +
+      '<p style="font-size:11px;color:var(--d-muted);margin-top:4px;">Tambahkan router MikroTik di <a href="/devices" style="color:#1d4ed8;text-decoration:underline;">Device Management</a> dulu, lalu klik <strong>+ Tambah</strong> di sini.</p>' +
+      "</div>";
     return;
   }
-  el.innerHTML = _devices.map(dev => {
-    const st = dev.status || 'unknown';
-    // Badge protocol dari devices.api_protocol (via field connection_type yang sudah di-derive di controller)
-    const protoBadge = dev.connection_type
-      ? `<span style="display:inline-block;padding:1px 6px;border-radius:5px;background:${dev.connection_type === 'REST' ? '#dbeafe' : '#fef3c7'};border:1px solid ${dev.connection_type === 'REST' ? '#93c5fd' : '#fde68a'};color:${dev.connection_type === 'REST' ? '#1d4ed8' : '#92400e'};font-size:10px;font-weight:600;margin-left:4px;">${dev.connection_type}</span>`
-      : '';
-    return `<div class="dev-card">
+  el.innerHTML = _devices
+    .map((dev) => {
+      const st = dev.status || "unknown";
+      // Badge protocol dari devices.api_protocol (via field connection_type yang sudah di-derive di controller)
+      const protoBadge = dev.connection_type
+        ? `<span style="display:inline-block;padding:1px 6px;border-radius:5px;background:${dev.connection_type === "REST" ? "#dbeafe" : "#fef3c7"};border:1px solid ${dev.connection_type === "REST" ? "#93c5fd" : "#fde68a"};color:${dev.connection_type === "REST" ? "#1d4ed8" : "#92400e"};font-size:10px;font-weight:600;margin-left:4px;">${dev.connection_type}</span>`
+        : "";
+      return `<div class="dev-card">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
         <span class="dev-dot ${st}"></span>
         <div style="flex:1;min-width:0;">
           <div style="font-size:13px;font-weight:700;color:#0d1b3e;display:flex;align-items:center;flex-wrap:wrap;gap:2px;">
             <span>${_esc(dev.name)}</span>${protoBadge}
           </div>
-          <div style="font-size:11px;color:#64748b;font-family:'DM Mono',monospace;">${_esc(dev.host || '-')}:${dev.port || '?'}${dev.last_ping ? ' · ' + _fmtDt(dev.last_ping) : ''}</div>
-          ${dev.device_id ? `<div style="font-size:10px;color:#94a3b8;margin-top:2px;">Device #${dev.device_id} · <a href="/devices" style="color:#1d4ed8;text-decoration:underline;">Kelola Mikrotik</a></div>` : ''}
+          <div style="font-size:11px;color:#64748b;font-family:'DM Mono',monospace;">${_esc(dev.host || "-")}:${dev.port || "?"}${dev.last_ping ? " · " + _fmtDt(dev.last_ping) : ""}</div>
+          ${dev.device_id ? `<div style="font-size:10px;color:#94a3b8;margin-top:2px;">Device #${dev.device_id} · <a href="/devices" style="color:#1d4ed8;text-decoration:underline;">Kelola Mikrotik</a></div>` : ""}
         </div>
       </div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;">
@@ -316,55 +395,71 @@ async function loadDevices() {
         <button class="btn-xs" style="padding:3px 9px;border-radius:7px;background:#fff0f2;border:1.5px solid #fca5a5;color:#dc2626;font-size:11px;font-weight:600;cursor:pointer;" onclick="deleteDevice(${dev.id})">Hapus</button>
       </div>
     </div>`;
-  }).join('');
+    })
+    .join("");
 }
 
-window.pingDevice = async function(id) {
-  App.showToast('Menghubungi router...', 'info');
-  const d = await App.api('/isolir/devices/' + id + '/ping', { method: 'POST', body: '{}' });
+window.pingDevice = async function (id) {
+  App.showToast("Menghubungi router...", "info");
+  const d = await App.api("/isolir/devices/" + id + "/ping", {
+    method: "POST",
+    body: "{}",
+  });
   if (d?.success) {
-    const apiLabels = { 'v7-rest':'REST', 'v7':'API v7', 'v6':'API v6', 'unknown':'Native' };
-    const mode = apiLabels[d.api_mode] || d.api_mode || '';
-    const ver  = d.ros_version ? ` · RouterOS ${d.ros_version}` : '';
-    App.showToast(`✅ ${d.identity || 'MikroTik'} — online (${mode})${ver}`, 'success');
+    const apiLabels = {
+      "v7-rest": "REST",
+      v7: "API v7",
+      v6: "API v6",
+      unknown: "Native",
+    };
+    const mode = apiLabels[d.api_mode] || d.api_mode || "";
+    const ver = d.ros_version ? ` · RouterOS ${d.ros_version}` : "";
+    App.showToast(
+      `✅ ${d.identity || "MikroTik"} — online (${mode})${ver}`,
+      "success",
+    );
     loadDevices();
-  }
-  else App.showToast('❌ ' + (d?.message||'Gagal'), 'error');
+  } else App.showToast("❌ " + (d?.message || "Gagal"), "error");
 };
 
-window.setupFirewall = async function(id) {
+window.setupFirewall = async function (id) {
   const ok = await DigsDialog.confirm({
-    type: 'warning',
-    title: 'Setup Firewall',
-    message: 'Akan membuat rule <strong>NAT redirect + bypass + drop</strong> di router ini.',
+    type: "warning",
+    title: "Setup Firewall",
+    message:
+      "Akan membuat rule <strong>NAT redirect + bypass + drop</strong> di router ini.",
     bullets: [
-      'URL halaman isolir sudah diset (HTTP, IP LOKAL, bukan domain CDN)',
-      'Rule lama sudah dibersihkan via WinBox'
+      "URL halaman isolir sudah diset (HTTP, IP LOKAL, bukan domain CDN)",
+      "Rule lama sudah dibersihkan via WinBox",
     ],
-    confirmText: 'Lanjutkan',
-    cancelText: 'Batal'
+    confirmText: "Lanjutkan",
+    cancelText: "Batal",
   });
   if (!ok) return;
 
-  App.showToast('Setup firewall...', 'info');
-  const d = await App.api('/isolir/devices/' + id + '/setup-firewall', { method: 'POST', body: '{}' });
+  App.showToast("Setup firewall...", "info");
+  const d = await App.api("/isolir/devices/" + id + "/setup-firewall", {
+    method: "POST",
+    body: "{}",
+  });
 
   if (d?.success) {
     DigsDialog.alert({
-      type: 'success',
-      title: 'Setup Firewall Selesai',
-      message: 'Pelanggan diisolir akan di-redirect ke halaman isolir saat browsing.',
-      log: Array.isArray(d.details) ? d.details : null
+      type: "success",
+      title: "Setup Firewall Selesai",
+      message:
+        "Pelanggan diisolir akan di-redirect ke halaman isolir saat browsing.",
+      log: Array.isArray(d.details) ? d.details : null,
     });
-    App.showToast('✅ Firewall setup selesai', 'success');
+    App.showToast("✅ Firewall setup selesai", "success");
   } else {
     DigsDialog.alert({
-      type: 'error',
-      title: 'Setup Firewall Gagal',
-      message: d?.message || 'Terjadi kesalahan tidak diketahui.',
-      log: Array.isArray(d?.details) ? d.details : null
+      type: "error",
+      title: "Setup Firewall Gagal",
+      message: d?.message || "Terjadi kesalahan tidak diketahui.",
+      log: Array.isArray(d?.details) ? d.details : null,
     });
-    App.showToast('❌ Setup firewall gagal — lihat detail di dialog', 'error');
+    App.showToast("❌ Setup firewall gagal — lihat detail di dialog", "error");
   }
 };
 
@@ -379,12 +474,12 @@ async function loadAvailableDevices(includeId) {
   try {
     const url = includeId
       ? `/isolir/available-devices?include=${includeId}`
-      : '/isolir/available-devices';
+      : "/isolir/available-devices";
     const d = await App.api(url);
     _availableDevices = d?.data || [];
     return _availableDevices;
   } catch (e) {
-    console.error('loadAvailableDevices error:', e);
+    console.error("loadAvailableDevices error:", e);
     _availableDevices = [];
     return [];
   }
@@ -393,30 +488,37 @@ async function loadAvailableDevices(includeId) {
 // Populate dropdown #fDeviceId dari _availableDevices.
 // Optional: preselect device dengan id tertentu.
 function populateDevicePicker(preselectId) {
-  const sel = document.getElementById('fDeviceId');
-  const hint = document.getElementById('fDeviceHint');
+  const sel = document.getElementById("fDeviceId");
+  const hint = document.getElementById("fDeviceHint");
   if (!sel) return;
 
   if (!_availableDevices.length) {
-    sel.innerHTML = '<option value="">— Tidak ada device MikroTik tersedia —</option>';
+    sel.innerHTML =
+      '<option value="">— Tidak ada device MikroTik tersedia —</option>';
     if (hint) {
-      hint.innerHTML = '⚠ Tidak ada device dengan <code>type=router</code>, <code>brand=MikroTik</code>, dan <code>aktif</code> di /devices, atau semua sudah dipakai. <a href="/devices" style="color:#1d4ed8;text-decoration:underline;">Tambah device dulu</a>.';
-      hint.style.color = '#dc2626';
+      hint.innerHTML =
+        '⚠ Tidak ada device dengan <code>type=router</code>, <code>brand=MikroTik</code>, dan <code>aktif</code> di /devices, atau semua sudah dipakai. <a href="/devices" style="color:#1d4ed8;text-decoration:underline;">Tambah device dulu</a>.';
+      hint.style.color = "#dc2626";
     }
     return;
   }
 
-  const opts = ['<option value="">— Pilih router dari Device Management —</option>'];
+  const opts = [
+    '<option value="">— Pilih router dari Device Management —</option>',
+  ];
   for (const dev of _availableDevices) {
     const label = `${dev.name} (${dev.ip_address})`;
-    const selected = (preselectId && parseInt(dev.id) === parseInt(preselectId)) ? 'selected' : '';
+    const selected =
+      preselectId && parseInt(dev.id) === parseInt(preselectId)
+        ? "selected"
+        : "";
     opts.push(`<option value="${dev.id}" ${selected}>${_esc(label)}</option>`);
   }
-  sel.innerHTML = opts.join('');
+  sel.innerHTML = opts.join("");
 
   if (hint) {
     hint.innerHTML = `${_availableDevices.length} device tersedia. Untuk menambah, daftarkan dulu di <a href="/devices" style="color:#1d4ed8;text-decoration:underline;">Device Management</a>.`;
-    hint.style.color = '';
+    hint.style.color = "";
   }
 
   // Trigger preview kalau ada preselect
@@ -424,320 +526,415 @@ function populateDevicePicker(preselectId) {
 }
 
 // Saat user pilih device dari dropdown — tampilkan preview detail
-window.onDevicePickChange = function() {
-  const sel = document.getElementById('fDeviceId');
-  const prev = document.getElementById('fDevicePreview');
+window.onDevicePickChange = function () {
+  const sel = document.getElementById("fDeviceId");
+  const prev = document.getElementById("fDevicePreview");
   if (!sel || !prev) return;
 
   const id = parseInt(sel.value) || 0;
   if (!id) {
-    prev.style.display = 'none';
+    prev.style.display = "none";
     return;
   }
 
-  const dev = _availableDevices.find(x => parseInt(x.id) === id);
+  const dev = _availableDevices.find((x) => parseInt(x.id) === id);
   if (!dev) {
-    prev.style.display = 'none';
+    prev.style.display = "none";
     return;
   }
 
   // Derive label protocol untuk preview
   const protoLabels = {
-    'rest-http':  'REST API (HTTP)',
-    'rest-https': 'REST API (HTTPS)',
-    'api-plain':  'API Binary (plain)',
-    'api-ssl':    'API Binary (SSL)'
+    "rest-http": "REST API (HTTP)",
+    "rest-https": "REST API (HTTPS)",
+    "api-plain": "API Binary (plain)",
+    "api-ssl": "API Binary (SSL)",
   };
   const proto = dev.api_protocol;
-  const protoLabel = protoLabels[proto] || (proto || '⚠ tidak di-set (default: Native Binary plain)');
-  const protoWarn  = !proto
-    ? '<div style="margin-top:6px;padding:6px 8px;background:#fef3c7;border:1px solid #fbbf24;border-radius:6px;color:#92400e;font-size:10.5px;line-height:1.4;">⚠ <code>api_protocol</code> di /devices belum di-set. Default fallback: <strong>Native Binary plain (port ' + (dev.api_port || 8728) + ')</strong>. Untuk REST API, set <code>api_protocol</code> ke <code>rest-http</code> atau <code>rest-https</code> di /devices.</div>'
-    : '';
+  const protoLabel =
+    protoLabels[proto] ||
+    proto ||
+    "⚠ tidak di-set (default: Native Binary plain)";
+  const protoWarn = !proto
+    ? '<div style="margin-top:6px;padding:6px 8px;background:#fef3c7;border:1px solid #fbbf24;border-radius:6px;color:#92400e;font-size:10.5px;line-height:1.4;">⚠ <code>api_protocol</code> di /devices belum di-set. Default fallback: <strong>Native Binary plain (port ' +
+      (dev.api_port || 8728) +
+      ")</strong>. Untuk REST API, set <code>api_protocol</code> ke <code>rest-http</code> atau <code>rest-https</code> di /devices.</div>"
+    : "";
 
-  document.getElementById('fPrevName').textContent = dev.name + (dev.model ? ' · ' + dev.model : '');
-  document.getElementById('fPrevHost').textContent = `${dev.ip_address}:${dev.api_port || '?'} (${dev.api_username || 'admin'})`;
-  document.getElementById('fPrevProto').innerHTML = `Protokol: <strong>${protoLabel}</strong> · Brand: ${dev.brand || '<em style="color:#dc2626;">NULL</em>'}` + protoWarn;
-  prev.style.display = '';
+  document.getElementById("fPrevName").textContent =
+    dev.name + (dev.model ? " · " + dev.model : "");
+  document.getElementById("fPrevHost").textContent =
+    `${dev.ip_address}:${dev.api_port || "?"} (${dev.api_username || "admin"})`;
+  document.getElementById("fPrevProto").innerHTML =
+    `Protokol: <strong>${protoLabel}</strong> · Brand: ${dev.brand || '<em style="color:#dc2626;">NULL</em>'}` +
+    protoWarn;
+  prev.style.display = "";
 };
 
-window.editDevice = async function(dev) {
-  if (typeof dev === 'string') dev = JSON.parse(dev);
-  document.getElementById('deviceModalTitle').textContent = 'Edit Konfigurasi Isolir';
-  document.getElementById('fDevId').value  = dev.id;
+window.editDevice = async function (dev) {
+  if (typeof dev === "string") dev = JSON.parse(dev);
+  document.getElementById("deviceModalTitle").textContent =
+    "Edit Konfigurasi Isolir";
+  document.getElementById("fDevId").value = dev.id;
 
   // Load available devices DENGAN includeId supaya device terpilih masuk dropdown
   await loadAvailableDevices(dev.id);
   populateDevicePicker(dev.device_id);
 
   // Field isolir-specific
-  document.getElementById('fWan').value         = dev.wan_interface || 'ether1';
-  document.getElementById('fBinaryPort').value  = dev.binary_port || 8728;
-  document.getElementById('fIsolirUrl').value   = dev.isolir_page_url || '';
-  document.getElementById('fNotes').value       = dev.notes || '';
+  document.getElementById("fWan").value = dev.wan_interface || "ether1";
+  document.getElementById("fBinaryPort").value = dev.binary_port || 8728;
+  document.getElementById("fIsolirUrl").value = dev.isolir_page_url || "";
+  document.getElementById("fNotes").value = dev.notes || "";
 
   // Pasang validator real-time pada field URL (kalau belum)
-  if (typeof attachUrlValidators === 'function') attachUrlValidators();
+  if (typeof attachUrlValidators === "function") attachUrlValidators();
 
-  openModal('deviceModal');
+  openModal("deviceModal");
 };
 
-window.deleteDevice = async function(id) {
+window.deleteDevice = async function (id) {
   const ok = await DigsDialog.confirm({
-    type: 'error',
-    title: 'Hapus Extension Isolir',
-    message: 'Extension isolir untuk router ini akan dihapus.<br>Device di <strong>/devices</strong> TIDAK ikut terhapus.<br>Pelanggan yang terkait akan kehilangan referensi router isolir.',
-    confirmText: 'Hapus Extension',
-    cancelText: 'Batal'
+    type: "error",
+    title: "Hapus Extension Isolir",
+    message:
+      "Extension isolir untuk router ini akan dihapus.<br>Device di <strong>/devices</strong> TIDAK ikut terhapus.<br>Pelanggan yang terkait akan kehilangan referensi router isolir.",
+    confirmText: "Hapus Extension",
+    cancelText: "Batal",
   });
   if (!ok) return;
-  const d = await App.api('/isolir/devices/' + id, { method: 'DELETE' });
-  if (d?.success) { App.showToast(d.message || 'Extension dihapus', 'success'); loadDevices(); }
-  else App.showToast(d?.message||'Gagal', 'error');
+  const d = await App.api("/isolir/devices/" + id, { method: "DELETE" });
+  if (d?.success) {
+    App.showToast(d.message || "Extension dihapus", "success");
+    loadDevices();
+  } else App.showToast(d?.message || "Gagal", "error");
 };
 
-window.openDeviceModal = async function() {
-  document.getElementById('deviceModalTitle').textContent = 'Tambah Router untuk Isolir';
+window.openDeviceModal = async function () {
+  document.getElementById("deviceModalTitle").textContent =
+    "Tambah Router untuk Isolir";
   // Reset field
-  document.getElementById('fDevId').value = '';
-  document.getElementById('fWan').value   = 'ether1';
-  document.getElementById('fBinaryPort').value = '8728';
-  document.getElementById('fIsolirUrl').value = '';
-  document.getElementById('fNotes').value = '';
-  document.getElementById('fDevicePreview').style.display = 'none';
+  document.getElementById("fDevId").value = "";
+  document.getElementById("fWan").value = "ether1";
+  document.getElementById("fBinaryPort").value = "8728";
+  document.getElementById("fIsolirUrl").value = "";
+  document.getElementById("fNotes").value = "";
+  document.getElementById("fDevicePreview").style.display = "none";
 
   // Load available devices (yang belum punya extension)
-  const sel = document.getElementById('fDeviceId');
+  const sel = document.getElementById("fDeviceId");
   if (sel) sel.innerHTML = '<option value="">Memuat...</option>';
   await loadAvailableDevices(null);
   populateDevicePicker(null);
 
   // Pasang validator real-time pada field URL
-  if (typeof attachUrlValidators === 'function') attachUrlValidators();
+  if (typeof attachUrlValidators === "function") attachUrlValidators();
 
-  openModal('deviceModal');
+  openModal("deviceModal");
 };
 
-window.saveDevice = async function() {
-  const id        = document.getElementById('fDevId').value;
-  const deviceId  = document.getElementById('fDeviceId').value;
+window.saveDevice = async function () {
+  const id = document.getElementById("fDevId").value;
+  const deviceId = document.getElementById("fDeviceId").value;
 
   if (!deviceId) {
-    App.showToast('Pilih device dari dropdown terlebih dahulu', 'error');
+    App.showToast("Pilih device dari dropdown terlebih dahulu", "error");
     return;
   }
 
   // ── HARD BLOCK: tolak save kalau URL HTTPS ──
-  const fIsolirUrl = document.getElementById('fIsolirUrl');
+  const fIsolirUrl = document.getElementById("fIsolirUrl");
   if (fIsolirUrl && window.validateIsolirUrl) {
     const v = window.validateIsolirUrl(fIsolirUrl.value);
-    if (!v.ok && v.severity === 'error') {
-      App.showToast(v.msg, 'error');
+    if (!v.ok && v.severity === "error") {
+      App.showToast(v.msg, "error");
       fIsolirUrl.focus();
       return;
     }
   }
 
   const body = {
-    id:              id || undefined,
-    device_id:       parseInt(deviceId),
-    binary_port:     parseInt(document.getElementById('fBinaryPort').value) || 8728,
-    wan_interface:   document.getElementById('fWan').value || 'ether1',
-    isolir_page_url: document.getElementById('fIsolirUrl').value || null,
-    notes:           document.getElementById('fNotes').value || ''
+    id: id || undefined,
+    device_id: parseInt(deviceId),
+    binary_port: parseInt(document.getElementById("fBinaryPort").value) || 8728,
+    wan_interface: document.getElementById("fWan").value || "ether1",
+    isolir_page_url: document.getElementById("fIsolirUrl").value || null,
+    notes: document.getElementById("fNotes").value || "",
   };
 
-  const method = id ? 'PUT' : 'POST';
-  const url    = id ? '/isolir/devices/' + id : '/isolir/devices';
+  const method = id ? "PUT" : "POST";
+  const url = id ? "/isolir/devices/" + id : "/isolir/devices";
   const d = await App.api(url, { method, body: JSON.stringify(body) });
-  if (d?.success) { App.showToast(d.message||'Disimpan', 'success'); closeModal('deviceModal'); loadDevices(); }
-  else App.showToast(d?.message||'Gagal', 'error');
+  if (d?.success) {
+    App.showToast(d.message || "Disimpan", "success");
+    closeModal("deviceModal");
+    loadDevices();
+  } else App.showToast(d?.message || "Gagal", "error");
 };
 
 // ── Isolated list ─────────────────────────────────────────────
 async function loadIsolated() {
-  const d = await App.api('/isolir/isolated');
+  const d = await App.api("/isolir/isolated");
   const rows = d?.data || [];
-  const el = document.getElementById('isolatedTableWrap');
+  const el = document.getElementById("isolatedTableWrap");
   if (!el) return;
   if (!rows.length) {
-    el.innerHTML = '<div class="empty-state"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg><p>Semua pelanggan aktif 🎉</p></div>';
+    el.innerHTML =
+      '<div class="empty-state"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg><p>Semua pelanggan aktif 🎉</p></div>';
     return;
   }
-  el.innerHTML = '<table class="iso-tbl"><thead><tr><th>Pelanggan</th><th>Target</th><th>Router</th><th>Jatuh Tempo</th><th>Diisolir</th><th>Aksi</th></tr></thead><tbody>' +
-    rows.map(r => {
-      const overdue = r.last_due ? _days(r.last_due) : 0;
-      const target = r.static_ip
-        ? `<span class="ip-tag">${_esc(r.static_ip)}</span>`
-        : (r.pppoe_username ? `<span class="ip-tag" style="background:#fef3c7;border-color:#fde68a;color:#92400e;" title="PPPoE user">${_esc(r.pppoe_username)}</span><div style="font-size:10px;color:#94a3b8;margin-top:2px;">PPPoE</div>` : '<span style="color:#94a3b8;">–</span>');
-      return `<tr>
+  el.innerHTML =
+    '<table class="iso-tbl"><thead><tr><th>Pelanggan</th><th>Target</th><th>Router</th><th>Jatuh Tempo</th><th>Diisolir</th><th>Aksi</th></tr></thead><tbody>' +
+    rows
+      .map((r) => {
+        const overdue = r.last_due ? _days(r.last_due) : 0;
+        const target = r.static_ip
+          ? `<span class="ip-tag">${_esc(r.static_ip)}</span>`
+          : r.pppoe_username
+            ? `<span class="ip-tag" style="background:#fef3c7;border-color:#fde68a;color:#92400e;" title="PPPoE user">${_esc(r.pppoe_username)}</span><div style="font-size:10px;color:#94a3b8;margin-top:2px;">PPPoE</div>`
+            : '<span style="color:#94a3b8;">–</span>';
+        return `<tr>
         <td data-label="">
           <div style="font-weight:700">${_esc(r.name)}</div>
           <div style="font-size:11px;color:#64748b;">${_esc(r.customer_id)}</div>
         </td>
         <td data-label="Target">${target}</td>
-        <td data-label="Router" style="font-size:12px;color:#64748b;">${_esc(r.router_name||'–')}</td>
+        <td data-label="Router" style="font-size:12px;color:#64748b;">${_esc(r.router_name || "–")}</td>
         <td data-label="Jatuh Tempo">
-          ${r.last_due
-            ? `<div style="font-size:12px;font-weight:700;color:#dc2626;">${_fmtDate(r.last_due)}</div>${overdue > 0 ? '<div style="font-size:10.5px;color:#94a3b8;">'+overdue+' hari telat</div>' : ''}`
-            : r.billing_date
-              ? `<div style="font-size:12px;color:#94a3b8;">${_calcDueDate(r.billing_date, r.installation_date)}</div>`
-              : '<span style="color:#94a3b8;">–</span>'}
+          ${
+            r.last_due
+              ? `<div style="font-size:12px;font-weight:700;color:#dc2626;">${_fmtDate(r.last_due)}</div>${overdue > 0 ? '<div style="font-size:10.5px;color:#94a3b8;">' + overdue + " hari telat</div>" : ""}`
+              : r.billing_date
+                ? `<div style="font-size:12px;color:#94a3b8;">${_calcDueDate(r.billing_date, r.installation_date)}</div>`
+                : '<span style="color:#94a3b8;">–</span>'
+          }
         </td>
         <td data-label="Diisolir" style="font-size:11.5px;color:#64748b;">${_fmtDt(r.isolir_at)}</td>
         <td data-label="">
           <button class="btn-success btn-xs" onclick="doRestore(${r.id},'${_esc(r.name)}')">✓ Restore</button>
         </td>
       </tr>`;
-    }).join('') + '</tbody></table>';
+      })
+      .join("") +
+    "</tbody></table>";
 }
 
 // ── Eligible list ─────────────────────────────────────────────
 async function loadEligible() {
-  const d = await App.api('/isolir/eligible');
+  const d = await App.api("/isolir/eligible");
   _eligible = d?.data || [];
-  _setText('eligibleCount', _eligible.length + ' pelanggan');
+  _setText("eligibleCount", _eligible.length + " pelanggan");
 
   // Update dropdowns — label menampilkan IP atau PPPoE user
-  const _label = c => {
-    if (c.static_ip)      return `${c.name} — ${c.static_ip}`;
+  const _label = (c) => {
+    if (c.static_ip) return `${c.name} — ${c.static_ip}`;
     if (c.pppoe_username) return `${c.name} — PPPoE: ${c.pppoe_username}`;
     return c.name;
   };
-  const isoSel = document.getElementById('manualIsolirSel');
-  const reSel  = document.getElementById('manualRestoreSel');
-  if (isoSel) isoSel.innerHTML = '<option value="">Pilih pelanggan...</option>' +
-    _eligible.filter(c => c.isolir_status !== 'isolated').map(c => `<option value="${c.id}">${_esc(_label(c))}</option>`).join('');
-  if (reSel) reSel.innerHTML = '<option value="">Pilih pelanggan...</option>' +
-    _eligible.filter(c => c.isolir_status === 'isolated').map(c => `<option value="${c.id}">${_esc(_label(c))}</option>`).join('');
+  const isoSel = document.getElementById("manualIsolirSel");
+  const reSel = document.getElementById("manualRestoreSel");
+  if (isoSel)
+    isoSel.innerHTML =
+      '<option value="">Pilih pelanggan...</option>' +
+      _eligible
+        .filter((c) => c.isolir_status !== "isolated")
+        .map((c) => `<option value="${c.id}">${_esc(_label(c))}</option>`)
+        .join("");
+  if (reSel)
+    reSel.innerHTML =
+      '<option value="">Pilih pelanggan...</option>' +
+      _eligible
+        .filter((c) => c.isolir_status === "isolated")
+        .map((c) => `<option value="${c.id}">${_esc(_label(c))}</option>`)
+        .join("");
 
-  const el = document.getElementById('eligibleTableWrap');
+  const el = document.getElementById("eligibleTableWrap");
   if (!el) return;
   if (!_eligible.length) {
-    el.innerHTML = '<div class="empty-state"><p>Belum ada pelanggan dengan static IP / PPPoE</p></div>';
+    el.innerHTML =
+      '<div class="empty-state"><p>Belum ada pelanggan dengan static IP / PPPoE</p></div>';
     return;
   }
-  el.innerHTML = '<table class="iso-tbl"><thead><tr><th>Pelanggan</th><th>Target</th><th>Paket</th><th>Jatuh Tempo</th><th>Status</th><th>Router</th><th>Aksi</th></tr></thead><tbody>' +
-    _eligible.map(r => {
-      const statusCls = r.isolir_status === 'isolated' ? 'red' : 'green';
-      const statusLbl = r.isolir_status === 'isolated' ? '⛔ Isolir' : '✓ Aktif';
-      const overdue = r.last_due ? _days(r.last_due) : 0;
-      const target = r.static_ip
-        ? `<span class="ip-tag">${_esc(r.static_ip)}</span>`
-        : (r.pppoe_username ? `<span class="ip-tag" style="background:#fef3c7;border-color:#fde68a;color:#92400e;" title="PPPoE">${_esc(r.pppoe_username)}</span><div style="font-size:10px;color:#94a3b8;margin-top:2px;">PPPoE</div>` : '<span style="color:#94a3b8;">–</span>');
-      return `<tr>
+  el.innerHTML =
+    '<table class="iso-tbl"><thead><tr><th>Pelanggan</th><th>Target</th><th>Paket</th><th>Jatuh Tempo</th><th>Status</th><th>Router</th><th>Aksi</th></tr></thead><tbody>' +
+    _eligible
+      .map((r) => {
+        const statusCls = r.isolir_status === "isolated" ? "red" : "green";
+        const statusLbl =
+          r.isolir_status === "isolated" ? "⛔ Isolir" : "✓ Aktif";
+        const overdue = r.last_due ? _days(r.last_due) : 0;
+        const target = r.static_ip
+          ? `<span class="ip-tag">${_esc(r.static_ip)}</span>`
+          : r.pppoe_username
+            ? `<span class="ip-tag" style="background:#fef3c7;border-color:#fde68a;color:#92400e;" title="PPPoE">${_esc(r.pppoe_username)}</span><div style="font-size:10px;color:#94a3b8;margin-top:2px;">PPPoE</div>`
+            : '<span style="color:#94a3b8;">–</span>';
+        return `<tr>
         <td data-label=""><div style="font-weight:700">${_esc(r.name)}</div><div style="font-size:11px;color:#64748b;">${_esc(r.customer_id)}</div></td>
         <td data-label="Target">${target}</td>
-        <td data-label="Paket" style="font-size:12px;">${_esc(r.package_name||'–')}</td>
+        <td data-label="Paket" style="font-size:12px;">${_esc(r.package_name || "–")}</td>
         <td data-label="Jatuh Tempo">
-          ${r.last_due
-            ? `<span style="font-size:12px;font-weight:600;color:${overdue>0?'#dc2626':'#16a34a'};">${_fmtDate(r.last_due)}</span>${overdue>0?'<div style="font-size:10.5px;color:#94a3b8;">'+overdue+'h telat</div>':r.last_inv_status==='paid'?'<div style="font-size:10px;color:#16a34a;">Lunas</div>':''}`
-            : r.billing_date
-              ? `<span style="font-size:12px;color:#94a3b8;">${_calcDueDate(r.billing_date, r.installation_date)}</span>`
-              : '<span style="color:#94a3b8;">–</span>'}
+          ${
+            r.last_due
+              ? `<span style="font-size:12px;font-weight:600;color:${overdue > 0 ? "#dc2626" : "#16a34a"};">${_fmtDate(r.last_due)}</span>${overdue > 0 ? '<div style="font-size:10.5px;color:#94a3b8;">' + overdue + "h telat</div>" : r.last_inv_status === "paid" ? '<div style="font-size:10px;color:#16a34a;">Lunas</div>' : ""}`
+              : r.billing_date
+                ? `<span style="font-size:12px;color:#94a3b8;">${_calcDueDate(r.billing_date, r.installation_date)}</span>`
+                : '<span style="color:#94a3b8;">–</span>'
+          }
         </td>
         <td data-label="Status"><span class="badge ${statusCls}">${statusLbl}</span></td>
-        <td data-label="Router" style="font-size:12px;color:#64748b;">${_esc(r.router_name||'–')}</td>
+        <td data-label="Router" style="font-size:12px;color:#64748b;">${_esc(r.router_name || "–")}</td>
         <td data-label="">
-          ${r.isolir_status !== 'isolated'
-            ? `<button class="btn-danger btn-xs" onclick="doIsolir(${r.id},'${_esc(r.name)}')">Isolir</button>`
-            : `<button class="btn-success btn-xs" onclick="doRestore(${r.id},'${_esc(r.name)}')">Restore</button>`}
+          ${
+            r.isolir_status !== "isolated"
+              ? `<button class="btn-danger btn-xs" onclick="doIsolir(${r.id},'${_esc(r.name)}')">Isolir</button>`
+              : `<button class="btn-success btn-xs" onclick="doRestore(${r.id},'${_esc(r.name)}')">Restore</button>`
+          }
         </td>
       </tr>`;
-    }).join('') + '</tbody></table>';
+      })
+      .join("") +
+    "</tbody></table>";
 }
 
 // ── Logs ──────────────────────────────────────────────────────
 async function loadLogs() {
-  const d = await App.api('/isolir/logs?limit=50');
+  const d = await App.api("/isolir/logs?limit=50");
   const rows = d?.data || [];
-  const el = document.getElementById('logsTableWrap');
+  const el = document.getElementById("logsTableWrap");
   if (!el) return;
-  if (!rows.length) { el.innerHTML = '<div class="empty-state"><p>Belum ada log aktivitas</p></div>'; return; }
-  el.innerHTML = '<table class="iso-tbl"><thead><tr><th>Waktu</th><th>Pelanggan</th><th>Target</th><th>Aksi</th><th>Oleh</th><th>Status</th></tr></thead><tbody>' +
-    rows.map(r => {
-      // Tampilkan IP kalau ada, kalau tidak tampilkan PPPoE user
-      const target = r.static_ip
-        ? `<span class="ip-tag">${_esc(r.static_ip)}</span>`
-        : (r.pppoe_username ? `<span class="ip-tag" style="background:#fef3c7;border-color:#fde68a;color:#92400e;">PPPoE: ${_esc(r.pppoe_username)}</span>` : '<span style="color:#94a3b8;">–</span>');
-      const methodBadge = r.isolir_method === 'pppoe'
-        ? '<span class="badge amber" style="margin-left:4px;">PPPoE</span>'
-        : (r.isolir_method === 'static' ? '<span class="badge blue" style="margin-left:4px;">Static</span>' : '');
-      return `<tr>
+  if (!rows.length) {
+    el.innerHTML =
+      '<div class="empty-state"><p>Belum ada log aktivitas</p></div>';
+    return;
+  }
+  el.innerHTML =
+    '<table class="iso-tbl"><thead><tr><th>Waktu</th><th>Pelanggan</th><th>Target</th><th>Aksi</th><th>Oleh</th><th>Status</th></tr></thead><tbody>' +
+    rows
+      .map((r) => {
+        // Tampilkan IP kalau ada, kalau tidak tampilkan PPPoE user
+        const target = r.static_ip
+          ? `<span class="ip-tag">${_esc(r.static_ip)}</span>`
+          : r.pppoe_username
+            ? `<span class="ip-tag" style="background:#fef3c7;border-color:#fde68a;color:#92400e;">PPPoE: ${_esc(r.pppoe_username)}</span>`
+            : '<span style="color:#94a3b8;">–</span>';
+        const methodBadge =
+          r.isolir_method === "pppoe"
+            ? '<span class="badge amber" style="margin-left:4px;">PPPoE</span>'
+            : r.isolir_method === "static"
+              ? '<span class="badge blue" style="margin-left:4px;">Static</span>'
+              : "";
+        return `<tr>
       <td data-label="Waktu" style="font-size:11.5px;color:#64748b;white-space:nowrap;">${_fmtDt(r.created_at)}</td>
-      <td data-label=""><div style="font-weight:600;">${_esc(r.cust_name||'–')}</div><div style="font-size:11px;color:#94a3b8;">${_esc(r.cid||'')}</div></td>
+      <td data-label=""><div style="font-weight:600;">${_esc(r.cust_name || "–")}</div><div style="font-size:11px;color:#94a3b8;">${_esc(r.cid || "")}</div></td>
       <td data-label="Target">${target}${methodBadge}</td>
-      <td data-label="Aksi"><span class="badge ${r.action==='isolir'?'red':'green'}">${r.action==='isolir'?'⛔ Isolir':'✓ Restore'}</span></td>
-      <td data-label="Oleh"><span class="badge ${r.trigger_by==='cron'?'gray':r.trigger_by==='payment'?'blue':'amber'}">${_esc(r.trigger_by)}${r.admin_name?' · '+r.admin_name:''}</span></td>
+      <td data-label="Aksi"><span class="badge ${r.action === "isolir" ? "red" : "green"}">${r.action === "isolir" ? "⛔ Isolir" : "✓ Restore"}</span></td>
+      <td data-label="Oleh"><span class="badge ${r.trigger_by === "cron" ? "gray" : r.trigger_by === "payment" ? "blue" : "amber"}">${_esc(r.trigger_by)}${r.admin_name ? " · " + r.admin_name : ""}</span></td>
       <td data-label="Status">
-        <span class="badge ${r.success?'green':'red'}">${r.success?'OK':'Gagal'}</span>
-        ${r.error_msg?`<div style="font-size:10.5px;color:#dc2626;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(r.error_msg)}</div>`:''}
+        <span class="badge ${r.success ? "green" : "red"}">${r.success ? "OK" : "Gagal"}</span>
+        ${r.error_msg ? `<div style="font-size:10.5px;color:#dc2626;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(r.error_msg)}</div>` : ""}
       </td>
     </tr>`;
-    }).join('') + '</tbody></table>';
+      })
+      .join("") +
+    "</tbody></table>";
 }
 
 // ── Actions ───────────────────────────────────────────────────
-window.doIsolir = async function(id, name) {
+window.doIsolir = async function (id, name) {
   const ok = await DigsDialog.confirm({
-    type: 'warning',
-    title: 'Isolir Pelanggan',
+    type: "warning",
+    title: "Isolir Pelanggan",
     message: `Akses internet <strong>${_esc(name)}</strong> akan diblokir.`,
-    bullets: ['IP pelanggan ditambahkan ke address-list FLAYNET-ISOLIR', 'Traffic HTTP di-redirect ke halaman isolir', 'HTTPS & traffic lain di-drop'],
-    confirmText: 'Isolir Sekarang',
-    cancelText: 'Batal'
+    bullets: [
+      "IP pelanggan ditambahkan ke address-list FLAYNET-ISOLIR",
+      "Traffic HTTP di-redirect ke halaman isolir",
+      "HTTPS & traffic lain di-drop",
+    ],
+    confirmText: "Isolir Sekarang",
+    cancelText: "Batal",
   });
   if (!ok) return;
-  App.showToast('Memproses isolir...', 'info');
-  const d = await App.api('/isolir/customers/' + id + '/isolir', { method:'POST', body:'{}' });
-  if (d?.success) { App.showToast('✅ ' + (d.message||'Berhasil diisolir'), 'success'); refresh(); }
-  else App.showToast('❌ ' + (d?.message||'Gagal'), 'error');
+  App.showToast("Memproses isolir...", "info");
+  const d = await App.api("/isolir/customers/" + id + "/isolir", {
+    method: "POST",
+    body: "{}",
+  });
+  if (d?.success) {
+    App.showToast("✅ " + (d.message || "Berhasil diisolir"), "success");
+    refresh();
+  } else App.showToast("❌ " + (d?.message || "Gagal"), "error");
 };
 
-window.doRestore = async function(id, name) {
+window.doRestore = async function (id, name) {
   const ok = await DigsDialog.confirm({
-    type: 'success',
-    title: 'Restore Akses',
+    type: "success",
+    title: "Restore Akses",
     message: `Akses internet <strong>${_esc(name)}</strong> akan dipulihkan.`,
-    confirmText: 'Restore',
-    cancelText: 'Batal'
+    confirmText: "Restore",
+    cancelText: "Batal",
   });
   if (!ok) return;
-  App.showToast('Memproses restore...', 'info');
-  const d = await App.api('/isolir/customers/' + id + '/restore', { method:'POST', body:'{}' });
-  if (d?.success) { App.showToast('✅ ' + (d.message||'Berhasil di-restore'), 'success'); refresh(); }
-  else App.showToast('❌ ' + (d?.message||'Gagal'), 'error');
+  App.showToast("Memproses restore...", "info");
+  const d = await App.api("/isolir/customers/" + id + "/restore", {
+    method: "POST",
+    body: "{}",
+  });
+  if (d?.success) {
+    App.showToast("✅ " + (d.message || "Berhasil di-restore"), "success");
+    refresh();
+  } else App.showToast("❌ " + (d?.message || "Gagal"), "error");
 };
 
-window.manualIsolir = function() {
-  const id = document.getElementById('manualIsolirSel')?.value;
-  if (!id) { App.showToast('Pilih pelanggan terlebih dahulu', 'error'); return; }
-  const name = document.getElementById('manualIsolirSel').options[document.getElementById('manualIsolirSel').selectedIndex]?.text || '';
+window.manualIsolir = function () {
+  const id = document.getElementById("manualIsolirSel")?.value;
+  if (!id) {
+    App.showToast("Pilih pelanggan terlebih dahulu", "error");
+    return;
+  }
+  const name =
+    document.getElementById("manualIsolirSel").options[
+      document.getElementById("manualIsolirSel").selectedIndex
+    ]?.text || "";
   doIsolir(id, name);
 };
 
-window.manualRestore = function() {
-  const id = document.getElementById('manualRestoreSel')?.value;
-  if (!id) { App.showToast('Pilih pelanggan terlebih dahulu', 'error'); return; }
-  const name = document.getElementById('manualRestoreSel').options[document.getElementById('manualRestoreSel').selectedIndex]?.text || '';
+window.manualRestore = function () {
+  const id = document.getElementById("manualRestoreSel")?.value;
+  if (!id) {
+    App.showToast("Pilih pelanggan terlebih dahulu", "error");
+    return;
+  }
+  const name =
+    document.getElementById("manualRestoreSel").options[
+      document.getElementById("manualRestoreSel").selectedIndex
+    ]?.text || "";
   doRestore(id, name);
 };
 
-window.runAutoIsolir = async function() {
+window.runAutoIsolir = async function () {
   const ok = await DigsDialog.confirm({
-    type: 'warning',
-    title: 'Jalankan Auto Isolir',
-    message: 'Semua pelanggan overdue yang punya IP akan diisolir secara otomatis.',
-    bullets: ['Cek semua pelanggan yang sudah lewat jatuh tempo + grace days', 'IP mereka akan ditambahkan ke address-list FLAYNET-ISOLIR', 'Notifikasi WhatsApp dikirim (kalau diaktifkan)'],
-    confirmText: 'Jalankan',
-    cancelText: 'Batal'
+    type: "warning",
+    title: "Jalankan Auto Isolir",
+    message:
+      "Semua pelanggan overdue yang punya IP akan diisolir secara otomatis.",
+    bullets: [
+      "Cek semua pelanggan yang sudah lewat jatuh tempo + grace days",
+      "IP mereka akan ditambahkan ke address-list FLAYNET-ISOLIR",
+      "Notifikasi WhatsApp dikirim (kalau diaktifkan)",
+    ],
+    confirmText: "Jalankan",
+    cancelText: "Batal",
   });
   if (!ok) return;
-  App.showToast('Menjalankan auto isolir...', 'info');
-  const d = await App.api('/isolir/run-auto', { method:'POST', body:'{}' });
+  App.showToast("Menjalankan auto isolir...", "info");
+  const d = await App.api("/isolir/run-auto", { method: "POST", body: "{}" });
   if (d?.success) {
-    App.showToast(`✅ ${d.isolated} diisolir, ${d.failed} gagal dari ${d.total} eligible`, 'success');
+    App.showToast(
+      `✅ ${d.isolated} diisolir, ${d.failed} gagal dari ${d.total} eligible`,
+      "success",
+    );
     refresh();
-  } else App.showToast('❌ ' + (d?.message||'Gagal'), 'error');
+  } else App.showToast("❌ " + (d?.message || "Gagal"), "error");
 };
 
 // ── Settings ──────────────────────────────────────────────────
@@ -748,26 +945,34 @@ window.runAutoIsolir = async function() {
 // severity 'error' = wajib HTTP (HTTPS pasti gagal di MikroTik)
 // severity 'warn'  = mungkin tidak bekerja (mis. host bukan IP / domain publik)
 function validateIsolirUrl(raw) {
-  const url = String(raw || '').trim();
-  if (!url) return { ok: true };  // kosong = fallback ke default, oke
+  const url = String(raw || "").trim();
+  if (!url) return { ok: true }; // kosong = fallback ke default, oke
 
   // Wajib pakai prefix protocol (kalau cuma "192.168.x.x" auto-tambah http://)
   let withProto = url;
   if (!/^https?:\/\//i.test(withProto)) {
-    return { ok: false, severity: 'error',
-      msg: 'URL harus diawali "http://". Contoh: http://192.168.1.100:3000/p/isolir' };
+    return {
+      ok: false,
+      severity: "error",
+      msg: 'URL harus diawali "http://". Contoh: http://192.168.1.100:3000/p/isolir',
+    };
   }
 
   // HARD BLOCK: HTTPS tidak akan pernah jalan
   if (/^https:\/\//i.test(withProto)) {
-    return { ok: false, severity: 'error',
-      msg: 'MikroTik dst-nat tidak bisa redirect ke HTTPS (TLS handshake akan gagal). Wajib pakai http:// dengan IP LAN.' };
+    return {
+      ok: false,
+      severity: "error",
+      msg: "MikroTik dst-nat tidak bisa redirect ke HTTPS (TLS handshake akan gagal). Wajib pakai http:// dengan IP LAN.",
+    };
   }
 
   // Parse
   let parsed;
-  try { parsed = new URL(withProto); } catch (_) {
-    return { ok: false, severity: 'error', msg: 'URL tidak valid.' };
+  try {
+    parsed = new URL(withProto);
+  } catch (_) {
+    return { ok: false, severity: "error", msg: "URL tidak valid." };
   }
 
   // Validasi host: IP LAN (private) lebih bagus.
@@ -777,8 +982,11 @@ function validateIsolirUrl(raw) {
   if (!isIp) {
     // Domain → warning saja (server-side validator akan resolve DNS dan cek private/public).
     // Tapi kasih hint user: kalau domainnya digs.co.id (Cloudflare), pasti gagal.
-    return { ok: false, severity: 'warn',
-      msg: 'Pakai IP LAN langsung (192.168.x atau 10.x) lebih aman. Domain publik biasanya resolve ke Cloudflare/CDN — paket akan nyasar ke server CDN, bukan server Anda.' };
+    return {
+      ok: false,
+      severity: "warn",
+      msg: "Pakai IP LAN langsung (192.168.x atau 10.x) lebih aman. Domain publik biasanya resolve ke Cloudflare/CDN — paket akan nyasar ke server CDN, bukan server Anda.",
+    };
   }
 
   const isPrivate =
@@ -788,8 +996,11 @@ function validateIsolirUrl(raw) {
     /^127\./.test(host);
 
   if (!isPrivate) {
-    return { ok: false, severity: 'warn',
-      msg: `IP ${host} bukan IP LAN private. Pastikan IP ini reachable dari MikroTik via LAN.` };
+    return {
+      ok: false,
+      severity: "warn",
+      msg: `IP ${host} bukan IP LAN private. Pastikan IP ini reachable dari MikroTik via LAN.`,
+    };
   }
 
   return { ok: true };
@@ -799,63 +1010,72 @@ function validateIsolirUrl(raw) {
 // Idempotent — dipasang sekali, di-trigger tiap input event.
 function attachUrlValidators() {
   function bind(inputId, warnId) {
-    const inp  = document.getElementById(inputId);
+    const inp = document.getElementById(inputId);
     const warn = document.getElementById(warnId);
     if (!inp || !warn || inp.__validatorAttached) return;
     const check = () => {
       const r = validateIsolirUrl(inp.value);
       if (r.ok) {
-        warn.style.display = 'none';
-        inp.style.borderColor = '';
+        warn.style.display = "none";
+        inp.style.borderColor = "";
       } else {
-        warn.style.display = 'block';
-        warn.textContent = (r.severity === 'error' ? '✗ ' : '⚠ ') + r.msg;
-        warn.style.color = r.severity === 'error' ? '#dc2626' : '#92400e';
-        warn.style.background = r.severity === 'error' ? '#fef2f2' : '#fefce8';
-        warn.style.borderColor = r.severity === 'error' ? '#fecaca' : '#fde68a';
-        inp.style.borderColor = r.severity === 'error' ? '#fca5a5' : '#fcd34d';
+        warn.style.display = "block";
+        warn.textContent = (r.severity === "error" ? "✗ " : "⚠ ") + r.msg;
+        warn.style.color = r.severity === "error" ? "#dc2626" : "#92400e";
+        warn.style.background = r.severity === "error" ? "#fef2f2" : "#fefce8";
+        warn.style.borderColor = r.severity === "error" ? "#fecaca" : "#fde68a";
+        inp.style.borderColor = r.severity === "error" ? "#fca5a5" : "#fcd34d";
       }
     };
-    inp.addEventListener('input', check);
-    inp.addEventListener('blur', check);
+    inp.addEventListener("input", check);
+    inp.addEventListener("blur", check);
     inp.__validatorAttached = true;
-    check();   // initial check
+    check(); // initial check
   }
-  bind('isolirPageUrl', 'isolirPageUrlWarn');
-  bind('fIsolirUrl',    'fIsolirUrlWarn');
+  bind("isolirPageUrl", "isolirPageUrlWarn");
+  bind("fIsolirUrl", "fIsolirUrlWarn");
 }
 
 async function loadSettings() {
-  const d = await App.api('/isolir/settings');
+  const d = await App.api("/isolir/settings");
   if (!d?.success) return;
   const cfg = d.data;
-  const el = id => document.getElementById(id);
-  if (el('graceDays'))      el('graceDays').value = cfg.isolir_grace_days || '0';
-  if (el('isolirPageUrl'))  el('isolirPageUrl').value = cfg.isolir_page_url || '';
-  if (el('isolirNotifWa'))  el('isolirNotifWa').checked = cfg.isolir_notify_wa === '1';
-  if (el('isolirAutoEnable')) el('isolirAutoEnable').checked = cfg.isolir_auto_enable === '1';
+  const el = (id) => document.getElementById(id);
+  if (el("graceDays")) el("graceDays").value = cfg.isolir_grace_days || "0";
+  if (el("isolirPageUrl"))
+    el("isolirPageUrl").value = cfg.isolir_page_url || "";
+  if (el("isolirNotifWa"))
+    el("isolirNotifWa").checked = cfg.isolir_notify_wa === "1";
+  if (el("isolirAutoEnable"))
+    el("isolirAutoEnable").checked = cfg.isolir_auto_enable === "1";
 
   // ── Customisasi halaman /p/isolir ──
-  if (el('isolirPageTitle'))    el('isolirPageTitle').value    = cfg.isolir_page_title || '';
-  if (el('isolirPageSubtitle')) el('isolirPageSubtitle').value = cfg.isolir_page_subtitle || '';
-  if (el('isolirPageFooter'))   el('isolirPageFooter').value   = cfg.isolir_page_footer || '';
-  if (el('isolirPageHelpText')) el('isolirPageHelpText').value = cfg.isolir_page_help_text || '';
-  const color = (cfg.isolir_page_color || '#1a6ef5').trim();
-  if (el('isolirPageColor'))    el('isolirPageColor').value    = color;
-  if (el('isolirPageColorHex')) el('isolirPageColorHex').value = color.toUpperCase();
-  if (el('isolirPageShowInvoices')) {
+  if (el("isolirPageTitle"))
+    el("isolirPageTitle").value = cfg.isolir_page_title || "";
+  if (el("isolirPageSubtitle"))
+    el("isolirPageSubtitle").value = cfg.isolir_page_subtitle || "";
+  if (el("isolirPageFooter"))
+    el("isolirPageFooter").value = cfg.isolir_page_footer || "";
+  if (el("isolirPageHelpText"))
+    el("isolirPageHelpText").value = cfg.isolir_page_help_text || "";
+  const color = (cfg.isolir_page_color || "#1a6ef5").trim();
+  if (el("isolirPageColor")) el("isolirPageColor").value = color;
+  if (el("isolirPageColorHex"))
+    el("isolirPageColorHex").value = color.toUpperCase();
+  if (el("isolirPageShowInvoices")) {
     // Default '1' (true) kalau belum pernah di-set
-    el('isolirPageShowInvoices').checked = (cfg.isolir_page_show_invoices ?? '1') !== '0';
+    el("isolirPageShowInvoices").checked =
+      (cfg.isolir_page_show_invoices ?? "1") !== "0";
   }
 
   // Sync color picker ↔ text input
-  const colorPicker = el('isolirPageColor');
-  const colorHex    = el('isolirPageColorHex');
+  const colorPicker = el("isolirPageColor");
+  const colorHex = el("isolirPageColorHex");
   if (colorPicker && colorHex && !colorPicker.__synced) {
-    colorPicker.addEventListener('input', e => {
+    colorPicker.addEventListener("input", (e) => {
       colorHex.value = e.target.value.toUpperCase();
     });
-    colorHex.addEventListener('input', e => {
+    colorHex.addEventListener("input", (e) => {
       const v = e.target.value.trim();
       if (/^#[0-9a-f]{6}$/i.test(v)) colorPicker.value = v.toLowerCase();
     });
@@ -866,58 +1086,65 @@ async function loadSettings() {
   attachUrlValidators();
 }
 
-window.saveSettings = async function() {
-  const el = id => document.getElementById(id);
+window.saveSettings = async function () {
+  const el = (id) => document.getElementById(id);
 
   // ── HARD BLOCK: tolak save kalau URL HTTPS ──
-  const urlVal = el('isolirPageUrl')?.value || '';
+  const urlVal = el("isolirPageUrl")?.value || "";
   const v = validateIsolirUrl(urlVal);
-  if (!v.ok && v.severity === 'error') {
-    App.showToast(v.msg, 'error');
-    el('isolirPageUrl')?.focus();
+  if (!v.ok && v.severity === "error") {
+    App.showToast(v.msg, "error");
+    el("isolirPageUrl")?.focus();
     return;
   }
   // 'warn' di-allow tapi tetap di-tampilkan warning-nya
 
   // Color: pakai text input kalau valid, kalau tidak fallback ke picker
-  let color = el('isolirPageColorHex')?.value.trim() || '';
+  let color = el("isolirPageColorHex")?.value.trim() || "";
   if (!/^#[0-9a-f]{6}$/i.test(color)) {
-    color = el('isolirPageColor')?.value || '#1a6ef5';
+    color = el("isolirPageColor")?.value || "#1a6ef5";
   }
   color = color.toLowerCase();
 
   const body = {
-    isolir_grace_days:  el('graceDays')?.value || '0',
-    isolir_page_url:    urlVal,
-    isolir_notify_wa:   el('isolirNotifWa')?.checked ? '1' : '0',
-    isolir_auto_enable: el('isolirAutoEnable')?.checked ? '1' : '0',
+    isolir_grace_days: el("graceDays")?.value || "0",
+    isolir_page_url: urlVal,
+    isolir_notify_wa: el("isolirNotifWa")?.checked ? "1" : "0",
+    isolir_auto_enable: el("isolirAutoEnable")?.checked ? "1" : "0",
 
     // Customisasi halaman /p/isolir
-    isolir_page_title:         el('isolirPageTitle')?.value || '',
-    isolir_page_subtitle:      el('isolirPageSubtitle')?.value || '',
-    isolir_page_color:         color,
-    isolir_page_footer:        el('isolirPageFooter')?.value || '',
-    isolir_page_help_text:     el('isolirPageHelpText')?.value || '',
-    isolir_page_show_invoices: el('isolirPageShowInvoices')?.checked ? '1' : '0',
+    isolir_page_title: el("isolirPageTitle")?.value || "",
+    isolir_page_subtitle: el("isolirPageSubtitle")?.value || "",
+    isolir_page_color: color,
+    isolir_page_footer: el("isolirPageFooter")?.value || "",
+    isolir_page_help_text: el("isolirPageHelpText")?.value || "",
+    isolir_page_show_invoices: el("isolirPageShowInvoices")?.checked
+      ? "1"
+      : "0",
   };
-  const d = await App.api('/isolir/settings', { method:'POST', body: JSON.stringify(body) });
-  if (d?.success) App.showToast('Settings disimpan', 'success');
-  else App.showToast(d?.message||'Gagal', 'error');
+  const d = await App.api("/isolir/settings", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (d?.success) App.showToast("Settings disimpan", "success");
+  else App.showToast(d?.message || "Gagal", "error");
 };
 
 // Export validator supaya bisa dipakai dari form simpan device (saveDevice)
 window.validateIsolirUrl = validateIsolirUrl;
 
 // ── Tab switch ────────────────────────────────────────────────
-window.switchTab = function(tab, btn) {
+window.switchTab = function (tab, btn) {
   _tab = tab;
-  ['isolated','eligible','logs'].forEach(t => {
-    const el = document.getElementById('tab-'+t);
-    if (el) el.style.display = t === tab ? 'block' : 'none';
+  ["isolated", "eligible", "logs"].forEach((t) => {
+    const el = document.getElementById("tab-" + t);
+    if (el) el.style.display = t === tab ? "block" : "none";
   });
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  if (tab === 'logs') loadLogs();
+  document
+    .querySelectorAll(".tab-btn")
+    .forEach((b) => b.classList.remove("active"));
+  btn.classList.add("active");
+  if (tab === "logs") loadLogs();
 };
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -933,58 +1160,92 @@ function refresh() {
 // DUE ALERTS (jatuh tempo / overdue / siap isolir / sudah isolir)
 // ════════════════════════════════════════════════════════════════
 let _dueData = { upcoming: [], overdue: [], eligible: [], isolated: [] };
-let _dueTab = 'eligible';   // default ke yang paling actionable
+let _dueTab = "eligible"; // default ke yang paling actionable
 let _dueSelected = new Set(); // device IDs yang di-check untuk bulk action
 
-window.loadDueAlerts = async function() {
+window.loadDueAlerts = async function () {
   try {
-    const d = await App.api('/isolir/due-alerts');
+    const d = await App.api("/isolir/due-alerts");
     if (!d?.success) return;
-    _dueData = d.data || { upcoming:[], overdue:[], eligible:[], isolated:[] };
-    const counts = d.counts || { upcoming:0, overdue:0, eligible:0, isolated:0 };
-    _setText('dcUpcoming', counts.upcoming);
-    _setText('dcOverdue',  counts.overdue);
-    _setText('dcEligible', counts.eligible);
-    _setText('dcIsolated', counts.isolated);
+    _dueData = d.data || {
+      upcoming: [],
+      overdue: [],
+      eligible: [],
+      isolated: [],
+    };
+    const counts = d.counts || {
+      upcoming: 0,
+      overdue: 0,
+      eligible: 0,
+      isolated: 0,
+    };
+    _setText("dcUpcoming", counts.upcoming);
+    _setText("dcOverdue", counts.overdue);
+    _setText("dcEligible", counts.eligible);
+    _setText("dcIsolated", counts.isolated);
 
     // Auto-pilih tab yang paling perlu perhatian saat first load
     if (!_dueData[_dueTab] || _dueData[_dueTab].length === 0) {
-      const fallback = ['eligible','overdue','upcoming','isolated'].find(t => _dueData[t]?.length > 0);
+      const fallback = ["eligible", "overdue", "upcoming", "isolated"].find(
+        (t) => _dueData[t]?.length > 0,
+      );
       if (fallback) {
         _dueTab = fallback;
-        document.querySelectorAll('.due-tab').forEach(b => {
-          b.classList.toggle('active', b.getAttribute('data-due-tab') === _dueTab);
+        document.querySelectorAll(".due-tab").forEach((b) => {
+          b.classList.toggle(
+            "active",
+            b.getAttribute("data-due-tab") === _dueTab,
+          );
         });
       }
     }
     _dueSelected.clear();
     renderDueList();
   } catch (e) {
-    const list = document.getElementById('dueList');
-    if (list) list.innerHTML = `<div class="due-empty"><div class="due-empty-title">Error</div><div>${_esc(e.message||'Gagal memuat')}</div></div>`;
+    const list = document.getElementById("dueList");
+    if (list)
+      list.innerHTML = `<div class="due-empty"><div class="due-empty-title">Error</div><div>${_esc(e.message || "Gagal memuat")}</div></div>`;
   }
 };
 
-window.switchDueTab = function(tab, btn) {
+window.switchDueTab = function (tab, btn) {
   _dueTab = tab;
   _dueSelected.clear();
-  document.querySelectorAll('.due-tab').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
+  document
+    .querySelectorAll(".due-tab")
+    .forEach((b) => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
   renderDueList();
 };
 
 function renderDueList() {
-  const list = document.getElementById('dueList');
+  const list = document.getElementById("dueList");
   if (!list) return;
   const items = _dueData[_dueTab] || [];
 
   if (items.length === 0) {
     const emptyMsg = {
-      upcoming: { icon:'✓', title:'Tidak ada yang akan jatuh tempo', sub:'7 hari ke depan aman' },
-      overdue:  { icon:'✓', title:'Tidak ada yang overdue', sub:'Semua tagihan masih dalam grace period' },
-      eligible: { icon:'✓', title:'Tidak ada yang siap diisolir', sub:'Belum ada yang melewati grace period' },
-      isolated: { icon:'😊', title:'Tidak ada pelanggan ter-isolir', sub:'Semua pelanggan aktif' }
-    }[_dueTab] || { icon:'—', title:'Kosong', sub:'' };
+      upcoming: {
+        icon: "✓",
+        title: "Tidak ada yang akan jatuh tempo",
+        sub: "7 hari ke depan aman",
+      },
+      overdue: {
+        icon: "✓",
+        title: "Tidak ada yang overdue",
+        sub: "Semua tagihan masih dalam grace period",
+      },
+      eligible: {
+        icon: "✓",
+        title: "Tidak ada yang siap diisolir",
+        sub: "Belum ada yang melewati grace period",
+      },
+      isolated: {
+        icon: "😊",
+        title: "Tidak ada pelanggan ter-isolir",
+        sub: "Semua pelanggan aktif",
+      },
+    }[_dueTab] || { icon: "—", title: "Kosong", sub: "" };
     list.innerHTML = `<div class="due-empty">
       <div style="font-size:24px;margin-bottom:6px;">${emptyMsg.icon}</div>
       <div class="due-empty-title">${emptyMsg.title}</div>
@@ -994,49 +1255,64 @@ function renderDueList() {
     return;
   }
 
-  list.innerHTML = items.map(c => renderDueItem(c)).join('');
+  list.innerHTML = items.map((c) => renderDueItem(c)).join("");
   updateBulkBar();
 }
 
 function renderDueItem(c) {
   const tab = _dueTab;
   const isChecked = _dueSelected.has(c.id);
-  const canCheck = (tab === 'eligible' || tab === 'overdue') ? c.can_isolir : (tab === 'isolated');
+  const canCheck =
+    tab === "eligible" || tab === "overdue" ? c.can_isolir : tab === "isolated";
 
   // ── Due date label + classification ──
-  let dueLbl, dueCls = '';
-  if (tab === 'upcoming') {
+  let dueLbl,
+    dueCls = "";
+  if (tab === "upcoming") {
     const days = -c.days_overdue;
-    if (days === 0)      { dueLbl = 'Hari ini'; dueCls = 'amber'; }
-    else if (days === 1) { dueLbl = 'Besok'; dueCls = 'amber'; }
-    else                 { dueLbl = `${days} hari lagi`; dueCls = 'green'; }
-  } else if (tab === 'overdue' || tab === 'eligible') {
+    if (days === 0) {
+      dueLbl = "Hari ini";
+      dueCls = "amber";
+    } else if (days === 1) {
+      dueLbl = "Besok";
+      dueCls = "amber";
+    } else {
+      dueLbl = `${days} hari lagi`;
+      dueCls = "green";
+    }
+  } else if (tab === "overdue" || tab === "eligible") {
     dueLbl = `Telat ${c.days_overdue} hari`;
-    dueCls = tab === 'eligible' ? '' : 'amber';
+    dueCls = tab === "eligible" ? "" : "amber";
   } else {
     dueLbl = `Telat ${c.days_overdue} hari`;
-    dueCls = 'muted';
+    dueCls = "muted";
   }
 
   // ── State attribute untuk left-border accent ──
-  let state = 'upcoming';
-  if (tab === 'isolated') state = 'isolated';
-  else if (tab === 'eligible' && c.can_isolir) state = 'eligible';
-  else if (tab === 'overdue') state = 'overdue';
+  let state = "upcoming";
+  if (tab === "isolated") state = "isolated";
+  else if (tab === "eligible" && c.can_isolir) state = "eligible";
+  else if (tab === "overdue") state = "overdue";
 
   // ── Badges (status indicators) ──
   const badges = [];
-  if (c.isolir_method === 'static')      badges.push('<span class="due-badge static">Static</span>');
-  else if (c.isolir_method === 'pppoe')  badges.push('<span class="due-badge pppoe">PPPoE</span>');
+  if (c.isolir_method === "static")
+    badges.push('<span class="due-badge static">Static</span>');
+  else if (c.isolir_method === "pppoe")
+    badges.push('<span class="due-badge pppoe">PPPoE</span>');
 
-  if (tab === 'isolated') badges.push('<span class="due-badge danger">Isolated</span>');
-  else if (tab === 'eligible' && c.can_isolir) badges.push('<span class="due-badge warn">Siap Isolir</span>');
+  if (tab === "isolated")
+    badges.push('<span class="due-badge danger">Isolated</span>');
+  else if (tab === "eligible" && c.can_isolir)
+    badges.push('<span class="due-badge warn">Siap Isolir</span>');
 
-  if (c.missing_ip)     badges.push('<span class="due-badge muted">No IP / PPPoE</span>');
-  if (c.missing_router && !c.missing_ip) badges.push('<span class="due-badge muted">No Router</span>');
+  if (c.missing_ip)
+    badges.push('<span class="due-badge muted">No IP / PPPoE</span>');
+  if (c.missing_router && !c.missing_ip)
+    badges.push('<span class="due-badge muted">No Router</span>');
 
   // ── Target tag (IP atau PPPoE username) ──
-  let targetTag = '';
+  let targetTag = "";
   if (c.static_ip) {
     targetTag = `<span class="due-target-tag">${_esc(c.static_ip)}</span>`;
   } else if (c.pppoe_username) {
@@ -1044,13 +1320,13 @@ function renderDueItem(c) {
   }
 
   // ── Action button ──
-  let actionBtn = '';
-  if (tab === 'isolated') {
+  let actionBtn = "";
+  if (tab === "isolated") {
     actionBtn = `<button class="due-action restore" onclick="doRestoreFromDue(${c.id}, '${_escAttr(c.name)}')">✓ Restore Akses</button>`;
-  } else if (c.can_isolir && tab !== 'upcoming') {
+  } else if (c.can_isolir && tab !== "upcoming") {
     actionBtn = `<button class="due-action isolir" onclick="doIsolirFromDue(${c.id}, '${_escAttr(c.name)}')">⛔ Isolir Sekarang</button>`;
-  } else if (tab === 'upcoming') {
-    actionBtn = ''; // tidak perlu tombol di upcoming
+  } else if (tab === "upcoming") {
+    actionBtn = ""; // tidak perlu tombol di upcoming
   } else if (c.missing_router && !c.missing_ip) {
     actionBtn = `<button class="due-action detect" onclick="detectSingleRouter(${c.id}, '${_escAttr(c.name)}')" title="Scan semua router">🔍 Auto-Detect Router</button>`;
   } else {
@@ -1059,20 +1335,24 @@ function renderDueItem(c) {
 
   // ── Checkbox ──
   const checkClass = canCheck
-    ? (isChecked ? 'due-check checked' : 'due-check')
-    : 'due-check disabled';
-  const checkOnclick = canCheck ? `onclick="toggleDueCheck(${c.id}, this)"` : '';
+    ? isChecked
+      ? "due-check checked"
+      : "due-check"
+    : "due-check disabled";
+  const checkOnclick = canCheck
+    ? `onclick="toggleDueCheck(${c.id}, this)"`
+    : "";
 
   return `<div class="due-item" data-state="${state}">
     <!-- Row 1: checkbox + name + ID + target -->
     <div class="due-head">
-      <span class="${checkClass}" ${checkOnclick}>${isChecked ? '✓' : ''}</span>
+      <span class="${checkClass}" ${checkOnclick}>${isChecked ? "✓" : ""}</span>
       <div class="due-info">
         <div class="due-name-row">
           <span class="due-name">${_esc(c.name)}</span>
           <span class="due-cid">${_esc(c.customer_id)}</span>
         </div>
-        ${targetTag ? `<div class="due-target">${targetTag}</div>` : ''}
+        ${targetTag ? `<div class="due-target">${targetTag}</div>` : ""}
       </div>
     </div>
 
@@ -1080,367 +1360,474 @@ function renderDueItem(c) {
     <div class="due-meta-row">
       <div class="due-amount-block">
         <div class="due-amount">Rp ${_fmtMoney(c.invoice_amount || c.package_price || 0)}</div>
-        <div class="due-amount-sub">${_esc(c.invoice_number || '–')}</div>
+        <div class="due-amount-sub">${_esc(c.invoice_number || "–")}</div>
       </div>
       <span class="due-warn ${dueCls}">${dueLbl}</span>
     </div>
 
     <!-- Row 3: badges (optional, only if any) -->
-    ${badges.length ? `<div class="due-badges">${badges.join('')}</div>` : ''}
+    ${badges.length ? `<div class="due-badges">${badges.join("")}</div>` : ""}
 
     <!-- Row 4: action button (optional) -->
-    ${actionBtn ? `<div class="due-foot">${actionBtn}</div>` : ''}
+    ${actionBtn ? `<div class="due-foot">${actionBtn}</div>` : ""}
   </div>`;
 }
 
-window.toggleDueCheck = function(id, el) {
-  if (el.classList.contains('disabled')) return;
+window.toggleDueCheck = function (id, el) {
+  if (el.classList.contains("disabled")) return;
   if (_dueSelected.has(id)) {
     _dueSelected.delete(id);
-    el.classList.remove('checked');
-    el.textContent = '';
+    el.classList.remove("checked");
+    el.textContent = "";
   } else {
     _dueSelected.add(id);
-    el.classList.add('checked');
-    el.textContent = '✓';
+    el.classList.add("checked");
+    el.textContent = "✓";
   }
   updateBulkBar();
 };
 
 function updateBulkBar() {
-  const bar = document.getElementById('dueBulkBar');
+  const bar = document.getElementById("dueBulkBar");
   if (!bar) return;
   const n = _dueSelected.size;
-  if (n === 0) { bar.style.display = 'none'; return; }
-  bar.style.display = 'flex';
-  _setText('dueBulkCount', n);
-  const isolirBtn  = document.getElementById('dueBulkIsolirBtn');
-  const restoreBtn = document.getElementById('dueBulkRestoreBtn');
-  if (isolirBtn)  isolirBtn.style.display  = (_dueTab === 'isolated') ? 'none' : '';
-  if (restoreBtn) restoreBtn.style.display = (_dueTab === 'isolated') ? '' : 'none';
+  if (n === 0) {
+    bar.style.display = "none";
+    return;
+  }
+  bar.style.display = "flex";
+  _setText("dueBulkCount", n);
+  const isolirBtn = document.getElementById("dueBulkIsolirBtn");
+  const restoreBtn = document.getElementById("dueBulkRestoreBtn");
+  if (isolirBtn) isolirBtn.style.display = _dueTab === "isolated" ? "none" : "";
+  if (restoreBtn)
+    restoreBtn.style.display = _dueTab === "isolated" ? "" : "none";
 }
 
-window.doIsolirFromDue = async function(id, name) {
+window.doIsolirFromDue = async function (id, name) {
   const ok = await DigsDialog.confirm({
-    type: 'warning', title: 'Isolir Pelanggan',
+    type: "warning",
+    title: "Isolir Pelanggan",
     message: `Akses internet <strong>${_esc(name)}</strong> akan diblokir.`,
-    confirmText: 'Isolir Sekarang', cancelText: 'Batal'
+    confirmText: "Isolir Sekarang",
+    cancelText: "Batal",
   });
   if (!ok) return;
-  App.showToast('Memproses isolir...', 'info');
-  const d = await App.api('/isolir/customers/' + id + '/isolir', { method:'POST', body:'{}' });
-  if (d?.success) { App.showToast('✅ ' + (d.message||'Berhasil diisolir'), 'success'); refresh(); }
-  else App.showToast('❌ ' + (d?.message||'Gagal'), 'error');
+  App.showToast("Memproses isolir...", "info");
+  const d = await App.api("/isolir/customers/" + id + "/isolir", {
+    method: "POST",
+    body: "{}",
+  });
+  if (d?.success) {
+    App.showToast("✅ " + (d.message || "Berhasil diisolir"), "success");
+    refresh();
+  } else App.showToast("❌ " + (d?.message || "Gagal"), "error");
 };
 
-window.doRestoreFromDue = async function(id, name) {
+window.doRestoreFromDue = async function (id, name) {
   const ok = await DigsDialog.confirm({
-    type: 'success', title: 'Restore Akses',
+    type: "success",
+    title: "Restore Akses",
     message: `Akses internet <strong>${_esc(name)}</strong> akan dipulihkan.`,
-    confirmText: 'Restore', cancelText: 'Batal'
+    confirmText: "Restore",
+    cancelText: "Batal",
   });
   if (!ok) return;
-  App.showToast('Memproses restore...', 'info');
-  const d = await App.api('/isolir/customers/' + id + '/restore', { method:'POST', body:'{}' });
-  if (d?.success) { App.showToast('✅ ' + (d.message||'Berhasil di-restore'), 'success'); refresh(); }
-  else App.showToast('❌ ' + (d?.message||'Gagal'), 'error');
+  App.showToast("Memproses restore...", "info");
+  const d = await App.api("/isolir/customers/" + id + "/restore", {
+    method: "POST",
+    body: "{}",
+  });
+  if (d?.success) {
+    App.showToast("✅ " + (d.message || "Berhasil di-restore"), "success");
+    refresh();
+  } else App.showToast("❌ " + (d?.message || "Gagal"), "error");
 };
 
-window.bulkIsolir = async function() {
+window.bulkIsolir = async function () {
   const ids = Array.from(_dueSelected);
   if (!ids.length) return;
   const ok = await DigsDialog.confirm({
-    type: 'warning', title: 'Bulk Isolir',
+    type: "warning",
+    title: "Bulk Isolir",
     message: `<strong>${ids.length} pelanggan</strong> terpilih akan diisolir sekaligus.`,
-    bullets: ['Semua IP ditambahkan ke address-list FLAYNET-ISOLIR', 'Proses sekuensial dengan jeda 400ms'],
-    confirmText: 'Isolir Semua', cancelText: 'Batal'
+    bullets: [
+      "Semua IP ditambahkan ke address-list FLAYNET-ISOLIR",
+      "Proses sekuensial dengan jeda 400ms",
+    ],
+    confirmText: "Isolir Semua",
+    cancelText: "Batal",
   });
   if (!ok) return;
-  App.showToast(`Memproses ${ids.length} pelanggan...`, 'info');
-  let okCnt = 0, fail = 0;
+  App.showToast(`Memproses ${ids.length} pelanggan...`, "info");
+  let okCnt = 0,
+    fail = 0;
   for (const id of ids) {
     try {
-      const d = await App.api('/isolir/customers/' + id + '/isolir', { method:'POST', body:'{}' });
-      if (d?.success) okCnt++; else fail++;
-    } catch(_) { fail++; }
+      const d = await App.api("/isolir/customers/" + id + "/isolir", {
+        method: "POST",
+        body: "{}",
+      });
+      if (d?.success) okCnt++;
+      else fail++;
+    } catch (_) {
+      fail++;
+    }
     // Throttle agar tidak DDoS router
-    await new Promise(r => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 400));
   }
   _dueSelected.clear();
-  App.showToast(`✅ ${okCnt} berhasil, ${fail} gagal`, okCnt > 0 ? 'success' : 'error');
+  App.showToast(
+    `✅ ${okCnt} berhasil, ${fail} gagal`,
+    okCnt > 0 ? "success" : "error",
+  );
   refresh();
 };
 
-window.bulkRestore = async function() {
+window.bulkRestore = async function () {
   const ids = Array.from(_dueSelected);
   if (!ids.length) return;
   const ok = await DigsDialog.confirm({
-    type: 'success', title: 'Bulk Restore',
+    type: "success",
+    title: "Bulk Restore",
     message: `Akses untuk <strong>${ids.length} pelanggan</strong> terpilih akan dipulihkan.`,
-    confirmText: 'Restore Semua', cancelText: 'Batal'
+    confirmText: "Restore Semua",
+    cancelText: "Batal",
   });
   if (!ok) return;
-  App.showToast(`Memproses ${ids.length} pelanggan...`, 'info');
-  let okCnt = 0, fail = 0;
+  App.showToast(`Memproses ${ids.length} pelanggan...`, "info");
+  let okCnt = 0,
+    fail = 0;
   for (const id of ids) {
     try {
-      const d = await App.api('/isolir/customers/' + id + '/restore', { method:'POST', body:'{}' });
-      if (d?.success) okCnt++; else fail++;
-    } catch(_) { fail++; }
-    await new Promise(r => setTimeout(r, 400));
+      const d = await App.api("/isolir/customers/" + id + "/restore", {
+        method: "POST",
+        body: "{}",
+      });
+      if (d?.success) okCnt++;
+      else fail++;
+    } catch (_) {
+      fail++;
+    }
+    await new Promise((r) => setTimeout(r, 400));
   }
   _dueSelected.clear();
-  App.showToast(`✅ ${okCnt} berhasil, ${fail} gagal`, okCnt > 0 ? 'success' : 'error');
+  App.showToast(
+    `✅ ${okCnt} berhasil, ${fail} gagal`,
+    okCnt > 0 ? "success" : "error",
+  );
   refresh();
 };
 
 // Helpers
 function _fmtMoney(n) {
-  return Number(n || 0).toLocaleString('id-ID');
+  return Number(n || 0).toLocaleString("id-ID");
 }
 function _escAttr(s) {
-  return String(s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  return String(s || "")
+    .replace(/'/g, "\\'")
+    .replace(/"/g, "&quot;");
 }
 
 // Toggle collapsible settings panel di mobile
-window.toggleSettingPanel = function(btn) {
-  btn.classList.toggle('open');
-  const panel = btn.parentElement.querySelector('.iso-setting-content');
-  if (panel) panel.classList.toggle('open');
+window.toggleSettingPanel = function (btn) {
+  btn.classList.toggle("open");
+  const panel = btn.parentElement.querySelector(".iso-setting-content");
+  if (panel) panel.classList.toggle("open");
 };
 
-function openModal(id)  { document.getElementById(id)?.classList.add('open'); }
-function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
-window.openModal  = openModal;
+function openModal(id) {
+  document.getElementById(id)?.classList.add("open");
+}
+function closeModal(id) {
+  document.getElementById(id)?.classList.remove("open");
+}
+window.openModal = openModal;
 window.closeModal = closeModal;
 
 // ════════════════════════════════════════════════════════════════
 // BYPASS LIST MANAGEMENT
 // ════════════════════════════════════════════════════════════════
 let _currentBypassRouterId = null;
-let _currentBypassRouterName = '';
+let _currentBypassRouterName = "";
 
 // ── Global bypass ──
-window.loadBypassGlobal = async function() {
-  const el = document.getElementById('bypassGlobalList');
+window.loadBypassGlobal = async function () {
+  const el = document.getElementById("bypassGlobalList");
   if (!el) return;
   try {
-    const d = await App.api('/isolir/bypass/global');
+    const d = await App.api("/isolir/bypass/global");
     const rows = d?.data || [];
     if (!rows.length) {
-      el.innerHTML = '<div style="padding:14px;text-align:center;font-size:11.5px;color:var(--d-muted);background:#f8faff;border:1px dashed var(--d-border);border-radius:8px;">Belum ada bypass global</div>';
+      el.innerHTML =
+        '<div style="padding:14px;text-align:center;font-size:11.5px;color:var(--d-muted);background:#f8faff;border:1px dashed var(--d-border);border-radius:8px;">Belum ada bypass global</div>';
       return;
     }
     // Group by category
     const grouped = {};
-    rows.forEach(r => {
-      const cat = r.category || 'custom';
+    rows.forEach((r) => {
+      const cat = r.category || "custom";
       if (!grouped[cat]) grouped[cat] = [];
       grouped[cat].push(r);
     });
-    const catLabels = { dns:'DNS', network:'Network', payment:'Payment', isp:'ISP', custom:'Custom' };
-    let html = '<div style="background:#f8faff;border:1px solid var(--d-border);border-radius:9px;overflow:hidden;">';
-    Object.keys(grouped).forEach(cat => {
+    const catLabels = {
+      dns: "DNS",
+      network: "Network",
+      payment: "Payment",
+      isp: "ISP",
+      custom: "Custom",
+    };
+    let html =
+      '<div style="background:#f8faff;border:1px solid var(--d-border);border-radius:9px;overflow:hidden;">';
+    Object.keys(grouped).forEach((cat) => {
       html += `<div style="padding:6px 12px;background:#eef2f9;font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--d-muted);border-bottom:1px solid var(--d-border);">${catLabels[cat] || cat}</div>`;
-      grouped[cat].forEach(r => {
+      grouped[cat].forEach((r) => {
         html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid #f0f4ff;">
           <span class="ip-tag" style="font-size:11px;">${_esc(r.address)}</span>
-          <span style="flex:1;font-size:11.5px;color:var(--d-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(r.label || '')}</span>
+          <span style="flex:1;font-size:11.5px;color:var(--d-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(r.label || "")}</span>
           <button onclick="deleteBypassGlobal(${r.id},'${_escAttr(r.address)}')" title="Hapus" style="border:none;background:transparent;color:#94a3b8;cursor:pointer;font-size:14px;padding:2px 5px;line-height:1;">×</button>
         </div>`;
       });
     });
-    html += '</div>';
+    html += "</div>";
     el.innerHTML = html;
-  } catch(e) {
+  } catch (e) {
     el.innerHTML = `<div style="padding:14px;color:#dc2626;font-size:11.5px;">Error: ${_esc(e.message)}</div>`;
   }
 };
 
-window.addBypassGlobal = async function() {
-  const addr  = document.getElementById('bypassNewAddr')?.value.trim();
-  const label = document.getElementById('bypassNewLabel')?.value.trim();
-  if (!addr) { App.showToast('Address wajib diisi', 'error'); return; }
-  const d = await App.api('/isolir/bypass/global', {
-    method: 'POST',
-    body: JSON.stringify({ address: addr, label, category: 'custom' })
+window.addBypassGlobal = async function () {
+  const addr = document.getElementById("bypassNewAddr")?.value.trim();
+  const label = document.getElementById("bypassNewLabel")?.value.trim();
+  if (!addr) {
+    App.showToast("Address wajib diisi", "error");
+    return;
+  }
+  const d = await App.api("/isolir/bypass/global", {
+    method: "POST",
+    body: JSON.stringify({ address: addr, label, category: "custom" }),
   });
   if (d?.success) {
-    App.showToast('Bypass ditambahkan', 'success');
-    document.getElementById('bypassNewAddr').value = '';
-    document.getElementById('bypassNewLabel').value = '';
+    App.showToast("Bypass ditambahkan", "success");
+    document.getElementById("bypassNewAddr").value = "";
+    document.getElementById("bypassNewLabel").value = "";
     loadBypassGlobal();
   } else {
-    App.showToast(d?.message || 'Gagal', 'error');
+    App.showToast(d?.message || "Gagal", "error");
   }
 };
 
-window.deleteBypassGlobal = async function(id, addr) {
+window.deleteBypassGlobal = async function (id, addr) {
   const ok = await DigsDialog.confirm({
-    type: 'error', title: 'Hapus Bypass Global',
+    type: "error",
+    title: "Hapus Bypass Global",
     message: `Address <strong>${_esc(addr)}</strong> akan dihapus dari daftar bypass global.`,
-    confirmText: 'Hapus', cancelText: 'Batal'
+    confirmText: "Hapus",
+    cancelText: "Batal",
   });
   if (!ok) return;
-  const d = await App.api('/isolir/bypass/global/' + id, { method: 'DELETE' });
-  if (d?.success) { App.showToast('Bypass dihapus', 'success'); loadBypassGlobal(); }
-  else App.showToast(d?.message || 'Gagal', 'error');
+  const d = await App.api("/isolir/bypass/global/" + id, { method: "DELETE" });
+  if (d?.success) {
+    App.showToast("Bypass dihapus", "success");
+    loadBypassGlobal();
+  } else App.showToast(d?.message || "Gagal", "error");
 };
 
 // ── Per-router bypass ──
-window.openBypassRouterModal = async function(deviceId, deviceName) {
+window.openBypassRouterModal = async function (deviceId, deviceName) {
   _currentBypassRouterId = deviceId;
   _currentBypassRouterName = deviceName;
-  document.getElementById('bypassRouterTitle').textContent = deviceName;
-  document.getElementById('bypassRouterAddr').value = '';
-  document.getElementById('bypassRouterLabel').value = '';
-  openModal('bypassRouterModal');
+  document.getElementById("bypassRouterTitle").textContent = deviceName;
+  document.getElementById("bypassRouterAddr").value = "";
+  document.getElementById("bypassRouterLabel").value = "";
+  openModal("bypassRouterModal");
   await loadBypassRouter();
   await loadBypassMergedPreview();
 };
 
 async function loadBypassRouter() {
-  const el = document.getElementById('bypassRouterListWrap');
+  const el = document.getElementById("bypassRouterListWrap");
   if (!el || !_currentBypassRouterId) return;
   try {
-    const d = await App.api('/isolir/devices/' + _currentBypassRouterId + '/bypass');
+    const d = await App.api(
+      "/isolir/devices/" + _currentBypassRouterId + "/bypass",
+    );
     const rows = d?.data || [];
     if (!rows.length) {
-      el.innerHTML = '<div style="padding:18px 14px;text-align:center;font-size:11.5px;color:var(--d-muted);">Belum ada bypass khusus router ini.<br>Hanya bypass global yang akan di-push.</div>';
+      el.innerHTML =
+        '<div style="padding:18px 14px;text-align:center;font-size:11.5px;color:var(--d-muted);">Belum ada bypass khusus router ini.<br>Hanya bypass global yang akan di-push.</div>';
       return;
     }
-    el.innerHTML = rows.map(r => `
+    el.innerHTML = rows
+      .map(
+        (r) => `
       <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #e8eef9;">
         <span class="ip-tag" style="font-size:11px;">${_esc(r.address)}</span>
-        <span style="flex:1;font-size:11.5px;color:var(--d-muted);">${_esc(r.label || '—')}</span>
+        <span style="flex:1;font-size:11.5px;color:var(--d-muted);">${_esc(r.label || "—")}</span>
         <button onclick="deleteBypassRouter(${r.id},'${_escAttr(r.address)}')" title="Hapus" style="border:none;background:transparent;color:#94a3b8;cursor:pointer;font-size:15px;padding:2px 6px;line-height:1;">×</button>
       </div>
-    `).join('');
-  } catch(e) {
+    `,
+      )
+      .join("");
+  } catch (e) {
     el.innerHTML = `<div style="padding:14px;color:#dc2626;font-size:11.5px;">Error: ${_esc(e.message)}</div>`;
   }
 }
 
 async function loadBypassMergedPreview() {
-  const el = document.getElementById('bypassMergedPreview');
+  const el = document.getElementById("bypassMergedPreview");
   if (!el || !_currentBypassRouterId) return;
   try {
-    const d = await App.api('/isolir/devices/' + _currentBypassRouterId + '/bypass-merged');
+    const d = await App.api(
+      "/isolir/devices/" + _currentBypassRouterId + "/bypass-merged",
+    );
     const rows = d?.data || [];
     if (!rows.length) {
       el.innerHTML = '<span style="color:var(--d-muted);">(kosong)</span>';
       return;
     }
-    el.innerHTML = rows.map(r =>
-      `<div>${_esc(r.address)}${r.label ? ' <span style="color:var(--d-muted);">// ' + _esc(r.label) + '</span>' : ''}</div>`
-    ).join('') + `<div style="margin-top:6px;font-family:'DM Sans',sans-serif;font-size:11px;color:var(--d-muted);">${rows.length} entry total</div>`;
-  } catch(_) {}
+    el.innerHTML =
+      rows
+        .map(
+          (r) =>
+            `<div>${_esc(r.address)}${r.label ? ' <span style="color:var(--d-muted);">// ' + _esc(r.label) + "</span>" : ""}</div>`,
+        )
+        .join("") +
+      `<div style="margin-top:6px;font-family:'DM Sans',sans-serif;font-size:11px;color:var(--d-muted);">${rows.length} entry total</div>`;
+  } catch (_) {}
 }
 
-window.addBypassRouter = async function() {
+window.addBypassRouter = async function () {
   if (!_currentBypassRouterId) return;
-  const addr  = document.getElementById('bypassRouterAddr')?.value.trim();
-  const label = document.getElementById('bypassRouterLabel')?.value.trim();
-  if (!addr) { App.showToast('Address wajib diisi', 'error'); return; }
-  const d = await App.api('/isolir/devices/' + _currentBypassRouterId + '/bypass', {
-    method: 'POST',
-    body: JSON.stringify({ address: addr, label })
-  });
+  const addr = document.getElementById("bypassRouterAddr")?.value.trim();
+  const label = document.getElementById("bypassRouterLabel")?.value.trim();
+  if (!addr) {
+    App.showToast("Address wajib diisi", "error");
+    return;
+  }
+  const d = await App.api(
+    "/isolir/devices/" + _currentBypassRouterId + "/bypass",
+    {
+      method: "POST",
+      body: JSON.stringify({ address: addr, label }),
+    },
+  );
   if (d?.success) {
-    App.showToast('Bypass ditambahkan', 'success');
-    document.getElementById('bypassRouterAddr').value = '';
-    document.getElementById('bypassRouterLabel').value = '';
+    App.showToast("Bypass ditambahkan", "success");
+    document.getElementById("bypassRouterAddr").value = "";
+    document.getElementById("bypassRouterLabel").value = "";
     loadBypassRouter();
     loadBypassMergedPreview();
   } else {
-    App.showToast(d?.message || 'Gagal', 'error');
+    App.showToast(d?.message || "Gagal", "error");
   }
 };
 
-window.deleteBypassRouter = async function(entryId, addr) {
+window.deleteBypassRouter = async function (entryId, addr) {
   if (!_currentBypassRouterId) return;
   const ok = await DigsDialog.confirm({
-    type: 'error', title: 'Hapus Bypass Router',
+    type: "error",
+    title: "Hapus Bypass Router",
     message: `Address <strong>${_esc(addr)}</strong> akan dihapus dari bypass khusus router ini.`,
-    confirmText: 'Hapus', cancelText: 'Batal'
+    confirmText: "Hapus",
+    cancelText: "Batal",
   });
   if (!ok) return;
-  const d = await App.api('/isolir/devices/' + _currentBypassRouterId + '/bypass/' + entryId, { method: 'DELETE' });
-  if (d?.success) { App.showToast('Bypass dihapus', 'success'); loadBypassRouter(); loadBypassMergedPreview(); }
-  else App.showToast(d?.message || 'Gagal', 'error');
+  const d = await App.api(
+    "/isolir/devices/" + _currentBypassRouterId + "/bypass/" + entryId,
+    { method: "DELETE" },
+  );
+  if (d?.success) {
+    App.showToast("Bypass dihapus", "success");
+    loadBypassRouter();
+    loadBypassMergedPreview();
+  } else App.showToast(d?.message || "Gagal", "error");
 };
 
-window.syncBypassToRouter = async function() {
+window.syncBypassToRouter = async function () {
   if (!_currentBypassRouterId) return;
   const ok = await DigsDialog.confirm({
-    type: 'warning', title: 'Sync Bypass ke Router',
+    type: "warning",
+    title: "Sync Bypass ke Router",
     message: `Daftar bypass akan di-push ke <strong>${_esc(_currentBypassRouterName)}</strong>.`,
-    bullets: ['Seluruh isi address-list FLAYNET-BYPASS di router akan di-replace', 'Daftar gabungan = bypass global + bypass khusus router ini'],
-    confirmText: 'Sync Sekarang', cancelText: 'Batal'
+    bullets: [
+      "Seluruh isi address-list FLAYNET-BYPASS di router akan di-replace",
+      "Daftar gabungan = bypass global + bypass khusus router ini",
+    ],
+    confirmText: "Sync Sekarang",
+    cancelText: "Batal",
   });
   if (!ok) return;
-  App.showToast('Sync bypass ke router...', 'info');
-  const d = await App.api('/isolir/devices/' + _currentBypassRouterId + '/sync-bypass', { method: 'POST', body: '{}' });
-  if (d?.success) App.showToast('✅ ' + (d.message || 'Sync berhasil'), 'success');
-  else App.showToast('❌ ' + (d?.message || 'Gagal'), 'error');
+  App.showToast("Sync bypass ke router...", "info");
+  const d = await App.api(
+    "/isolir/devices/" + _currentBypassRouterId + "/sync-bypass",
+    { method: "POST", body: "{}" },
+  );
+  if (d?.success)
+    App.showToast("✅ " + (d.message || "Sync berhasil"), "success");
+  else App.showToast("❌ " + (d?.message || "Gagal"), "error");
 };
 // ════════════════════════════════════════════════════════════════
 // AUTO-DETECT ROUTER (Multi-MikroTik Router Matcher)
 // ════════════════════════════════════════════════════════════════
-let _autoDetectResult = null;   // hasil preview (untuk diapply nanti)
-let _adSelectedIds    = new Set();   // customer_id terpilih untuk apply
-let _adCurrentTab     = 'detected';
+let _autoDetectResult = null; // hasil preview (untuk diapply nanti)
+let _adSelectedIds = new Set(); // customer_id terpilih untuk apply
+let _adCurrentTab = "detected";
 
-window.openAutoDetectModal = function() {
+window.openAutoDetectModal = function () {
   // Reset state ke phase idle
-  document.getElementById('adPhaseIdle').style.display = '';
-  document.getElementById('adPhaseScan').style.display = 'none';
-  document.getElementById('adPhaseResult').style.display = 'none';
-  document.getElementById('adApplyBtn').style.display = 'none';
+  document.getElementById("adPhaseIdle").style.display = "";
+  document.getElementById("adPhaseScan").style.display = "none";
+  document.getElementById("adPhaseResult").style.display = "none";
+  document.getElementById("adApplyBtn").style.display = "none";
   _autoDetectResult = null;
   _adSelectedIds = new Set();
-  openModal('autoDetectModal');
+  openModal("autoDetectModal");
 };
 
-window.startAutoDetect = async function() {
-  document.getElementById('adPhaseIdle').style.display = 'none';
-  document.getElementById('adPhaseScan').style.display = '';
-  document.getElementById('adScanStatus').textContent = 'Menghubungi semua MikroTik secara paralel...';
+window.startAutoDetect = async function () {
+  document.getElementById("adPhaseIdle").style.display = "none";
+  document.getElementById("adPhaseScan").style.display = "";
+  document.getElementById("adScanStatus").textContent =
+    "Menghubungi semua MikroTik secara paralel...";
 
   try {
-    const d = await App.api('/isolir/router-matcher/preview', { method: 'POST', body: '{}' });
+    const d = await App.api("/isolir/router-matcher/preview", {
+      method: "POST",
+      body: "{}",
+    });
     if (!d?.success) {
-      document.getElementById('adPhaseScan').style.display = 'none';
-      document.getElementById('adPhaseIdle').style.display = '';
-      DigsDialog.error(d?.message || 'Scan gagal', 'Auto-Detect Error');
+      document.getElementById("adPhaseScan").style.display = "none";
+      document.getElementById("adPhaseIdle").style.display = "";
+      DigsDialog.error(d?.message || "Scan gagal", "Auto-Detect Error");
       return;
     }
     _autoDetectResult = d.data;
     renderAutoDetectResult();
   } catch (e) {
-    document.getElementById('adPhaseScan').style.display = 'none';
-    document.getElementById('adPhaseIdle').style.display = '';
-    DigsDialog.error(e.message, 'Auto-Detect Error');
+    document.getElementById("adPhaseScan").style.display = "none";
+    document.getElementById("adPhaseIdle").style.display = "";
+    DigsDialog.error(e.message, "Auto-Detect Error");
   }
 };
 
 function renderAutoDetectResult() {
-  document.getElementById('adPhaseScan').style.display = 'none';
-  document.getElementById('adPhaseResult').style.display = '';
+  document.getElementById("adPhaseScan").style.display = "none";
+  document.getElementById("adPhaseResult").style.display = "";
 
   const r = _autoDetectResult;
   if (!r) return;
 
   // Default: select all detected
-  _adSelectedIds = new Set(r.detected.map(d => d.customer_id));
+  _adSelectedIds = new Set(r.detected.map((d) => d.customer_id));
 
   // Counts
-  _setText('adCntDetected',  r.detected.length);
-  _setText('adCntConflicts', r.conflicts.length);
-  _setText('adCntNoMatch',   r.no_match.length);
+  _setText("adCntDetected", r.detected.length);
+  _setText("adCntConflicts", r.conflicts.length);
+  _setText("adCntNoMatch", r.no_match.length);
 
   // Summary bar
-  const sumEl = document.getElementById('adSummary');
+  const sumEl = document.getElementById("adSummary");
   sumEl.innerHTML = `
     <div style="flex:1;min-width:120px;background:#dbeafe;border-radius:8px;padding:8px 12px;">
       <div style="font-size:10.5px;color:#1e40af;font-weight:700;letter-spacing:.07em;text-transform:uppercase;">Router Discan</div>
@@ -1457,38 +1844,44 @@ function renderAutoDetectResult() {
   `;
 
   // Router scan list
-  const rsEl = document.getElementById('adRouterScanList');
+  const rsEl = document.getElementById("adRouterScanList");
   if (r.scanned_routers && r.scanned_routers.length) {
-    rsEl.innerHTML = '<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--d-muted);margin-bottom:6px;">Hasil Scan per Router</div>' +
+    rsEl.innerHTML =
+      '<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--d-muted);margin-bottom:6px;">Hasil Scan per Router</div>' +
       '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
-      r.scanned_routers.map(rs => `
-        <div style="background:${rs.error ? '#fef2f2' : '#f8faff'};border:1px solid ${rs.error ? '#fecaca' : 'var(--d-border)'};border-radius:8px;padding:6px 10px;font-size:11px;min-width:140px;">
+      r.scanned_routers
+        .map(
+          (rs) => `
+        <div style="background:${rs.error ? "#fef2f2" : "#f8faff"};border:1px solid ${rs.error ? "#fecaca" : "var(--d-border)"};border-radius:8px;padding:6px 10px;font-size:11px;min-width:140px;">
           <div style="font-weight:700;color:#0d1b3e;">${_esc(rs.device_name)}</div>
-          ${rs.error
-            ? `<div style="color:#dc2626;font-size:10.5px;margin-top:2px;">⚠ ${_esc(rs.error)}</div>`
-            : `<div style="color:var(--d-muted);font-size:10.5px;margin-top:2px;">ARP: ${rs.arp_count} · PPP: ${rs.active_count}/${rs.secret_count}</div>`
+          ${
+            rs.error
+              ? `<div style="color:#dc2626;font-size:10.5px;margin-top:2px;">⚠ ${_esc(rs.error)}</div>`
+              : `<div style="color:var(--d-muted);font-size:10.5px;margin-top:2px;">ARP: ${rs.arp_count} · PPP: ${rs.active_count}/${rs.secret_count}</div>`
           }
         </div>
-      `).join('') +
-      '</div>';
+      `,
+        )
+        .join("") +
+      "</div>";
   }
 
   renderAdTab();
 }
 
-window.switchAdTab = function(tab) {
+window.switchAdTab = function (tab) {
   _adCurrentTab = tab;
-  document.querySelectorAll('.ad-tab').forEach(b => {
+  document.querySelectorAll(".ad-tab").forEach((b) => {
     if (b.dataset.adtab === tab) {
-      b.classList.add('ad-tab-active');
-      b.style.borderBottom = '2.5px solid #1a6ef5';
-      b.style.color = '#1a6ef5';
-      b.style.fontWeight = '700';
+      b.classList.add("ad-tab-active");
+      b.style.borderBottom = "2.5px solid #1a6ef5";
+      b.style.color = "#1a6ef5";
+      b.style.fontWeight = "700";
     } else {
-      b.classList.remove('ad-tab-active');
-      b.style.borderBottom = '2.5px solid transparent';
-      b.style.color = 'var(--d-muted)';
-      b.style.fontWeight = '600';
+      b.classList.remove("ad-tab-active");
+      b.style.borderBottom = "2.5px solid transparent";
+      b.style.color = "var(--d-muted)";
+      b.style.fontWeight = "600";
     }
   });
   renderAdTab();
@@ -1497,43 +1890,47 @@ window.switchAdTab = function(tab) {
 function renderAdTab() {
   const tab = _adCurrentTab;
   const r = _autoDetectResult;
-  const el = document.getElementById('adTabContent');
+  const el = document.getElementById("adTabContent");
   if (!el || !r) return;
 
   // Method badge style helper
   const methodBadge = (m) => {
     const map = {
-      arp:         { label: 'ARP',         bg: '#dbeafe', color: '#1d4ed8' },
-      active_ppp:  { label: 'Active PPP',  bg: '#d1fae5', color: '#047857' },
-      ppp_secret:  { label: 'PPP Secret',  bg: '#fef3c7', color: '#92400e' }
+      arp: { label: "ARP", bg: "#dbeafe", color: "#1d4ed8" },
+      active_ppp: { label: "Active PPP", bg: "#d1fae5", color: "#047857" },
+      ppp_secret: { label: "PPP Secret", bg: "#fef3c7", color: "#92400e" },
     };
-    const o = map[m] || { label: m, bg: '#e2e8f0', color: '#475569' };
+    const o = map[m] || { label: m, bg: "#e2e8f0", color: "#475569" };
     return `<span style="display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;background:${o.bg};color:${o.color};">${o.label}</span>`;
   };
 
-  if (tab === 'detected') {
+  if (tab === "detected") {
     if (r.detected.length === 0) {
-      el.innerHTML = '<div class="empty-state" style="padding:30px 14px;font-size:12px;">Tidak ada pelanggan yang berhasil terdeteksi.<br><span style="font-size:11px;color:var(--d-muted);">Pastikan pelanggan online (untuk ARP) atau PPPoE secret sudah dibuat di router.</span></div>';
-      document.getElementById('adApplyBtn').style.display = 'none';
+      el.innerHTML =
+        '<div class="empty-state" style="padding:30px 14px;font-size:12px;">Tidak ada pelanggan yang berhasil terdeteksi.<br><span style="font-size:11px;color:var(--d-muted);">Pastikan pelanggan online (untuk ARP) atau PPPoE secret sudah dibuat di router.</span></div>';
+      document.getElementById("adApplyBtn").style.display = "none";
       return;
     }
     // Header row dengan "Select all" checkbox
-    el.innerHTML = `
+    el.innerHTML =
+      `
       <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1.5px solid var(--d-border);background:#fff;position:sticky;top:0;z-index:1;">
         <input type="checkbox" id="adSelectAll" checked onchange="toggleAdSelectAll(this.checked)" style="width:15px;height:15px;cursor:pointer;">
         <label for="adSelectAll" style="font-size:11.5px;font-weight:700;color:#0d1b3e;cursor:pointer;flex:1;">Pilih semua (${r.detected.length})</label>
         <span style="font-size:11.5px;color:var(--d-muted);"><span id="adSelectedCount">${_adSelectedIds.size}</span> dipilih</span>
       </div>
-    ` + r.detected.map(d => {
-      const checked = _adSelectedIds.has(d.customer_id);
-      const target = d.static_ip
-        ? `<span class="ip-tag">${_esc(d.static_ip)}</span>`
-        : `<span class="ip-tag" style="background:#fef3c7;border-color:#fde68a;color:#92400e;">PPPoE: ${_esc(d.pppoe_username)}</span>`;
-      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #e8eef9;background:#fff;">
-        <input type="checkbox" data-adcid="${d.customer_id}" ${checked?'checked':''} onchange="toggleAdSelectOne(${d.customer_id}, this.checked)" style="width:15px;height:15px;cursor:pointer;flex-shrink:0;">
+    ` +
+      r.detected
+        .map((d) => {
+          const checked = _adSelectedIds.has(d.customer_id);
+          const target = d.static_ip
+            ? `<span class="ip-tag">${_esc(d.static_ip)}</span>`
+            : `<span class="ip-tag" style="background:#fef3c7;border-color:#fde68a;color:#92400e;">PPPoE: ${_esc(d.pppoe_username)}</span>`;
+          return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #e8eef9;background:#fff;">
+        <input type="checkbox" data-adcid="${d.customer_id}" ${checked ? "checked" : ""} onchange="toggleAdSelectOne(${d.customer_id}, this.checked)" style="width:15px;height:15px;cursor:pointer;flex-shrink:0;">
         <div style="flex:1;min-width:0;">
           <div style="font-weight:700;font-size:12.5px;color:#0d1b3e;">${_esc(d.name)} <span style="color:#94a3b8;font-weight:500;">· ${_esc(d.cid)}</span></div>
-          <div style="font-size:11px;color:var(--d-muted);margin-top:2px;">${d.evidence ? _esc(d.evidence) : ''}</div>
+          <div style="font-size:11px;color:var(--d-muted);margin-top:2px;">${d.evidence ? _esc(d.evidence) : ""}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;">
           ${target}
@@ -1541,39 +1938,49 @@ function renderAdTab() {
         </div>
         <div style="font-size:11.5px;font-weight:700;color:#1d4ed8;flex-shrink:0;min-width:80px;text-align:right;">→ ${_esc(d.suggested_device_name)}</div>
       </div>`;
-    }).join('');
+        })
+        .join("");
 
     // Show apply button
-    const btn = document.getElementById('adApplyBtn');
-    btn.style.display = '';
-    _setText('adApplyCount', _adSelectedIds.size);
-  } else if (tab === 'conflicts') {
-    document.getElementById('adApplyBtn').style.display = 'none';
+    const btn = document.getElementById("adApplyBtn");
+    btn.style.display = "";
+    _setText("adApplyCount", _adSelectedIds.size);
+  } else if (tab === "conflicts") {
+    document.getElementById("adApplyBtn").style.display = "none";
     if (r.conflicts.length === 0) {
-      el.innerHTML = '<div class="empty-state" style="padding:30px 14px;font-size:12px;">Tidak ada konflik 🎉</div>';
+      el.innerHTML =
+        '<div class="empty-state" style="padding:30px 14px;font-size:12px;">Tidak ada konflik 🎉</div>';
       return;
     }
-    el.innerHTML = r.conflicts.map(c => `
+    el.innerHTML = r.conflicts
+      .map(
+        (c) => `
       <div style="padding:10px 14px;border-bottom:1px solid #e8eef9;background:#fff;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
           <div style="font-weight:700;font-size:12.5px;color:#0d1b3e;flex:1;">${_esc(c.name)} <span style="color:#94a3b8;font-weight:500;">· ${_esc(c.cid)}</span></div>
-          <span class="ip-tag" style="background:#fef3c7;border-color:#fde68a;color:#92400e;">PPPoE: ${_esc(c.pppoe_username||'-')}</span>
+          <span class="ip-tag" style="background:#fef3c7;border-color:#fde68a;color:#92400e;">PPPoE: ${_esc(c.pppoe_username || "-")}</span>
         </div>
         <div style="font-size:11px;color:#dc2626;margin-bottom:6px;">⚠ ${_esc(c.evidence)}</div>
         <div style="font-size:11px;color:var(--d-muted);">Pilih router manual di halaman Edit Pelanggan</div>
       </div>
-    `).join('');
-  } else if (tab === 'nomatch') {
-    document.getElementById('adApplyBtn').style.display = 'none';
+    `,
+      )
+      .join("");
+  } else if (tab === "nomatch") {
+    document.getElementById("adApplyBtn").style.display = "none";
     if (r.no_match.length === 0) {
-      el.innerHTML = '<div class="empty-state" style="padding:30px 14px;font-size:12px;">Semua pelanggan ketemu router-nya 🎉</div>';
+      el.innerHTML =
+        '<div class="empty-state" style="padding:30px 14px;font-size:12px;">Semua pelanggan ketemu router-nya 🎉</div>';
       return;
     }
-    el.innerHTML = r.no_match.map(c => {
-      const target = c.static_ip
-        ? `<span class="ip-tag">${_esc(c.static_ip)}</span>`
-        : (c.pppoe_username ? `<span class="ip-tag" style="background:#fef3c7;border-color:#fde68a;color:#92400e;">PPPoE: ${_esc(c.pppoe_username)}</span>` : '');
-      return `<div style="padding:10px 14px;border-bottom:1px solid #e8eef9;background:#fff;">
+    el.innerHTML = r.no_match
+      .map((c) => {
+        const target = c.static_ip
+          ? `<span class="ip-tag">${_esc(c.static_ip)}</span>`
+          : c.pppoe_username
+            ? `<span class="ip-tag" style="background:#fef3c7;border-color:#fde68a;color:#92400e;">PPPoE: ${_esc(c.pppoe_username)}</span>`
+            : "";
+        return `<div style="padding:10px 14px;border-bottom:1px solid #e8eef9;background:#fff;">
         <div style="display:flex;align-items:center;gap:8px;">
           <div style="flex:1;min-width:0;">
             <div style="font-weight:700;font-size:12.5px;color:#0d1b3e;">${_esc(c.name)} <span style="color:#94a3b8;font-weight:500;">· ${_esc(c.cid)}</span></div>
@@ -1582,110 +1989,131 @@ function renderAdTab() {
           ${target}
         </div>
       </div>`;
-    }).join('');
+      })
+      .join("");
   }
 }
 
-window.toggleAdSelectAll = function(checked) {
+window.toggleAdSelectAll = function (checked) {
   if (!_autoDetectResult) return;
   if (checked) {
-    _adSelectedIds = new Set(_autoDetectResult.detected.map(d => d.customer_id));
+    _adSelectedIds = new Set(
+      _autoDetectResult.detected.map((d) => d.customer_id),
+    );
   } else {
     _adSelectedIds = new Set();
   }
   // Update checkboxes
-  document.querySelectorAll('[data-adcid]').forEach(cb => {
+  document.querySelectorAll("[data-adcid]").forEach((cb) => {
     const cid = parseInt(cb.dataset.adcid);
     cb.checked = _adSelectedIds.has(cid);
   });
-  _setText('adSelectedCount', _adSelectedIds.size);
-  _setText('adApplyCount', _adSelectedIds.size);
+  _setText("adSelectedCount", _adSelectedIds.size);
+  _setText("adApplyCount", _adSelectedIds.size);
 };
 
-window.toggleAdSelectOne = function(cid, checked) {
+window.toggleAdSelectOne = function (cid, checked) {
   if (checked) _adSelectedIds.add(cid);
-  else         _adSelectedIds.delete(cid);
-  _setText('adSelectedCount', _adSelectedIds.size);
-  _setText('adApplyCount', _adSelectedIds.size);
+  else _adSelectedIds.delete(cid);
+  _setText("adSelectedCount", _adSelectedIds.size);
+  _setText("adApplyCount", _adSelectedIds.size);
   // Update select-all state
-  const sa = document.getElementById('adSelectAll');
+  const sa = document.getElementById("adSelectAll");
   if (sa && _autoDetectResult) {
     sa.checked = _adSelectedIds.size === _autoDetectResult.detected.length;
   }
 };
 
-window.applyAutoDetect = async function() {
+window.applyAutoDetect = async function () {
   if (!_autoDetectResult || _adSelectedIds.size === 0) return;
 
   const ok = await DigsDialog.confirm({
-    type: 'warning',
-    title: 'Terapkan Auto-Detect',
+    type: "warning",
+    title: "Terapkan Auto-Detect",
     message: `<strong>${_adSelectedIds.size} pelanggan</strong> akan di-assign router otomatis berdasarkan hasil scan.`,
-    bullets: ['Field <code>mikrotik_id</code> akan terisi', 'Method ditandai sebagai auto-detected', 'Bisa diubah manual via Edit Pelanggan kapan saja'],
-    confirmText: 'Terapkan',
-    cancelText: 'Batal'
+    bullets: [
+      "Field <code>mikrotik_id</code> akan terisi",
+      "Method ditandai sebagai auto-detected",
+      "Bisa diubah manual via Edit Pelanggan kapan saja",
+    ],
+    confirmText: "Terapkan",
+    cancelText: "Batal",
   });
   if (!ok) return;
 
   // Build decisions array
   const decisions = _autoDetectResult.detected
-    .filter(d => _adSelectedIds.has(d.customer_id))
-    .map(d => ({
+    .filter((d) => _adSelectedIds.has(d.customer_id))
+    .map((d) => ({
       customer_id: d.customer_id,
-      device_id:   d.suggested_device_id,
-      method:      d.method
+      device_id: d.suggested_device_id,
+      method: d.method,
     }));
 
-  App.showToast('Menerapkan...', 'info');
-  const d = await App.api('/isolir/router-matcher/apply', {
-    method: 'POST', body: JSON.stringify({ decisions })
+  App.showToast("Menerapkan...", "info");
+  const d = await App.api("/isolir/router-matcher/apply", {
+    method: "POST",
+    body: JSON.stringify({ decisions }),
   });
   if (d?.success) {
-    closeModal('autoDetectModal');
-    DigsDialog.success(`<strong>${d.applied} pelanggan</strong> berhasil di-assign router${d.failed > 0 ? `, ${d.failed} gagal` : ''}.`, 'Auto-Detect Berhasil');
+    closeModal("autoDetectModal");
+    DigsDialog.success(
+      `<strong>${d.applied} pelanggan</strong> berhasil di-assign router${d.failed > 0 ? `, ${d.failed} gagal` : ""}.`,
+      "Auto-Detect Berhasil",
+    );
     // Refresh data
     loadDueAlerts();
     loadEligible();
     loadStats();
   } else {
-    DigsDialog.error(d?.message || 'Gagal apply', 'Auto-Detect Gagal');
+    DigsDialog.error(d?.message || "Gagal apply", "Auto-Detect Gagal");
   }
 };
 
 // ── Per-customer detect (tombol "🔍 Detect" di card Pelanggan Jatuh Tempo) ──
-window.detectSingleRouter = async function(customerId, customerName) {
+window.detectSingleRouter = async function (customerId, customerName) {
   const ok = await DigsDialog.confirm({
-    type: 'info',
-    title: 'Detect Router untuk Pelanggan',
+    type: "info",
+    title: "Detect Router untuk Pelanggan",
     message: `Akan scan semua router untuk cari di mana <strong>${_esc(customerName)}</strong> terdaftar.`,
-    bullets: ['Live scan via ARP & PPP table (~1-3 detik per router)', 'Hasil otomatis disimpan ke <code>mikrotik_id</code>'],
-    confirmText: 'Scan',
-    cancelText: 'Batal'
+    bullets: [
+      "Live scan via ARP & PPP table (~1-3 detik per router)",
+      "Hasil otomatis disimpan ke <code>mikrotik_id</code>",
+    ],
+    confirmText: "Scan",
+    cancelText: "Batal",
   });
   if (!ok) return;
 
-  App.showToast('Scanning router...', 'info');
+  App.showToast("Scanning router...", "info");
   try {
-    const d = await App.api('/isolir/router-matcher/detect/' + customerId, { method: 'POST', body: '{}' });
+    const d = await App.api("/isolir/router-matcher/detect/" + customerId, {
+      method: "POST",
+      body: "{}",
+    });
     if (d?.success) {
       DigsDialog.success(
         `Pelanggan terdeteksi di <strong>${_esc(d.device_name)}</strong>.<br>` +
-        `<span style="font-size:12px;color:var(--d-muted);">${_esc(d.evidence)}</span>`,
-        'Router Ditemukan'
+          `<span style="font-size:12px;color:var(--d-muted);">${_esc(d.evidence)}</span>`,
+        "Router Ditemukan",
       );
       loadDueAlerts();
       loadEligible();
     } else {
-      const summary = (d.cache_summary || []).map(s =>
-        `${s.name}: ARP ${s.arp_count} · PPP ${s.active_count}/${s.secret_count}`).join('\n');
+      const summary = (d.cache_summary || [])
+        .map(
+          (s) =>
+            `${s.name}: ARP ${s.arp_count} · PPP ${s.active_count}/${s.secret_count}`,
+        )
+        .join("\n");
       DigsDialog.alert({
-        type: 'warning',
-        title: d.conflict ? 'Konflik Detected' : 'Tidak Ditemukan',
-        message: d.evidence || 'Pelanggan tidak terdeteksi di router manapun.',
-        log: summary ? summary.split('\n') : null
+        type: "warning",
+        title: d.conflict ? "Konflik Detected" : "Tidak Ditemukan",
+        message: d.evidence || "Pelanggan tidak terdeteksi di router manapun.",
+        log: summary ? summary.split("\n") : null,
       });
     }
   } catch (e) {
-    DigsDialog.error(e.message, 'Detect Error');
+    DigsDialog.error(e.message, "Detect Error");
   }
 };

@@ -27,7 +27,7 @@
     .card-lbl { font-size:12px; font-weight:500; color:#64748b; margin-bottom:10px; letter-spacing:.1px; }
     .card-body { display:flex; align-items:flex-end; justify-content:space-between; gap:8px; }
     .card-left { display:flex; flex-direction:column; min-width:0; }
-    .card-val  { font-size:30px; font-weight:800; color:#0f172a; letter-spacing:-1.2px; line-height:1; }
+    .card-val  { font-size:30px; font-weight:800; color:#0f172a; letter-spacing:-1.2px; line-height:1; transition:color .15s; }
     @media(max-width:1400px){ .card-val { font-size:26px; } }
     .card-meta { display:flex; align-items:center; gap:5px; margin-top:6px; flex-wrap:wrap; }
     .card-pill { display:inline-flex; align-items:center; padding:1px 6px; border-radius:100px; font-size:10.5px; font-weight:700; white-space:nowrap; flex-shrink:0; }
@@ -217,7 +217,8 @@
               <span class="card-val" id="fcRevenueVal">–</span>
               <div class="card-meta">
                 <span class="card-pill pill-amber" id="cp-revenue">—</span>
-                <span class="card-sub" id="fcRevenueAmt">Penerimaan bulan ini</span>
+                <span class="card-sub" id="">Penerimaan <br> bulan ini</span>
+                <!-- <span class="card-sub" id="fcRevenueAmt">Penerimaan bulan ini</span> -->
               </div>
             </div>
             <div class="card-spark">
