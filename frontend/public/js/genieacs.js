@@ -108,7 +108,7 @@ const GeniePage = (() => {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
       if (filterStatus) params.set("status", filterStatus);
-      const r = await fetch("/api/genieacs/devices?" + params);
+      const r = await fetch("/portal/api/genieacs/devices?" + params);
       const j = await r.json();
 
       if (!j.success) {
@@ -726,7 +726,7 @@ const GeniePage = (() => {
 
     try {
       const res = await fetch(
-        `/api/genieacs/devices/${safeEncodeId(currentDeviceId)}/clients`,
+        `/portal/api/genieacs/devices/${safeEncodeId(currentDeviceId)}/clients`,
       );
       const j = await res.json();
 
@@ -850,7 +850,7 @@ const GeniePage = (() => {
 
     try {
       const r = await fetch(
-        `/api/genieacs/devices/${safeEncodeId(currentDeviceId)}/rx-history?hours=${hours}`,
+        `/portal/api/genieacs/devices/${safeEncodeId(currentDeviceId)}/rx-history?hours=${hours}`,
       );
       const j = await r.json();
 
@@ -943,7 +943,7 @@ const GeniePage = (() => {
 
     try {
       const r = await fetch(
-        `/api/genieacs/devices/${safeEncodeId(currentDeviceId)}/bandwidth`,
+        `/portal/api/genieacs/devices/${safeEncodeId(currentDeviceId)}/bandwidth`,
       );
       const j = await r.json();
 

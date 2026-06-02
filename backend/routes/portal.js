@@ -5,6 +5,7 @@ const express = require("express");
 const router = express.Router();
 const { portalAuth } = require("../middleware/portalAuth");
 const PortalCtrl = require("../controllers/CustomerPortalController");
+const GenieacsController = require("../controllers/GenieacsController");
 const db = require("../models");
 const { LiveMessage } = db;
 
@@ -197,5 +198,18 @@ router.post("/api/chat/read-customer/:room", portalAuth, async (req, res) => {
     });
   }
 });
+
+router.get("/api/genieacs/devices", GenieacsController.getDevices);
+router.get("/api/genieacs/stats", GenieacsController.getStats);
+router.get("/api/genieacs/devices/:id", GenieacsController.getDevice);
+router.get("/api/genieacs/devices/:id/clients", GenieacsController.getClients);
+router.get(
+  "/api/genieacs/devices/:id/bandwidth",
+  GenieacsController.getBandwidth,
+);
+router.get(
+  "/api/genieacs/devices/:id/rx-history",
+  GenieacsController.getRxHistory,
+);
 
 module.exports = router;
