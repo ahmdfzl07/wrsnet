@@ -1629,7 +1629,7 @@ async function _saveCustomerInner() {
     name,
     customer_id: custId || undefined,
     phone,
-    nik: document.getElementById("cookie")?.value || "",
+    nik: document.getElementById("custNik")?.value || "",
     email: document.getElementById("custEmail")?.value || "",
     address: document.getElementById("custAddress")?.value || "",
 
