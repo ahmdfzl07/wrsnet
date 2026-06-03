@@ -1680,6 +1680,49 @@
       -webkit-tap-highlight-color:transparent;
     }
     .ot-sheet-cancel:active { background:#e2e8f0; }
+
+    .dc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .dc-box {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .dc-label {
+      font-size: 11px;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+
+    .dc-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .dc-value.ok {
+      color: #16a34a;
+    }
+
+    .dc-value.bad {
+      color: #dc2626;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 5px;
+      background: currentColor;
+    }
   </style>
 </head>
 <body>
@@ -1971,277 +2014,193 @@
     </div>
   </div>
 
-  <div id="wifiSection" style="display:none">
-  <!-- ═══ PANEL: ONT (embedded in Traffic panel, reachable from nav) ═══ --> 
-    <div class="tab-nav">
-      <button class="tab-btn active" onclick="openTab('panel-wifi', this)">
-        <span>WiFi</span>
-      </button>
+  <!-- ═════════ PANEL: PERANGKAT ═════════ -->
+  <div class="panel" id="panel-wifi">
+    <div class="w-card">
 
-      <button class="tab-btn" onclick="openTab('panel-perangkat', this)">
-        <span>Perangkat</span>
-      </button>
-    </div>
-
-    <!-- ═════════ PANEL: WIFI ═════════ -->
-    <div class="panel" id="panel-wifi">
-
-      <div class="w-card" id="wifiOntCard">
-        <div class="w-card-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M5 12.55a11 11 0 0114.08 0"/>
-            <path d="M1.42 9a16 16 0 0121.16 0"/>
-            <path d="M8.53 16.11a6 6 0 016.95 0"/>
-            <circle cx="12" cy="20" r="1"/>
-          </svg>
-          Status Modem / ONT
-        </div>
-
-        <div id="wifiOntInfo">
-          <div class="shimmer" style="height:48px"></div>
-        </div>
-
-        <button class="btn-reboot" id="btnWifiReboot" onclick="doReboot()" style="display:none">
-          Reboot ONT
-        </button>
+      <div class="w-card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12.55a11 11 0 0114.08 0"/>
+          <path d="M1.42 9a16 16 0 0121.16 0"/>
+          <path d="M8.53 16.11a6 6 0 016.95 0"/>
+          <circle cx="12" cy="20" r="1"/>
+        </svg>
+        Status Modem / ONT
       </div>
 
-      <div class="w-card" id="wifiFormCard" style="display:none">
-        <div class="w-card-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="11" width="18" height="11" rx="2"/>
-            <path d="M7 11V7a5 5 0 0110 0v4"/>
-          </svg>
-          Ubah Pengaturan WiFi
+      <!-- Header -->
+      <div class="ot-hdr">
+        <div class="ot-hdr-l"style="display:none">
+          <h1>
+            ONT Management
+          </h1>
+          <p>
+            Monitoring & konfigurasi ONT via GenieACS TR-069
+            <span id="last-refresh-label" style="margin-left:8px;font-size:11px;color:var(--faint);"></span>
+          </p>
         </div>
-
-        <div style="background:#eff6ff;padding:8px 12px;border-radius:10px;font-size:11px;font-weight:700;color:#2563eb;margin-bottom:12px">
-          WiFi 2.4 GHz
-        </div>
-
-        <div class="form-group">
-          <label>SSID 2.4GHz</label>
-          <input class="form-input" id="wSsid2g" maxlength="32">
-        </div>
-
-        <div class="form-group">
-          <label>Password</label>
-          <input class="form-input" id="wPass2g" type="password" maxlength="63">
-        </div>
-
-        <div id="wifi5gSection" style="display:none">
-          <div style="background:#f0fdf4;padding:8px 12px;border-radius:10px;font-size:11px;font-weight:700;color:#16a34a;margin-bottom:12px">
-            WiFi 5 GHz
-          </div>
-
-          <div class="form-group">
-            <label>SSID 5GHz</label>
-            <input class="form-input" id="wSsid5g" maxlength="32">
-          </div>
-
-          <div class="form-group">
-            <label>Password 5GHz</label>
-            <input class="form-input" id="wPass5g" type="password" maxlength="63">
-          </div>
-        </div>
-
-        <button class="btn-save" onclick="saveWifi()">Simpan Pengaturan</button>
-      </div>
-
-      <div class="w-card" id="wifiNoOnt" style="display:none">
-        <div class="empty-state">
-          Data ONT tidak tersedia
+        <div class="ot-hdr-r">
+          <div class="live-chip"><span class="ldot"></span>LIVE</div>
+          <button class="btn btn-outline btn-sm" onclick="GeniePage.refresh()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23,4 23,10 17,10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+            Refresh
+          </button>
         </div>
       </div>
-    </div>
 
-    <!-- ═════════ PANEL: PERANGKAT ═════════ -->
-    <div class="panel" id="panel-perangkat">
-      <div class="w-card">
+      <!-- Alert -->
+      <div class="ot-alert" id="genie-alert">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="genie-alert-msg">GenieACS tidak dapat dijangkau</span>
+      </div>
 
-        <div class="w-card-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="4" y="4" width="16" height="12" rx="2"/>
-            <path d="M12 16v4"/>
-            <path d="M8 20h8"/>
-          </svg>
-          Perangkat Terhubung
-        </div>
+      <!-- Stat Cards -->
+      <div class="ot-cards" style="display:none">
 
-        <!-- Header -->
-        <div class="ot-hdr">
-          <div class="ot-hdr-l">
-            <h1>
-              ONT Management
-            </h1>
-            <p>
-              Monitoring & konfigurasi ONT via GenieACS TR-069
-              <span id="last-refresh-label" style="margin-left:8px;font-size:11px;color:var(--faint);"></span>
-            </p>
-          </div>
-          <div class="ot-hdr-r">
-            <div class="live-chip"><span class="ldot"></span>LIVE</div>
-            <button class="btn btn-outline btn-sm" onclick="GeniePage.refresh()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23,4 23,10 17,10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
-              Refresh
-            </button>
-          </div>
-        </div>
-
-        <!-- Alert -->
-        <div class="ot-alert" id="genie-alert">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span id="genie-alert-msg">GenieACS tidak dapat dijangkau</span>
-        </div>
-
-        <!-- Stat Cards -->
-        <div class="ot-cards" style="display:none">
-
-          <div class="ot-card otc-active" id="otc-total" data-filter="all" onclick="otcClick(this)">
-            <div class="card-lbl">Total ONT</div>
-            <div class="card-body">
-              <div class="card-left">
-                <span class="card-val" id="stat-total">—</span>
-                <div class="card-meta">
-                  <span class="card-pill pill-blue" id="ot-pill-total">— device</span>
-                  <span class="card-sub">Semua perangkat</span>
-                </div>
-              </div>
-              <div class="card-spark">
-                <svg id="sp-total" viewBox="0 0 72 36" preserveAspectRatio="none">
-                  <path class="sp-fill" id="sp-total-fill" d="" fill="#2563eb" opacity=".12"/>
-                  <path class="sp-line" id="sp-total-line" d="" stroke="#2563eb"/>
-                  <circle class="sp-dot" id="sp-total-dot" r="2.5" fill="#2563eb"/>
-                </svg>
+        <div class="ot-card otc-active" id="otc-total" data-filter="all" onclick="otcClick(this)">
+          <div class="card-lbl">Total ONT</div>
+          <div class="card-body">
+            <div class="card-left">
+              <span class="card-val" id="stat-total">—</span>
+              <div class="card-meta">
+                <span class="card-pill pill-blue" id="ot-pill-total">— device</span>
+                <span class="card-sub">Semua perangkat</span>
               </div>
             </div>
-          </div>
-
-          <div class="ot-card" id="otc-online" data-filter="online" onclick="otcClick(this)">
-            <div class="card-lbl">Online</div>
-            <div class="card-body">
-              <div class="card-left">
-                <span class="card-val" id="stat-online">—</span>
-                <div class="card-meta">
-                  <span class="card-pill pill-green" id="ot-pill-online">— ONT</span>
-                  <span class="card-sub">ONT aktif</span>
-                </div>
-              </div>
-              <div class="card-spark">
-                <svg id="sp-online" viewBox="0 0 72 36" preserveAspectRatio="none">
-                  <path class="sp-fill" id="sp-online-fill" d="" fill="#16a34a" opacity=".12"/>
-                  <path class="sp-line" id="sp-online-line" d="" stroke="#16a34a"/>
-                  <circle class="sp-dot" id="sp-online-dot" r="2.5" fill="#16a34a"/>
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div class="ot-card" id="otc-offline" data-filter="offline" onclick="otcClick(this)">
-            <div class="card-lbl">Offline</div>
-            <div class="card-body">
-              <div class="card-left">
-                <span class="card-val" id="stat-offline">—</span>
-                <div class="card-meta">
-                  <span class="card-pill pill-red" id="ot-pill-offline">— ONT</span>
-                  <span class="card-sub">ONT tidak aktif</span>
-                </div>
-              </div>
-              <div class="card-spark">
-                <svg id="sp-offline" viewBox="0 0 72 36" preserveAspectRatio="none">
-                  <path class="sp-fill" id="sp-offline-fill" d="" fill="#dc2626" opacity=".12"/>
-                  <path class="sp-line" id="sp-offline-line" d="" stroke="#dc2626"/>
-                  <circle class="sp-dot" id="sp-offline-dot" r="2.5" fill="#dc2626"/>
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div class="ot-card ot-card-server" id="otc-server" data-filter="server" onclick="otcClick(this)">
-            <div class="srv-hdr">
-              <div class="card-lbl" style="margin:0;">Status Server</div>
-              <span class="srv-pill" id="srv-pill">
-                <span class="srv-pd"></span>
-                <span id="stat-server">—</span>
-              </span>
-            </div>
-            <div class="srv-stack">
-              <span class="srv-name">GenieACS NBI</span>
-              <span class="srv-url" id="stat-server-url">—</span>
-            </div>
-            <div class="srv-foot">
-              <span>TR-069</span>
-              <span class="srv-dot-sep">·</span>
-              <span id="srv-latency">Latency <b>—</b></span>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- Table -->
-        <div class="ot-tbl-wrap">
-          <div class="ot-tbl-hdr">
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <div class="ot-tbl-title">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ot-blue)" stroke-width="2.5"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M6 14h.01M10 10h8"/></svg>
-                Daftar ONT / CPE
-                <span class="ot-count" id="ont-count-label">0 device</span>
-              </div>
-              <div class="filter-chips">
-                <button class="fchip active" onclick="GeniePage.setFilter('')">Semua</button>
-                <button class="fchip online"  onclick="GeniePage.setFilter('online')">Online</button>
-                <button class="fchip offline" onclick="GeniePage.setFilter('offline')">Offline</button>
-              </div>
-            </div>
-            <div class="search-wrap">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" id="genie-search" placeholder="Cari serial, SSID, model..." oninput="GeniePage.debounce()">
-            </div>
-          </div>
-
-          <div style="overflow-x:auto">
-            <table class="ot-table">
-              <thead>
-                <tr>
-                  <th style="width:42px;">#</th>
-                  <th style="width:200px;">Serial / Model</th>
-                  <th style="width:140px;">Customer</th>
-                  <th style="width:118px;">RX Power</th>
-                  <th style="width:88px;">Clients</th>
-                  <th style="width:96px;">Suhu</th>
-                  <th style="width:108px;">Uptime</th>
-                  <th>SSID 2.4G</th>
-                  <th style="width:108px;">WAN IP</th>
-                  <th style="width:104px;">Last Inform</th>
-                  <th style="width:108px;text-align:right;">Aksi</th>
-                </tr>
-              </thead>
-              <tbody id="genie-tbody">
-                <tr><td colspan="11">
-                  <div class="tbl-empty">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M6 14h.01M10 10h8"/></svg>
-                    <p>Memuat data ONT...</p>
-                  </div>
-                </td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Mobile card list (≤768px) -->
-          <div class="ot-mobile-list" id="genie-mobile-list">
-            <div class="ot-mempty">
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M6 14h.01M10 10h8"/>
+            <div class="card-spark">
+              <svg id="sp-total" viewBox="0 0 72 36" preserveAspectRatio="none">
+                <path class="sp-fill" id="sp-total-fill" d="" fill="#2563eb" opacity=".12"/>
+                <path class="sp-line" id="sp-total-line" d="" stroke="#2563eb"/>
+                <circle class="sp-dot" id="sp-total-dot" r="2.5" fill="#2563eb"/>
               </svg>
-              <div class="ot-mempty-title">Memuat data ONT...</div>
             </div>
           </div>
-          <div class="ot-tbl-footer">
-            <span class="pg-info" id="genie-pg-info"></span>
+        </div>
+
+        <div class="ot-card" id="otc-online" data-filter="online" onclick="otcClick(this)">
+          <div class="card-lbl">Online</div>
+          <div class="card-body">
+            <div class="card-left">
+              <span class="card-val" id="stat-online">—</span>
+              <div class="card-meta">
+                <span class="card-pill pill-green" id="ot-pill-online">— ONT</span>
+                <span class="card-sub">ONT aktif</span>
+              </div>
+            </div>
+            <div class="card-spark">
+              <svg id="sp-online" viewBox="0 0 72 36" preserveAspectRatio="none">
+                <path class="sp-fill" id="sp-online-fill" d="" fill="#16a34a" opacity=".12"/>
+                <path class="sp-line" id="sp-online-line" d="" stroke="#16a34a"/>
+                <circle class="sp-dot" id="sp-online-dot" r="2.5" fill="#16a34a"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="ot-card" id="otc-offline" data-filter="offline" onclick="otcClick(this)">
+          <div class="card-lbl">Offline</div>
+          <div class="card-body">
+            <div class="card-left">
+              <span class="card-val" id="stat-offline">—</span>
+              <div class="card-meta">
+                <span class="card-pill pill-red" id="ot-pill-offline">— ONT</span>
+                <span class="card-sub">ONT tidak aktif</span>
+              </div>
+            </div>
+            <div class="card-spark">
+              <svg id="sp-offline" viewBox="0 0 72 36" preserveAspectRatio="none">
+                <path class="sp-fill" id="sp-offline-fill" d="" fill="#dc2626" opacity=".12"/>
+                <path class="sp-line" id="sp-offline-line" d="" stroke="#dc2626"/>
+                <circle class="sp-dot" id="sp-offline-dot" r="2.5" fill="#dc2626"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="ot-card ot-card-server" id="otc-server" data-filter="server" onclick="otcClick(this)">
+          <div class="srv-hdr">
+            <div class="card-lbl" style="margin:0;">Status Server</div>
+            <span class="srv-pill" id="srv-pill">
+              <span class="srv-pd"></span>
+              <span id="stat-server">—</span>
+            </span>
+          </div>
+          <div class="srv-stack">
+            <span class="srv-name">GenieACS NBI</span>
+            <span class="srv-url" id="stat-server-url">—</span>
+          </div>
+          <div class="srv-foot">
+            <span>TR-069</span>
+            <span class="srv-dot-sep">·</span>
+            <span id="srv-latency">Latency <b>—</b></span>
           </div>
         </div>
 
       </div>
+
+      <!-- Table -->
+      <div class="ot-tbl-wrap">
+        <div class="ot-tbl-hdr"style="display:none">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div class="ot-tbl-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ot-blue)" stroke-width="2.5"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M6 14h.01M10 10h8"/></svg>
+              Daftar ONT / CPE
+              <span class="ot-count" id="ont-count-label">0 device</span>
+            </div>
+            <div class="filter-chips">
+              <button class="fchip active" onclick="GeniePage.setFilter('')">Semua</button>
+              <button class="fchip online"  onclick="GeniePage.setFilter('online')">Online</button>
+              <button class="fchip offline" onclick="GeniePage.setFilter('offline')">Offline</button>
+            </div>
+          </div>
+          <div class="search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="genie-search" placeholder="Cari serial, SSID, model..." oninput="GeniePage.debounce()">
+          </div>
+        </div>
+
+        <div style="overflow-x:auto; display:none">
+          <table class="ot-table">
+            <thead>
+              <tr>
+                <th style="width:42px;">#</th>
+                <th style="width:200px;">Serial / Model</th>
+                <th style="width:140px;">Customer</th>
+                <th style="width:118px;">RX Power</th>
+                <th style="width:88px;">Clients</th>
+                <th style="width:96px;">Suhu</th>
+                <th style="width:108px;">Uptime</th>
+                <th>SSID 2.4G</th>
+                <th style="width:108px;">WAN IP</th>
+                <th style="width:104px;">Last Inform</th>
+                <th style="width:108px;text-align:right;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="genie-tbody">
+              <tr><td colspan="11">
+                <div class="tbl-empty">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M6 14h.01M10 10h8"/></svg>
+                  <p>Memuat data ONT...</p>
+                </div>
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Mobile card list (≤768px) -->
+        <div class="ot-mobile-list" id="genie-mobile-list">
+          <div class="ot-mempty">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M6 14h.01M10 10h8"/>
+            </svg>
+            <div class="ot-mempty-title">Memuat data ONT...</div>
+          </div>
+        </div>
+        <div class="ot-tbl-footer">
+          <span class="pg-info" id="genie-pg-info"></span>
+        </div>
+      </div>
+
     </div>
   </div>
 

@@ -199,6 +199,10 @@ router.post("/api/chat/read-customer/:room", portalAuth, async (req, res) => {
   }
 });
 
+// GENIEACS
+// ---- Device Detail ----
+router.get("/api/genieacs/devices/:id", GenieacsController.getDevice);
+
 router.get("/api/genieacs/devices", GenieacsController.getDevices);
 router.get("/api/genieacs/stats", GenieacsController.getStats);
 router.get("/api/genieacs/devices/:id", GenieacsController.getDevice);
