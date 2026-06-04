@@ -4518,42 +4518,29 @@ var _chartRange = '1d';
 var _chartLoading = false;
 var _chartLiveTimer = null;
 var _chartLiveData  = [];
-var _chartMode      = 'history';
+var _chartMode = 'live';
 
 async function fetchLiveMikrotik() {
   try {
+    var portalCustomer = JSON.parse(localStorage.getItem('portal_customer') || '{}');
+    var custId = portalCustomer.customer_id;
+
+    if (!custId) return null;
+
     var r = await fetch('/portal/mikrotik/customer-traffic', {
       headers: {
         'X-Requested-With': 'XMLHttpRequest',
-        'Authorization': 'Bearer ' + (localStorage.getItem('token') || '')
+        'Authorization': 'Bearer ' + (localStorage.getItem('token') || ''),
+        'X-Customer-Id': custId
       }
     });
 
     var j = await r.json();
-    if (!j || !j.success) return null;
-
-    var data = j.data;
-    if (!Array.isArray(data)) return null;
-
-    console.log('LIVE DATA SAMPLE:', data.slice(0, 3));
-
-    var portalCustomer = JSON.parse(localStorage.getItem('portal_customer') || '{}');
-
-    var custId = portalCustomer.customer_id || portalCustomer.customer_id;
-
-    var match = data.find(x =>
-      String(x.id) === String(custId) ||
-      String(x.customer_id) === String(custId)
-    );
-
-    if (!match) {
-      console.log('NO MATCH FOR CUST_ID:', custId);
-      return null;
-    }
+    if (!j || !j.success || !j.data) return null;
 
     return {
-      rx_mbps: (match.rateDown || 0) / 1e6,
-      tx_mbps: (match.rateUp || 0) / 1e6
+      rx_mbps: (j.data.rateDown || 0) / 1e6,
+      tx_mbps: (j.data.rateUp || 0) / 1e6
     };
 
   } catch (e) {
@@ -4565,15 +4552,24 @@ async function fetchLiveMikrotik() {
 function startLiveChart() {
   stopLiveChart();
 
-  _chartMode = 'live';
   _chartLiveData = [];
 
-  pushLiveSample();
-
-  _chartLiveTimer = setInterval(function () {
+  _chartLiveTimer = setInterval(async function () {
     if (_chartMode !== 'live') return;
-    pushLiveSample();
-  }, 2000);
+
+    var d = await fetchLiveMikrotik();
+    if (!d) return;
+
+    _chartLiveData.push(d);
+
+    if (_chartLiveData.length > 60) {
+      _chartLiveData.shift();
+    }
+
+    drawTrafficChart(document.getElementById('usageChartSvg'), _chartLiveData);
+    updateChartStats(_chartLiveData);
+
+  }, 3000);
 }
 
 async function pushLiveSample() {
@@ -4693,20 +4689,20 @@ async function loadTrafficChart(range) {
   }
 }
 
-function buildHistoryFromMikrotik(range) {
+async function buildHistoryFromMikrotik(range) {
   return new Promise(async function(resolve) {
-
     var maxPoints =
-      range === '1h' ? 30 :
-      range === '1d' ? 60 :
-      range === '3d' ? 120 : 60;
+      range === '1h' ? 20 :
+      range === '1d' ? 40 :
+      range === '3d' ? 80 : 40;
 
     var arr = [];
 
     for (let i = 0; i < maxPoints; i++) {
       var d = await fetchLiveMikrotik();
       if (d) arr.push(d);
-      await new Promise(r => setTimeout(r, 1000));
+
+      await new Promise(r => setTimeout(r, 1500));
     }
 
     resolve(arr);
