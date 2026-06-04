@@ -1977,6 +1977,7 @@
         </div>
 
         <div class="usage-chart-tabs" id="usageChartTabs">
+          <button class="ct-tab" data-range="live">Live</button>
           <button type="button" class="ct-tab" data-range="1h">1 jam</button>
           <button type="button" class="ct-tab active" data-range="1d">1 hari</button>
           <button type="button" class="ct-tab" data-range="3d">3 hari</button>
@@ -4515,9 +4516,88 @@ function fmtBytes(b){
 
 var _chartRange = '1d';
 var _chartLoading = false;
+var _chartLiveTimer = null;
+var _chartLiveData  = [];
+var _chartMode      = 'history';
+
+async function fetchLiveMikrotik() {
+  try {
+    var r = await fetch('/portal/mikrotik/customer-traffic', {
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Authorization': 'Bearer ' + (localStorage.getItem('token') || '')
+      }
+    });
+
+    var j = await r.json();
+    if (!j || !j.success) return null;
+
+    var data = j.data;
+    if (!Array.isArray(data)) return null;
+
+    console.log('LIVE DATA SAMPLE:', data.slice(0, 3));
+
+    var portalCustomer = JSON.parse(localStorage.getItem('portal_customer') || '{}');
+
+    var custId = portalCustomer.customer_id || portalCustomer.customer_id;
+
+    var match = data.find(x =>
+      String(x.id) === String(custId) ||
+      String(x.customer_id) === String(custId)
+    );
+
+    if (!match) {
+      console.log('NO MATCH FOR CUST_ID:', custId);
+      return null;
+    }
+
+    return {
+      rx_mbps: (match.rateDown || 0) / 1e6,
+      tx_mbps: (match.rateUp || 0) / 1e6
+    };
+
+  } catch (e) {
+    console.log('live error', e);
+    return null;
+  }
+}
+
+function startLiveChart() {
+  stopLiveChart();
+
+  _chartMode = 'live';
+  _chartLiveData = [];
+
+  pushLiveSample();
+
+  _chartLiveTimer = setInterval(function () {
+    if (_chartMode !== 'live') return;
+    pushLiveSample();
+  }, 2000);
+}
+
+async function pushLiveSample() {
+  var d = await fetchLiveMikrotik();
+  if (!d) return;
+
+  _chartLiveData.push(d);
+
+  if (_chartLiveData.length > 60) {
+    _chartLiveData.shift();
+  }
+
+  drawTrafficChart(document.getElementById('usageChartSvg'), _chartLiveData);
+  updateChartStats(_chartLiveData);
+}
+
+function stopLiveChart() {
+  if (_chartLiveTimer) {
+    clearInterval(_chartLiveTimer);
+    _chartLiveTimer = null;
+  }
+}
 
 async function loadTraffic() {
-  // Load total cards (selalu 3d untuk angka kumulatif besar)
   try {
     var r = await fetch('/portal/api/traffic?range=3d', { headers: authH() });
     var j = await r.json();
@@ -4548,7 +4628,6 @@ async function loadTraffic() {
     }
   } catch(e) { console.error('Traffic totals:', e); }
 
-  // Load chart history + bind tabs
   initChartTabs();
   loadTrafficChart(_chartRange);
 }
@@ -4572,43 +4651,66 @@ function initChartTabs() {
 async function loadTrafficChart(range) {
   if (_chartLoading) return;
   _chartLoading = true;
+
+  stopLiveChart();
+
   var empty = document.getElementById('chartEmpty');
   var svg   = document.getElementById('usageChartSvg');
-  // Show loading state
+
   empty.style.display = 'flex';
   empty.innerHTML = '<div class="uc-spinner"></div><span>Memuat data…</span>';
   svg.style.display = 'none';
-  // Reset stats
-  ['chartAvgDl','chartPeakDl','chartAvgUl','chartPeakUl'].forEach(function(id){
-    document.getElementById(id).textContent = '—';
-  });
 
   try {
-    var r = await fetch('/portal/api/traffic?range=' + encodeURIComponent(range), { headers: authH() });
-    var j = await r.json();
-    if (!j.success) throw new Error(j.message || 'Gagal');
 
-    var history = (j.data && Array.isArray(j.data.history)) ? j.data.history : [];
-    if (history.length < 2) {
-      // Not enough data
-      empty.innerHTML =
-        '<div class="uc-empty-data">' +
-          '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>' +
-          '<span>Belum ada data untuk ' + _rangeLabel(range) + '</span>' +
-        '</div>';
+    if (range === 'live') {
+      startLiveChart();
+      empty.style.display = 'none';
+      svg.style.display = 'block';
+      _chartLoading = false;
       return;
     }
 
-    drawTrafficChart(svg, history);
-    updateChartStats(history);
+    var data = await buildHistoryFromMikrotik(range);
+
+    if (!data || data.length < 2) {
+      empty.innerHTML = 'Belum ada data live buffer';
+      _chartLoading = false;
+      return;
+    }
+
+    drawTrafficChart(svg, data);
+    updateChartStats(data);
+
     empty.style.display = 'none';
     svg.style.display = 'block';
-  } catch(e) {
-    console.error('Chart:', e);
-    empty.innerHTML = '<span style="color:var(--red)">Gagal memuat data: ' + (e.message || 'error') + '</span>';
+
+  } catch (e) {
+    console.error(e);
+    empty.innerHTML = 'Error load chart';
   } finally {
     _chartLoading = false;
   }
+}
+
+function buildHistoryFromMikrotik(range) {
+  return new Promise(async function(resolve) {
+
+    var maxPoints =
+      range === '1h' ? 30 :
+      range === '1d' ? 60 :
+      range === '3d' ? 120 : 60;
+
+    var arr = [];
+
+    for (let i = 0; i < maxPoints; i++) {
+      var d = await fetchLiveMikrotik();
+      if (d) arr.push(d);
+      await new Promise(r => setTimeout(r, 1000));
+    }
+
+    resolve(arr);
+  });
 }
 
 function _rangeLabel(r) {
