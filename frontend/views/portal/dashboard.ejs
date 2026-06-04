@@ -4492,16 +4492,25 @@ async function confirmPayment() {
   }
 }
 
+
 // ══════════════════════════════════════════════════════════════
 // TRAFFIC — Usage Total (no chart)
 // ══════════════════════════════════════════════════════════════
-function fmtBytes(b) {
-  b = parseFloat(b) || 0;
-  if (b >= 1e12) return (b/1e12).toFixed(2) + ' TB';
-  if (b >= 1e9)  return (b/1e9).toFixed(2)  + ' GB';
-  if (b >= 1e6)  return (b/1e6).toFixed(1)  + ' MB';
-  if (b >= 1e3)  return (b/1e3).toFixed(0)  + ' KB';
-  return b + ' B';
+// function fmtBytes(b) {
+//   b = parseFloat(b) || 0;
+//   if (b >= 1e12) return (b/1e12).toFixed(2) + ' TB';
+//   if (b >= 1e9)  return (b/1e9).toFixed(2)  + ' GB';
+//   if (b >= 1e6)  return (b/1e6).toFixed(1)  + ' MB';
+//   if (b >= 1e3)  return (b/1e3).toFixed(0)  + ' KB';
+//   return b + ' B';
+// }
+
+function fmtBytes(b){
+  b = parseInt(b)||0;
+  if(b>=1073741824) return (b/1073741824).toFixed(2)+' GB';
+  if(b>=1048576) return (b/1048576).toFixed(1)+' MB';
+  if(b>=1024) return Math.round(b/1024)+' KB';
+  return b+' B';
 }
 
 var _chartRange = '1d';
@@ -4515,8 +4524,10 @@ async function loadTraffic() {
     if (j.success) {
       var cur   = j.data.current;
       var usage = j.usage || {};
-      var rxBytes = usage.total_rx_bytes || (cur && cur.bytesDown) || 0;
-      var txBytes = usage.total_tx_bytes || (cur && cur.bytesUp)   || 0;
+      // var rxBytes = usage.total_rx_bytes || (cur && cur.bytesDown) || 0;
+      // var txBytes = usage.total_tx_bytes || (cur && cur.bytesUp)   || 0;
+      var rxBytes = cur?.bytesDown || 0;
+      var txBytes = cur?.bytesUp   || 0;
 
       function splitBytes(b) {
         b = parseFloat(b) || 0;
