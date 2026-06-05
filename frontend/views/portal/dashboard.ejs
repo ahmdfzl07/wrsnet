@@ -2904,6 +2904,25 @@
   </div>
 </div>
 
+<!-- ═══ MODAL: KONFIRMASI ═══ -->
+<div class="ot-modal-overlay" id="modal-confirm">
+  <div class="ot-modal-box" style="max-width:380px">
+    <div class="ot-modal-hdr">
+      <div class="ot-modal-hdr-l">
+        <h3 id="confirm-title">Konfirmasi</h3>
+      </div>
+      <button class="ot-modal-close" onclick="GeniePage.closeModal('modal-confirm')">✕</button>
+    </div>
+    <div class="ot-modal-body">
+      <p id="confirm-message" style="font-size:13px;color:var(--muted);margin:0"></p>
+    </div>
+    <div class="ot-modal-footer">
+      <button class="btn btn-outline btn-sm" onclick="GeniePage.closeModal('modal-confirm')">Batal</button>
+      <button class="btn btn-red btn-sm" id="btn-confirm" onclick="GeniePage.doConfirm()">Ya, Lanjutkan</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="/js/genieacs.js"></script>
 <script src="/socket.io/socket.io.js"></script>

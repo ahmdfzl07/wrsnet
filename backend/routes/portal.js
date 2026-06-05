@@ -203,6 +203,19 @@ router.post("/api/chat/read-customer/:room", portalAuth, async (req, res) => {
 // ---- Device Detail ----
 router.get("/api/genieacs/devices/:id", GenieacsController.getDevice);
 
+router.post("/api/genieacs/devices/:id/wifi", GenieacsController.setWifi);
+router.post(
+  "/api/genieacs/devices/:id/reboot",
+  GenieacsController.rebootDevice,
+);
+router.post(
+  "/api/genieacs/devices/:id/factory-reset",
+  GenieacsController.factoryReset,
+);
+router.post(
+  "/api/genieacs/devices/:id/refresh",
+  GenieacsController.refreshDevice,
+);
 router.get("/api/genieacs/devices", GenieacsController.getDevices);
 router.get("/api/genieacs/stats", GenieacsController.getStats);
 router.get("/api/genieacs/devices/:id", GenieacsController.getDevice);

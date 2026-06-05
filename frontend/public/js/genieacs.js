@@ -637,7 +637,7 @@ const GeniePage = (() => {
         body.password_5g = pass5g;
       }
       const r = await fetch(
-        `/api/genieacs/devices/${safeEncodeId(currentDeviceId)}/wifi`,
+        `/portal/api/genieacs/devices/${safeEncodeId(currentDeviceId)}/wifi`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -728,7 +728,7 @@ const GeniePage = (() => {
     showInlineAlert("task-result", "info", "↻ Mengirim permintaan refresh...");
     try {
       const r = await fetch(
-        `/api/genieacs/devices/${safeEncodeId(currentDeviceId)}/refresh`,
+        `/portal/api/genieacs/devices/${safeEncodeId(currentDeviceId)}/refresh`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
