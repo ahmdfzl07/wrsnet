@@ -420,7 +420,21 @@ exports.traffic = async (req, res) => {
       mkDebug = { tried: false, queueCount: 0, error: null };
     try {
       mkDebug.tried = true;
-      const mk = getMikrotikInstance();
+      // const mk = getMikrotikInstance();
+
+      const {
+        getMikrotikInstanceByDevice,
+      } = require("../services/MikrotikService");
+
+      const resolveDeviceId = () => {
+        const v = req.query?.device_id || req.headers?.["x-device-id"];
+        if (!v) return null;
+        const n = parseInt(v);
+        return Number.isFinite(n) && n > 0 ? n : null;
+      };
+
+      const mk = await getMikrotikInstanceByDevice(resolveDeviceId());
+
       if (mk) {
         const queues = await mk.getQueues();
         mkDebug.queueCount = queues.length;
@@ -930,12 +944,10 @@ exports.ticketCreate = async (req, res) => {
       },
     });
     if (recentOpen >= 3)
-      return res
-        .status(429)
-        .json({
-          success: false,
-          message: "Terlalu banyak tiket. Tunggu beberapa saat.",
-        });
+      return res.status(429).json({
+        success: false,
+        message: "Terlalu banyak tiket. Tunggu beberapa saat.",
+      });
 
     const ticket = await Ticket.create({
       title: title.trim().substring(0, 255),
@@ -980,12 +992,10 @@ exports.createPayment = async (req, res) => {
       },
     });
     if (!invoice)
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Invoice tidak ditemukan atau sudah lunas",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Invoice tidak ditemukan atau sudah lunas",
+      });
 
     const customer = await Customer.findByPk(req.portalUser.id, {
       include: [{ model: Package, as: "package" }],
@@ -1359,12 +1369,10 @@ exports.createPayment = async (req, res) => {
             .json({ success: false, message: "Koneksi ke Xendit timeout" });
         }
         if (gwErr.code === "ENOTFOUND" || gwErr.code === "ECONNREFUSED") {
-          return res
-            .status(502)
-            .json({
-              success: false,
-              message: "Tidak bisa terhubung ke server Xendit",
-            });
+          return res.status(502).json({
+            success: false,
+            message: "Tidak bisa terhubung ke server Xendit",
+          });
         }
         throw gwErr;
       }
@@ -1570,12 +1578,10 @@ exports.createPayment = async (req, res) => {
             .json({ success: false, message: "Koneksi ke Duitku timeout" });
         }
         if (gwErr.code === "ENOTFOUND" || gwErr.code === "ECONNREFUSED") {
-          return res
-            .status(502)
-            .json({
-              success: false,
-              message: "Tidak bisa terhubung ke server Duitku",
-            });
+          return res.status(502).json({
+            success: false,
+            message: "Tidak bisa terhubung ke server Duitku",
+          });
         }
         throw gwErr;
       }
@@ -1619,21 +1625,17 @@ exports.createPayment = async (req, res) => {
       });
     }
 
-    res
-      .status(400)
-      .json({
-        success: false,
-        message: "Payment gateway provider tidak dikenali",
-      });
+    res.status(400).json({
+      success: false,
+      message: "Payment gateway provider tidak dikenali",
+    });
   } catch (e) {
     logger.error("Portal createPayment error:", e.message);
     if (e.response) logger.error("GW response:", e.response.data);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Gagal membuat transaksi: " + e.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Gagal membuat transaksi: " + e.message,
+    });
   }
 };
 
@@ -2441,19 +2443,15 @@ exports.wifiSet = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Password WiFi minimal 8 karakter" });
     if (ssid_5g && ssid_5g.length > 32)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Nama WiFi 5GHz maksimal 32 karakter",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Nama WiFi 5GHz maksimal 32 karakter",
+      });
     if (password_5g && password_5g.length < 8)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Password WiFi 5GHz minimal 8 karakter",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Password WiFi 5GHz minimal 8 karakter",
+      });
 
     const customer = await Customer.findByPk(req.portalUser.id);
     if (!customer || !customer.ont_sn)

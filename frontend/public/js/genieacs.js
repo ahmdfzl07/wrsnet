@@ -97,31 +97,46 @@ const GeniePage = (() => {
   }
 
   // ── DEVICES ─────────────────────────────────────────
+  const isAdmin =
+    currentUser?.role?.name === "superadmin" ||
+    currentUser?.role?.name === "admin";
   async function loadDevices() {
     const tbody = el("genie-tbody");
     const search = el("genie-search").value.trim();
-    tbody.innerHTML = `<tr><td colspan="11"><div class="tbl-empty">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="animation:spin 1s linear infinite"><polyline points="23,4 23,10 17,10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
-      <p>Memuat data...</p></div></td></tr>`;
+
+    if (isAdmin) {
+      tbody.innerHTML = `<tr><td colspan="11">
+        <div class="tbl-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.5"
+              style="animation:spin 1s linear infinite">
+            <polyline points="23,4 23,10 17,10"/>
+            <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+          </svg>
+          <p>Memuat data...</p>
+        </div>
+      </td></tr>`;
+    } else {
+      renderCardLoading();
+    }
 
     try {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
       if (filterStatus) params.set("status", filterStatus);
+
       const r = await fetch("/portal/api/genieacs/devices?" + params);
       const j = await r.json();
 
       if (!j.success) {
         tbody.innerHTML = `<tr><td colspan="11"><div class="tbl-empty">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <p style="color:#dc2626">${j.error || "Gagal memuat"}</p>
-          <button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="GeniePage.openSettings()">⚙ Konfigurasi Server</button>
-        </div></td></tr>`;
-        showAlert(j.error || "Gagal memuat data ONT");
+        <p style="color:red">${j.error || "Gagal memuat"}</p>
+      </div></td></tr>`;
         return;
       }
 
       devices = j.data;
+
       if (j.stats) {
         el("stat-total").textContent = j.stats.total;
         el("stat-online").textContent = j.stats.online;
@@ -129,40 +144,41 @@ const GeniePage = (() => {
       }
 
       renderTable();
-      const now = new Date().toLocaleTimeString("id-ID", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      el("last-refresh-label").textContent = `Diperbarui ${now}`;
+
+      el("last-refresh-label").textContent =
+        "Diperbarui " +
+        new Date().toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
       hideAlert();
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="11"><div class="tbl-empty"><p style="color:#dc2626">Error: ${e.message}</p></div></td></tr>`;
+      if (isAdmin) {
+        tbody.innerHTML = `<tr><td colspan="11">
+        <div class="tbl-empty">
+          <p style="color:red">${e.message}</p>
+        </div>
+      </td></tr>`;
+      } else {
+        el("genie-mobile-list").innerHTML = `
+        <div class="ot-mempty">
+          <div class="ot-mempty-title" style="color:red">${e.message}</div>
+        </div>
+      `;
+      }
     }
   }
 
   function renderTable() {
-    const tbody = el("genie-tbody");
     const search = el("genie-search").value.toLowerCase();
-
-    // Backend sudah filter junk devices. Di sini hanya apply search filter.
-    const isSuperAdmin = currentUser?.role?.name === "superadmin";
-    console.log("IS SUPERADMIN:", isSuperAdmin);
 
     let filtered = [...devices];
 
-    if (!isSuperAdmin && portalCustomer?.customer_id) {
-      filtered = filtered.filter((d) => {
-        const match = d.customer_id === portalCustomer.customer_id;
-
-        if (!match) {
-          console.log("SKIP DEVICE:", {
-            device_customer_id: d.customer_id,
-            portal_customer_id: portalCustomer.customer_id,
-          });
-        }
-
-        return match;
-      });
+    if (!isAdmin && portalCustomer?.customer_id) {
+      filtered = filtered.filter(
+        (d) => d.customer_id === portalCustomer.customer_id,
+      );
     }
 
     if (search) {
@@ -178,114 +194,143 @@ const GeniePage = (() => {
 
     el("ont-count-label").textContent = `${filtered.length} device`;
 
-    // ─── Pagination math ───
+    if (isAdmin) {
+      el("genie-mobile-list").style.display = "none";
+      renderTableMode(filtered);
+    } else {
+      renderCardMode(filtered);
+    }
+  }
+
+  function renderTableMode(filtered) {
+    const tbody = el("genie-tbody");
+
     const totalRows = filtered.length;
     const totalPages = Math.max(1, Math.ceil(totalRows / PER_PAGE));
-    // Clamp currentPage kalau search/filter mengecilkan jumlah hasil
+
     if (currentPage > totalPages) currentPage = totalPages;
     if (currentPage < 1) currentPage = 1;
-    const start = (currentPage - 1) * PER_PAGE;
-    const end = Math.min(start + PER_PAGE, totalRows);
-    const pageRows = filtered.slice(start, end);
 
-    // Pagination info text — diisi setelah render controls
+    const start = (currentPage - 1) * PER_PAGE;
+    const pageRows = filtered.slice(start, start + PER_PAGE);
+
     renderPagination(totalRows, totalPages);
 
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="11"><div class="tbl-empty">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="20" height="12" rx="2"/></svg>
-        <p>Tidak ada device ditemukan</p></div></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="11">
+      <div class="tbl-empty"><p>Tidak ada device</p></div>
+    </td></tr>`;
       return;
     }
 
-    // Simpan mapping id -> index untuk lookup saat klik
-    // PENTING: index relative ke pageRows (yang ditampilkan), karena tbody
-    // hanya berisi page saat ini. Reset map setiap render.
     window._genieDeviceMap = {};
-    pageRows.forEach((d, i) => {
-      window._genieDeviceMap[i] = d.id;
-    });
 
     tbody.innerHTML = pageRows
       .map((d, i) => {
-        const num = String(start + i + 1).padStart(2, "0");
+        window._genieDeviceMap[i] = d.id;
 
-        // Manufacturer icon color tier
-        const mfrKey = (d.manufacturer || "").toLowerCase();
-        let snIcCls = "other";
-        if (mfrKey.includes("huawei")) snIcCls = "huawei";
-        else if (mfrKey.includes("zte")) snIcCls = "zte";
-        else if (mfrKey.includes("fiberhome") || mfrKey.includes("fh"))
-          snIcCls = "fh";
-        else if (mfrKey.includes("zicg") || mfrKey.includes("zxhn"))
-          snIcCls = "zicg";
-
-        const snDisplay = d.serial || truncate(d.id, 22);
-        const modelSub =
-          [d.manufacturer, d.model].filter(Boolean).join(" ") || "—";
-
-        // Customer cell
-        const custHtml = d.customer_name
-          ? `<div class="cust-cell">
-             <span class="cust-name">${escHtmlLoc(d.customer_name)}</span>
-             ${d.customer_id ? `<span class="cust-id">${escHtmlLoc(d.customer_id)}</span>` : ""}
-           </div>`
-          : `<span class="cust-empty">Belum assigned</span>`;
-
-        // RX tier
-        const rxHtml = d.online
-          ? renderRxTier(d.rx_power)
-          : `<span class="rx-empty">—</span>`;
-
-        // SSID cell
-        const ssidHtml = d.ssid
-          ? `<div class="ssid-cell">
-             <span class="ssid-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg></span>
-             <span class="ssid-txt" title="${escHtmlLoc(d.ssid)}">${escHtmlLoc(d.ssid)}</span>
-           </div>`
-          : `<span class="rx-empty">—</span>`;
-
-        const ipHtml = d.wan_ip
-          ? `<span class="ip-badge">${escHtmlLoc(d.wan_ip)}</span>`
-          : `<span class="ip-empty">—</span>`;
-
-        const informHtml = d.last_inform
-          ? `<div class="inform-cell">
-             <span class="inform-ago">${fmtAgo(d.last_inform)}</span>
-             <span class="inform-sub">${fmtDateTime(d.last_inform)}</span>
-           </div>`
-          : `<span class="rx-empty">—</span>`;
-
-        return `<tr data-idx="${i}" class="${d.online ? "" : "row-offline"}" onclick="GeniePage.rowClick(this)">
-        <td class="num-cell">${num}</td>
-        <td>
-          <div class="sn-cell">
-            <span class="sn-num" title="${escHtmlLoc(snDisplay)}">${escHtmlLoc(snDisplay)}</span>
-            <span class="sn-sub">${escHtmlLoc(modelSub)}</span>
-          </div>
-        </td>
-        <td data-label="Customer">${custHtml}</td>
-        <td data-label="RX Power">${rxHtml}</td>
-        <td data-label="Clients">${renderClientsCell(d)}</td>
-        <td data-label="Suhu">${renderTempCell(d)}</td>
-        <td data-label="Uptime">${renderUptimeCell(d)}</td>
-        <td data-label="SSID 2.4G">${ssidHtml}</td>
-        <td data-label="WAN IP">${ipHtml}</td>
-        <td data-label="Last Inform">${informHtml}</td>
+        return `
+      <tr onclick="GeniePage.rowClick(this)" data-idx="${i}">
+        <td>${String(start + i + 1).padStart(2, "0")}</td>
+        <td>${escHtmlLoc(d.serial || d.id)}</td>
+        <td>${escHtmlLoc(d.customer_name || "-")}</td>
+        <td>${renderRxTier(d.rx_power)}</td>
+        <td>${renderClientsCell(d)}</td>
+        <td>${renderTempCell(d)}</td>
+        <td>${renderUptimeCell(d)}</td>
+        <td>${escHtmlLoc(d.ssid || "-")}</td>
+        <td>${d.wan_ip || "-"}</td>
+        <td>${fmtAgo(d.last_inform)}</td>
         <td onclick="event.stopPropagation()">
-          <div class="act-btns">
-            <button class="act-btn act-detail" data-idx="${i}" onclick="GeniePage.btnClick(this,'detail')" title="Detail">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-            </button>
-            <button class="act-btn act-wifi" data-idx="${i}" onclick="GeniePage.btnClick(this,'wifi')" title="Ubah WiFi">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg>
-            </button>
-            <button class="act-btn act-reboot" data-idx="${i}" onclick="GeniePage.btnClick(this,'reboot')" title="Reboot">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0115.5-6.3L21 8"/><polyline points="21 3 21 8 16 8"/><path d="M21 12a9 9 0 01-15.5 6.3L3 16"/><polyline points="3 21 3 16 8 16"/></svg>
-            </button>
-          </div>
+          <button onclick="GeniePage.btnClick(this,'detail')">Detail</button>
         </td>
-      </tr>`;
+      </tr>
+    `;
+      })
+      .join("");
+  }
+
+  function renderCardLoading() {
+    const list = el("genie-mobile-list");
+
+    list.style.display = "grid";
+
+    list.innerHTML = `
+    <div class="ot-mempty">
+      <div class="tbl-empty">
+        <svg viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="1.5"
+             style="width:28px;height:28px;animation:spin 1s linear infinite;margin-bottom:6px;">
+          <polyline points="23,4 23,10 17,10"/>
+          <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+        </svg>
+        <p>Memuat data...</p>
+      </div>
+    </div>
+  `;
+  }
+
+  function renderCardMode(filtered) {
+    const list = el("genie-mobile-list");
+
+    list.style.display = "grid";
+    window._genieDeviceMap = {};
+
+    if (filtered.length === 0) {
+      list.innerHTML = `
+      <div class="ot-mempty">
+        <div class="ot-mempty-title">Tidak ada device</div>
+      </div>
+    `;
+      return;
+    }
+
+    list.innerHTML = filtered
+      .map((d, i) => {
+        window._genieDeviceMap[i] = d.id;
+
+        return `
+      <div class="device-card ${d.online ? "online" : "offline"}"
+           data-idx="${i}"
+           onclick="GeniePage.cardClick(this)">
+
+        <div class="dc-grid">
+
+          <div class="dc-box">
+            <div class="dc-label">STATUS</div>
+            <div class="dc-value ${d.online ? "ok" : "bad"}">
+              <span class="dot"></span>
+              ${d.online ? "Online" : "Offline"}
+            </div>
+          </div>
+
+          <div class="dc-box">
+            <div class="dc-label">UPTIME</div>
+            <div class="dc-value">
+              ${d.uptime || "-"}
+            </div>
+          </div>
+
+          <div class="dc-box">
+            <div class="dc-label">RX POWER</div>
+            <div class="dc-value">
+              ${d.rx_power ? d.rx_power + " dBm" : "-"}
+            </div>
+          </div>
+
+          <div class="dc-box">
+            <div class="dc-label">SUHU ONT</div>
+            <div class="dc-value">
+              ${d.temperature ? d.temperature + " °C" : "-"}
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    `;
       })
       .join("");
   }
@@ -351,19 +396,10 @@ const GeniePage = (() => {
   }
 
   // Klik baris tabel - pakai data-idx untuk avoid encoding issues
-  function rowClick(tr) {
-    const idx = parseInt(tr.getAttribute("data-idx"));
+  function cardClick(el) {
+    const idx = parseInt(el.getAttribute("data-idx"));
     const id = window._genieDeviceMap?.[idx];
     if (id) openDetail(id);
-  }
-
-  function btnClick(btn, action) {
-    const idx = parseInt(btn.getAttribute("data-idx"));
-    const id = window._genieDeviceMap?.[idx];
-    if (!id) return;
-    if (action === "detail") openDetail(id);
-    else if (action === "wifi") openDetailTab(id, "tab-wifi");
-    else if (action === "reboot") confirmReboot(id);
   }
 
   function rowClick(tr) {
@@ -458,7 +494,9 @@ const GeniePage = (() => {
 
     // Fetch detail
     try {
-      const r = await fetch(`/api/genieacs/devices/${safeEncodeId(deviceId)}`);
+      const r = await fetch(
+        `/portal/api/genieacs/devices/${safeEncodeId(deviceId)}`,
+      );
       const j = await r.json();
       if (j.success && j.data) {
         const d = j.data;
@@ -599,7 +637,7 @@ const GeniePage = (() => {
         body.password_5g = pass5g;
       }
       const r = await fetch(
-        `/api/genieacs/devices/${safeEncodeId(currentDeviceId)}/wifi`,
+        `/portal/api/genieacs/devices/${safeEncodeId(currentDeviceId)}/wifi`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -690,7 +728,7 @@ const GeniePage = (() => {
     showInlineAlert("task-result", "info", "↻ Mengirim permintaan refresh...");
     try {
       const r = await fetch(
-        `/api/genieacs/devices/${safeEncodeId(currentDeviceId)}/refresh`,
+        `/portal/api/genieacs/devices/${safeEncodeId(currentDeviceId)}/refresh`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1473,6 +1511,7 @@ const GeniePage = (() => {
     debounce,
     rowClick,
     btnClick,
+    cardClick,
     openDetail,
     openDetailTab,
     closeModal,

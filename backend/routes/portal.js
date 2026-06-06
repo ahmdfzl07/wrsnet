@@ -254,4 +254,129 @@ router.get(
   GenieacsController.getRxHistory,
 );
 
+let mikrotikCache = {
+  queues: [],
+  sessions: [],
+  ts: 0,
+};
+
+const CACHE_TTL = 3000;
+
+router.get("/mikrotik/customer-traffic", async (req, res) => {
+  try {
+    const {
+      getMikrotikInstanceByDevice,
+    } = require("../services/MikrotikService");
+    const { Customer, Package } = require("../models");
+    const { Op } = require("sequelize");
+
+    const resolveDeviceId = () => {
+      const v = req.query?.device_id || req.headers?.["x-device-id"];
+      if (!v) return null;
+      const n = parseInt(v);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
+
+    const mt = await getMikrotikInstanceByDevice(resolveDeviceId());
+
+    const customerId = req.query.customer_id || req.headers["x-customer-id"];
+
+    const now = Date.now();
+
+    if (!mikrotikCache.ts || now - mikrotikCache.ts > CACHE_TTL) {
+      const [q, s] = await Promise.allSettled([
+        mt.getQueues(),
+        mt.getPPPoESessions(),
+      ]);
+
+      mikrotikCache.queues = q.status === "fulfilled" ? q.value : [];
+      mikrotikCache.sessions = s.status === "fulfilled" ? s.value : [];
+      mikrotikCache.ts = now;
+    }
+
+    const queueData = mikrotikCache.queues;
+    const sessionData = mikrotikCache.sessions;
+
+    const customers = await Customer.findAll({
+      attributes: [
+        "id",
+        "customer_id",
+        "name",
+        "static_ip",
+        "pppoe_username",
+        "status",
+        "latitude",
+        "longitude",
+      ],
+      include: [
+        {
+          model: Package,
+          as: "package",
+          attributes: ["name", "price"],
+          required: false,
+        },
+      ],
+      where: {
+        status: { [Op.in]: ["active", "isolated", "suspended", "inactive"] },
+        ...(customerId ? { customer_id: customerId } : {}),
+      },
+      limit: 1,
+    });
+
+    const cust = customers[0];
+
+    if (!cust) {
+      return res.json({ success: true, data: null });
+    }
+
+    const ip = cust.static_ip;
+    const pppoe = cust.pppoe_username?.toLowerCase();
+
+    const session =
+      sessionData.find(
+        (s) =>
+          (pppoe && s.name?.toLowerCase() === pppoe) ||
+          (ip && s.address === ip),
+      ) || null;
+
+    const queue =
+      queueData.find(
+        (q) =>
+          (ip && q.target?.includes(ip)) ||
+          (pppoe && q.name?.toLowerCase().includes(pppoe)),
+      ) || null;
+
+    const rateDown = queue ? parseInt(queue.rateIn || 0) : 0;
+    const rateUp = queue ? parseInt(queue.rateOut || 0) : 0;
+
+    return res.json({
+      success: true,
+      data: {
+        id: cust.id,
+        customer_id: cust.customer_id,
+        name: cust.name,
+        ip,
+        pppoe: cust.pppoe_username,
+        package: cust.package?.name || null,
+
+        online: !!session || rateDown + rateUp > 0,
+
+        rateDown,
+        rateUp,
+
+        bytesDown: queue ? parseInt(queue.bytesIn || 0) : 0,
+        bytesUp: queue ? parseInt(queue.bytesOut || 0) : 0,
+
+        uptime: session?.uptime || null,
+        queueName: queue?.name || null,
+      },
+    });
+  } catch (e) {
+    return res.status(500).json({
+      success: false,
+      message: e.message,
+    });
+  }
+});
+
 module.exports = router;
