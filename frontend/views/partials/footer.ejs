@@ -33,6 +33,21 @@
   </div>
 </footer>
 
+<script>
+  function toggleNavGroup(button) {
+        // Mencari container group dari tombol yang diklik
+        const group = button.closest('.nav-group');
+        if (group) {
+            // Toggle class 'open' untuk menampilkan/menyembunyikan anak menu
+            group.classList.toggle('open');
+            
+            // Opsional: Jika ingin menutup group lain saat satu group dibuka (accordion style)
+            // document.querySelectorAll('.nav-group').forEach(el => {
+            //     if (el !== group) el.classList.remove('open');
+            // });
+        }
+    }
+</script>
 <style>
 .main-footer {
   width: 100%;
@@ -124,5 +139,26 @@
   .gdmp-logo {
     height: 20px;
   }
+
+  .nav-group-children {
+    display: none; /* Default tersembunyi */
+    padding-left: 20px; /* Indentasi sub-menu */
+}
+
+.nav-group.open .nav-group-children {
+    display: block; /* Muncul saat parent memiliki class 'open' */
+}
+
+.nav-group.open .nav-chev {
+    transform: rotate(180deg); /* Memutar ikon panah ke atas */
+    transition: transform 0.3s ease;
+}
+
+.nav-chev {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.3s ease;
+    margin-left: auto;
+}
 }
 </style>

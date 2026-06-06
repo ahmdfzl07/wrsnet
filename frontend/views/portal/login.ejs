@@ -510,49 +510,92 @@ document.getElementById('inputPW').addEventListener('keydown', function(e){
   if(e.key === 'Enter') doLogin();
 });
 
-async function doLogin(){
+async function doLogin() {
   var cid = document.getElementById('inputCID').value.trim();
   var pw  = document.getElementById('inputPW').value;
+
   var err = document.getElementById('errMsg');
   var btn = document.getElementById('btnLogin');
   var txt = document.getElementById('btnText');
   var sp  = document.getElementById('btnSpinner');
 
-  if(!cid || !pw){
+  if (!cid || !pw) {
     err.textContent = 'ID Pelanggan dan Password wajib diisi';
     err.style.display = 'block';
     return;
   }
 
   err.style.display = 'none';
+
   btn.disabled = true;
   txt.style.display = 'none';
   sp.style.display = 'block';
 
   try {
+
     var r = await fetch('/portal/api/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customer_id: cid, password: pw })
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        customer_id: cid,
+        password: pw
+      })
     });
+
     var j = await r.json();
 
-    if(!j.success){
+    if (!j.success) {
+
       err.textContent = j.message || 'Login gagal';
       err.style.display = 'block';
+
     } else {
+
       localStorage.setItem('portal_token', j.token);
-      localStorage.setItem('portal_customer', JSON.stringify(j.customer));
-      document.cookie = 'portal_token=' + j.token + ';path=/portal;max-age=86400;SameSite=Lax';
-      window.location.href = '/portal/dashboard';
+
+      localStorage.setItem(
+        'portal_customer',
+        JSON.stringify(j.customer)
+      );
+
+      document.cookie =
+        'portal_token=' + j.token +
+        ';path=/portal;max-age=86400;SameSite=Lax';
+
+      if (
+        j.customer &&
+        j.customer.role === 'agen'
+      ) {
+
+        window.location.href =
+          '/portal/agen/dashboard-agen';
+
+      } else {
+
+        window.location.href =
+          '/portal/dashboard';
+
+      }
+
     }
+
   } catch (e) {
-    err.textContent = 'Tidak dapat terhubung ke server';
+
+    console.error(e);
+
+    err.textContent =
+      'Tidak dapat terhubung ke server';
+
     err.style.display = 'block';
+
   } finally {
+
     btn.disabled = false;
     txt.style.display = '';
     sp.style.display = 'none';
+
   }
 }
 </script>

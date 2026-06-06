@@ -211,5 +211,16 @@ module.exports = (sequelize) => {
     },
   );
 
+  Customer.associate = (models) => {
+
+    Customer.hasMany(models.Invoice, {
+
+        foreignKey: "customer_id",
+        as: "invoices"
+
+    });
+
+};
+
   return Customer;
 };

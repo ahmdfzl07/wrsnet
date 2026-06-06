@@ -730,4 +730,12 @@ router.get("/register", (req, res) => {
   res.render("pages/register");
 });
 
+const AgenController = require('../controllers/AgenController');
+
+router.get('/portal/agen/dashboard-agen', (req, res) => {
+  res.render('portal/agen/dashboard-agen', {
+    title: 'Dashboard Agen',
+    appName: 'WRSNET'
+  });
+});
 module.exports = router;

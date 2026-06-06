@@ -34,6 +34,8 @@ const demoRoutes = require("./demo");
 
 // Controllers (existing)
 const AuthController = require("../controllers/AuthController");
+const AgenController = require('../controllers/AgenController'); 
+const authAgen = require('../middleware/authAgen');
 const UserController = require("../controllers/UserController");
 const CustomerController = require("../controllers/CustomerController");
 const PackageController = require("../controllers/PackageController");
@@ -3308,4 +3310,35 @@ router.delete("/roles/:id", authenticate, UserController.deleteRole);
 const trackingRoutes = require("./tracking");
 router.use("/tracking", authenticate, demoGuard, trackingRoutes);
 
+const upload = multer({ dest: 'uploads/' });
+const PembayaranController = require('../controllers/PembayaranController');
+router.post(
+    "/pembayaran",
+    upload.single("bukti_foto"),
+    PembayaranController.simpanPembayaran
+);
+router.get(
+    "/dashboard-total",
+    PembayaranController.totalTransaksi
+);
+
+router.get(
+    "/dashboard-total",
+    PembayaranController.dashboardTotal
+);
+
+router.get(
+    "/laporan-pembayaran",
+    PembayaranController.laporanPembayaran
+);
+
+router.get(
+    "/dashboard-stat",
+    PembayaranController.dashboardStat
+);
+
+router.get('/user/profile', authenticate, AuthController.profile);
+router.put("/user/profile", authenticate, AuthController.updateProfile);
+router.put("/user/password", authenticate, AuthController.changePassword);
+router.get('/agen/profile', authAgen, AgenController.profile);
 module.exports = router;

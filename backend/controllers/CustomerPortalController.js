@@ -6,6 +6,7 @@
 
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const {  Agent } = require("../models");
 const axios = require("axios");
 const crypto = require("crypto");
 const {
@@ -38,14 +39,61 @@ async function getSetting(key, fallback = null) {
 exports.login = async (req, res) => {
   try {
     const { customer_id, password } = req.body;
-    if (!customer_id || !password)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "ID Pelanggan dan password wajib diisi",
-        });
 
+    if (!customer_id || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Username dan password wajib diisi",
+      });
+    }
+
+    // =========================
+    // LOGIN AGEN
+    // =========================
+    const agent = await Agent.findOne({
+      where: {
+        username: customer_id,
+        is_active: true,
+      },
+    });
+
+    if (agent) {
+      const valid = await bcrypt.compare(password, agent.password);
+
+      if (!valid) {
+        return res.status(401).json({
+          success: false,
+          message: "Password salah",
+        });
+      }
+
+      const token = jwt.sign(
+        {
+          id: agent.id,
+          username: agent.username,
+          type: "agent",
+        },
+        process.env.JWT_SECRET,
+        {
+          expiresIn: "24h",
+        }
+      );
+
+      return res.json({
+        success: true,
+        token,
+        role: "agent",
+        agent: {
+          id: agent.id,
+          name: agent.name,
+          username: agent.username,
+        },
+      });
+    }
+
+    // =========================
+    // LOGIN CUSTOMER
+    // =========================
     const customer = await Customer.findOne({
       where: {
         [Op.or]: [{ customer_id }, { phone: customer_id }],
@@ -53,71 +101,67 @@ exports.login = async (req, res) => {
       },
       include: [{ model: Package, as: "package" }],
     });
-    if (!customer)
-      return res
-        .status(401)
-        .json({ success: false, message: "ID Pelanggan tidak ditemukan" });
+
+    if (!customer) {
+      return res.status(401).json({
+        success: false,
+        message: "Akun tidak ditemukan",
+      });
+    }
 
     let valid = false;
+
     if (customer.portal_password) {
-      valid = await bcrypt.compare(password, customer.portal_password);
+      valid = await bcrypt.compare(
+        password,
+        customer.portal_password
+      );
     } else {
       const cleanPhone = (customer.phone || "").replace(/[^0-9]/g, "");
       const cleanInput = password.replace(/[^0-9]/g, "");
-      valid = cleanPhone === cleanInput || password === customer.phone;
+
+      valid =
+        cleanPhone === cleanInput ||
+        password === customer.phone;
     }
-    if (!valid)
-      return res
-        .status(401)
-        .json({ success: false, message: "Password salah" });
-    if (customer.status === "suspended")
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Akun Anda telah di-suspend. Hubungi ISP.",
-        });
 
-    await customer.update({ last_portal_login: new Date() });
+    if (!valid) {
+      return res.status(401).json({
+        success: false,
+        message: "Password salah",
+      });
+    }
 
-    // Portal tokens sign with JWT_PORTAL_SECRET (falls back to JWT_SECRET for
-    // zero-downtime migration; set JWT_PORTAL_SECRET in .env to activate
-    // domain separation between admin and portal tokens).
-    const portalSecret =
-      process.env.JWT_PORTAL_SECRET || process.env.JWT_SECRET;
     const token = jwt.sign(
-      { id: customer.id, customer_id: customer.customer_id, type: "customer" },
-      portalSecret,
-      { expiresIn: "24h" },
+      {
+        id: customer.id,
+        customer_id: customer.customer_id,
+        type: "customer",
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "24h",
+      }
     );
-    // Cookie is set for defense-in-depth (server-side httpOnly), but the
-    // portal frontend also relies on the token in the response body to send
-    // it as an Authorization: Bearer header. The token is the same in both
-    // places; removing it from the body would break existing frontend JS.
-    // sameSite=lax (not strict) so navigation from /portal/login → /portal/dashboard
-    // still carries the cookie.
-    res.cookie("portal_token", token, {
-      httpOnly: true,
-      secure: process.env.APP_ENV === "production",
-      sameSite: "lax",
-      path: "/portal",
-      maxAge: 86400000,
-    });
 
-    res.json({
+    return res.json({
       success: true,
       token,
+      role: "customer",
       customer: {
         id: customer.id,
         customer_id: customer.customer_id,
         name: customer.name,
-        status: customer.status,
-        package_name: customer.package?.name || "—",
       },
     });
+
   } catch (e) {
-    logger.error("Portal login error:", e);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.log(e);
+
+    return res.status(500).json({
+      success: false,
+      message: e.message,
+    });
   }
 };
 

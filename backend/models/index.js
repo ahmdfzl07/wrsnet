@@ -35,6 +35,7 @@ sequelize.afterConnect(async (connection) => {
 // Import Models
 const User = require("./User")(sequelize);
 const Role = require("./Role")(sequelize);
+const Agent = require("./Agent")(sequelize, Sequelize.DataTypes);
 const Permission = require("./Permission")(sequelize);
 const RolePermission = require("./RolePermission")(sequelize);
 const Customer = require("./Customer")(sequelize);
@@ -235,6 +236,7 @@ const db = {
   sequelize,
   Sequelize,
   User,
+  Agent,
   Role,
   Permission,
   RolePermission,

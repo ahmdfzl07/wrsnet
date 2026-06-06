@@ -73,5 +73,16 @@ module.exports = (sequelize) => {
     ]
   });
 
+  Invoice.associate = (models) => {
+
+    Invoice.belongsTo(models.Customer, {
+
+        foreignKey: "customer_id",
+        as: "customer"
+
+    });
+
+};
+
   return Invoice;
 };

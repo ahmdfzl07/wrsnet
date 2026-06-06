@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title><%= title %></title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *{ margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
+    body{ background:#020617; color:#fff; }
+    .mobile{ max-width:430px; margin:auto; min-height:100vh; background:#020617; padding:20px; padding-bottom:100px; }
+    .hidden { display: none; }
+
+    /* UI Utama */
+    .header{ display:flex; justify-content:space-between; align-items:center; margin-top:20px; }
+    .profile{ display:flex; align-items:center; gap:12px; }
+    .avatar{ width:50px; height:50px; border-radius:50%; background:#0ea5e9; }
+    .name{ font-size:20px; font-weight:600; }
+    .card{ background:#07152f; border-radius:24px; padding:24px; margin-top:25px; }
+    .balance{ font-size:32px; font-weight:700; color:#22d3ee; margin-top:10px; }
+    .topup{ margin-top:20px; width:100%; border:none; background:#22d3ee; color:#082f49; padding:14px; border-radius:999px; font-weight:600; cursor:pointer; }
+    .stats{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:20px; }
+    .stat{ background:#07152f; padding:20px; border-radius:20px; }
+    .stat h3{ color:#94a3b8; font-size:13px; margin-bottom:8px; }
+    .stat h1{ color:#22d3ee; font-size:24px; }
+    .service-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:18px; }
+    .service{ text-align:center; cursor:pointer; }
+    .service-icon{ width:60px; height:60px; border-radius:50%; background:#07152f; display:flex; align-items:center; justify-content:center; margin:auto; margin-bottom:10px; }
+    
+    .dashboard-img-style { background: #07152f; padding: 20px; border-radius: 20px; margin-top: 20px; border: 1px solid #0891b2; }
+    
+    .customer-modal{ display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,.7); z-index:999999; }
+    .customer-modal-content{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:95%; max-width:1200px; max-height:90vh; overflow:auto; background:#fff; color:#000; border-radius:12px; padding:15px; }
+    .customer-close{ float:right; cursor:pointer; font-size:24px; font-weight:bold; }
+    .customer-table{ width:100%; border-collapse:collapse; margin-top:10px; }
+    .customer-table th, .customer-table td{ border:1px solid #ddd; padding:8px; color:#000; }
+    .btn-view{ background:#16a34a; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; }
+
+    .form-container {
+    background: #fff;
+    color: #333;
+    padding: 20px;
+    border-radius: 0 0 8px 8px;
+    border: 1px solid #dee2e6;
+}
+.form-row {
+    margin-bottom: 12px;
+}
+.form-row label {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+.form-row input, .form-row select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+.btn-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+  </style>
+</head>
+
+<body>
+
+<div class="mobile">
+  <div id="main-content">
+    <div class="header">
+      <div class="profile">
+        <div class="avatar"></div>
+        <div class="name"><%= user.name %></div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="color:#94a3b8;">AVAILABLE BALANCE</div>
+      <div class="balance">Rp <%= Number(user.balance || 0).toLocaleString('id-ID') %></div>
+      <button class="topup">Top Up</button>
+    </div>
+    <div class="stats">
+
+    <div class="stat">
+
+        <h3>Today's Income</h3>
+
+        <h1 id="todayIncome">
+            Rp 0
+        </h1>
+
+    </div>
+
+    <div class="stat">
+
+        <h3>Total Trans.</h3>
+
+        <h1 id="totalTrx">
+            0
+        </h1>
+
+    </div>
+
+</div>
+    <div class="services">
+      <h3>Quick Services</h3>
+      <div class="service-grid">
+        <div class="service" onclick="showView('dashboard-target')"><div class="service-icon">🌐</div><div>Dashboard</div></div>
+        <!-- <div class="service" onclick="showView('dashboard-agen-view')"><div class="service-icon">⚡</div><div>Dashboard Agen</div></div> -->
+        <div class="service" onclick="showView('view-data-user')"><div class="service-icon">👤</div><div>User</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="dashboard-target" class="hidden">
+    <h2 style="margin-top:20px; margin-bottom: 20px;">Pencarian Data</h2>
+    <div class="dashboard-img-style">
+      <div style="font-size:12px; margin-bottom:5px;">ID Pelanggan, Nama, Alamat, No Tlp :</div>
+      <input type="text" id="keywordCustomer" placeholder="ID Pelanggan, Nama, Alamat, No Tlp" style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:none; color:black;">
+      <button onclick="cariCustomer()" style="background:#0ea5e9; padding:10px; border:none; color:white; width:100%; border-radius:8px; cursor:pointer;">Cari</button>
+    </div>
+    <div id="detailCustomer"></div>
+    <div id="hasilCustomer"></div>
+<div id="totalTransaksiCard"
+     onclick="showDetailTransaksi()"
+     style="
+        background:#0891b2;
+        color:white;
+        padding:15px;
+        border-radius:16px;
+        flex:1;
+        cursor:pointer;">
+
+    <div id="totalTransaksiNominal"
+        style="font-size:16px;font-weight:700;">
+        Rp 0
+    </div>
+
+    <div style="font-size:10px;margin-bottom:10px;">
+        Total Transaksi Bulan Ini
+    </div>
+
+</div>
+    <div class="section-card">
+      <h3>Input Data Pelanggan</h3>
+      <a href="#" class="btn-selengkapnya" onclick="showView('form-entry-pelanggan')">Selengkapnya ➔</a>
+    </div>
+    <button onclick="backToHome()" style="margin-top:20px; padding:12px; width:100%; border-radius:10px; border:none; cursor:pointer;">Kembali</button>
+  </div>
+  <div id="detail-transaksi-view" class="hidden">
+
+    <div style="
+        background:#0891b2;
+        color:white;
+        padding:15px;
+        font-weight:bold;
+        border-radius:10px;
+        margin-top:20px;">
+
+        Detail Transaksi Bulan Ini
+
+    </div>
+
+    <div style="
+        background:white;
+        color:black;
+        padding:15px;
+        overflow:auto;">
+
+        <table
+        style="
+        width:100%;
+        border-collapse:collapse;
+        font-size:12px;">
+
+            <thead>
+
+                <tr style="background:#0891b2;color:white;">
+
+                    <th>No</th>
+                    <th>Invoice</th>
+                    <th>Pelanggan</th>
+                    <th>Nominal</th>
+                    <th>Status</th>
+                    <th>Tanggal</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="detailTransaksiBody">
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <button
+        onclick="showView('dashboard-target')"
+        style="
+        width:100%;
+        margin-top:20px;
+        padding:12px;
+        border:none;
+        border-radius:10px;">
+
+        Kembali
+
+    </button>
+
+</div>
+
+ <div id="dashboard-agen-view" class="hidden">
+
+  <div id="dashboard-title"
+       style="background:#0891b2;padding:15px;color:#fff;font-weight:bold;margin-bottom:15px;border-radius:4px;">
+    Dashboard Sales
+  </div>
+
+  <!-- FILTER -->
+  <div style="margin-bottom:15px;">
+    <input type="date" id="filter-date" value="2026-06-01" style="padding:5px;">
+    <button onclick="renderDashboardAgen()"
+            style="padding:5px 15px;background:#0891b2;color:#fff;border:none;border-radius:4px;">
+      Pilih
+    </button>
+  </div>
+
+  <!-- SEARCH -->
+  <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+    <span>Show data</span>
+    <input type="text" id="search" placeholder="Search..." oninput="renderDashboardAgen()">
+  </div>
+
+  <!-- TABLE -->
+  <div style="overflow-x:auto;border:1px solid #ddd;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;text-align:center;">
+      <thead id="tbl-head"></thead>
+      <tbody id="tbl-body"></tbody>
+    </table>
+  </div>
+
+  <!-- SUMMARY -->
+  <div id="summary" style="margin-top:20px;border:1px solid #ddd;"></div>
+
+</div>
+
+  <div id="view-data-user" class="hidden">
+
+    <div style="
+        background:#0891b2;
+        padding:15px;
+        color:white;
+        margin-top:20px;
+        font-weight:bold;">
+        Data User
+    </div>
+
+    <div style="
+        background:white;
+        color:black;
+        padding:15px;
+        overflow-x:auto;">
+
+        <table
+            style="
+            width:100%;
+            font-size:12px;
+            border-collapse:collapse;
+            border:1px solid #ddd;">
+
+            <thead>
+
+                <tr style="background:#f8fafc">
+
+                    <th>Aksi</th>
+                    <th>Nama</th>
+                    <th>Username</th>
+                    <th>Level</th>
+                    <th>Status</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="userTableBody">
+
+                <tr>
+
+                    <td colspan="5" style="text-align:center">
+
+                        Loading...
+
+                    </td>
+
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <button
+        onclick="backToHome()"
+        style="
+        margin-top:20px;
+        padding:10px;
+        width:100%;">
+
+        Kembali
+
+    </button>
+
+</div>
+
+  <div id="form-entry-pelanggan" class="hidden">
+    <div style="background:#007bff; padding:15px; color:white; margin-top:20px; font-weight:600; border-radius: 8px 8px 0 0;">Form Entry Data Pelanggan</div>
+    <div style="background:#fff; color:#333; padding:20px; border-radius: 0 0 8px 8px; font-size:13px;">
+      <button onclick="backToHome()" style="width:100%; padding:10px; background:#6c757d; color:white; border:none; border-radius:5px;">Batal</button>
+    </div>
+  </div>
+
+  <div id="detail-customer-view" class="hidden">
+    <div style="background:#0891b2; padding:15px; border-radius:10px; color:white; margin-top:20px; font-weight:bold;">Detail Pelanggan</div>
+    <div id="customerDetailContent"></div>
+    <button onclick="showView('dashboard-target')" style="margin-top:20px; width:100%; padding:12px; border:none; border-radius:10px; background:#64748b; color:white;">Kembali</button>
+  </div>
+  <div id="form-pembayaran" class="hidden">
+  <div style="background:#28a745; padding:15px; color:white; margin-top:20px; border-radius: 8px 8px 0 0; font-weight:600;">
+    Tambah Data Pembayaran
+  </div>
+  
+  <div class="form-container">
+    <input type="hidden" id="inputCustomerId">
+    
+    <div class="form-row">
+      <label>Langganan (Paket)</label>
+      <select id="select-paket" disabled></select>
+    </div>
+    
+    <div class="form-row">
+      <label>Nominal Pembayaran</label>
+      <input type="number" id="inputNominal">
+    </div>
+
+    <div class="form-row">
+      <label>Bukti Foto Pembayaran</label>
+      <input type="file" id="inputBukti" accept="image/*">
+    </div>
+
+    <div class="form-row">
+      <label>Keterangan</label>
+      <input type="text" id="inputKeterangan" placeholder="Contoh: Pembayaran Juni">
+    </div>
+
+    <div class="btn-group">
+      <button onclick="simpanPembayaran()" style="flex:1; padding:10px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">Simpan</button>
+      <button onclick="showView('detail-customer-view')" style="flex:1; padding:10px; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer;">Batal</button>
+    </div>
+  </div>
+</div>
+
+    <!-- <div class="btn-group">
+      <button style="flex:1; padding:10px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">Simpan</button>
+      <button onclick="showView('detail-customer-view')" style="flex:1; padding:10px; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer;">Batal</button>
+    </div> -->
+  </div>
+</div>
+</div>
+
+<div id="modalCustomer" class="customer-modal">
+  <div class="customer-modal-content">
+    <span class="customer-close" onclick="closeCustomerModal()">×</span>
+    <h3>Hasil Pencarian</h3>
+    <table class="customer-table">
+      <thead><tr><th>No</th><th>Aksi</th><th>ID Pelanggan</th><th>Nama</th></tr></thead>
+      <tbody id="tableCustomerBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="laporan-pembayaran" class="hidden">
+
+    <div style="
+        background:#0891b2;
+        color:white;
+        padding:15px;
+        font-weight:bold;
+        margin-top:20px;
+        border-radius:10px;">
+        Data Pemasukan
+    </div>
+
+    <!-- FILTER -->
+    <div style="
+        background:#fff;
+        padding:15px;
+        border-radius:10px;
+        margin-top:10px;
+        color:#000;">
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+
+            <div style="flex:1;min-width:180px;">
+                <label>Tanggal Awal</label>
+                <input
+                    type="date"
+                    id="filterStart"
+                    style="width:100%;padding:8px;">
+            </div>
+
+            <div style="flex:1;min-width:180px;">
+                <label>Tanggal Akhir</label>
+                <input
+                    type="date"
+                    id="filterEnd"
+                    style="width:100%;padding:8px;">
+            </div>
+
+            <div style="flex:1;min-width:180px;">
+                <label>Status</label>
+
+                <select
+                    id="filterStatus"
+                    style="width:100%;padding:8px;">
+
+                    <option value="">Semua</option>
+                    <option value="paid">Lunas</option>
+                    <option value="unpaid">Belum Bayar</option>
+                    <option value="overdue">Overdue</option>
+
+                </select>
+            </div>
+
+            <div style="flex:1;min-width:220px;">
+                <label>Nama Pelanggan</label>
+
+                <input
+                    type="text"
+                    id="filterNama"
+                    placeholder="Cari pelanggan..."
+                    style="width:100%;padding:8px;">
+            </div>
+
+        </div>
+
+        <div style="margin-top:15px;display:flex;gap:10px;">
+
+            <button
+                onclick="showDetailTransaksi()"
+                style="
+                    background:#0891b2;
+                    color:white;
+                    border:none;
+                    padding:10px 20px;
+                    border-radius:6px;
+                    cursor:pointer;">
+
+                Filter
+
+            </button>
+
+            <button
+                onclick="resetFilter()"
+                style="
+                    background:#6c757d;
+                    color:white;
+                    border:none;
+                    padding:10px 20px;
+                    border-radius:6px;
+                    cursor:pointer;">
+
+                Reset
+
+            </button>
+
+        </div>
+
+    </div>
+
+    <!-- TABEL -->
+    <div style="
+        background:white;
+        color:black;
+        padding:15px;
+        margin-top:10px;
+        overflow:auto;
+        border-radius:10px;">
+
+        <table
+            style="
+            width:100%;
+            border-collapse:collapse;
+            font-size:12px;">
+
+            <thead>
+
+                <tr style="background:#0891b2;color:white;">
+
+                    <th>No</th>
+                    <th>ID Pelanggan</th>
+                    <th>Nama</th>
+                    <th>Nominal</th>
+                    <th>Status</th>
+                    <th>Tanggal</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="tabelLaporanBody">
+
+                <tr>
+
+                    <td colspan="6" style="text-align:center;">
+                        Loading...
+                    </td>
+
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <div
+        style="
+        margin-top:15px;
+        background:#07152f;
+        color:white;
+        padding:15px;
+        border-radius:10px;">
+
+        <b>Total Pemasukan :</b>
+
+        <span id="totalPemasukan">
+            Rp 0
+        </span>
+
+    </div>
+
+    <button
+        onclick="showView('dashboard-target')"
+        style="
+            margin-top:20px;
+            width:100%;
+            padding:12px;
+            border:none;
+            border-radius:10px;
+            cursor:pointer;">
+
+        Kembali
+
+    </button>
+
+</div>
+<div id="modalEditProfile" class="hidden">
+
+    <input
+        id="editName"
+        placeholder="Nama">
+
+    <input
+        id="editUsername"
+        placeholder="Username">
+
+    <input
+        id="editPassword"
+        type="password"
+        placeholder="Password Baru">
+
+    <button onclick="saveProfile()">
+        Simpan
+    </button>
+
+</div>
+
+
+<script>
+  let customerData = [];
+ function showView(viewId){
+
+    const views=[
+        'main-content',
+        'dashboard-target',
+        'dashboard-agen-view',
+        'view-data-user',
+        'form-entry-pelanggan',
+        'detail-customer-view',
+        'form-pembayaran',
+        'laporan-pembayaran',
+        'detail-transaksi-view'
+    ];
+
+    views.forEach(function(v){
+
+        const el=document.getElementById(v);
+
+        if(el){
+            el.classList.add('hidden');
+        }
+
+    });
+
+    const target=document.getElementById(viewId);
+
+    if(target){
+        target.classList.remove('hidden');
+    }
+
+}
+  function backToHome() { showView('main-content'); }
+  async function cariCustomer() {
+    const keyword = document.getElementById('keywordCustomer').value;
+    try {
+      const response = await fetch(`/api/customers?search=${encodeURIComponent(keyword)}`);
+      const result = await response.json();
+      customerData = Array.isArray(result.data) ? result.data : [result.data];
+      let html = customerData.map((item, index) => `<tr><td>${index+1}</td><td><button class="btn-view" onclick="lihatCustomer(${index})">👁️</button></td><td>${item.customer_id}</td><td>${item.name}</td></tr>`).join('');
+      document.getElementById('tableCustomerBody').innerHTML = html;
+      document.getElementById('modalCustomer').style.display = 'block';
+    } catch(err) { console.error(err); alert('Gagal mengambil data'); }
+  }
+  function closeCustomerModal() { document.getElementById('modalCustomer').style.display = 'none'; }
+  let currentCustomerIndex = null;
+  function lihatCustomer(index) {
+    currentCustomerIndex = index;
+  const c = customerData[index];
+  const selectPaket = document.getElementById('select-paket');
+  
+  if (c.package) {
+    const hargaFormat = Number(c.package.price).toLocaleString('id-ID');
+    const optionText = `${c.name} - ${c.package.name} - Rp ${hargaFormat}`;
+    
+    selectPaket.innerHTML = `<option value="${c.package.id}">${optionText}</option>`;
+  }
+  if (!c) {
+    alert('Data customer tidak ditemukan');
+    return;
+  }
+
+  document.getElementById('customerDetailContent').innerHTML = `
+    <div style="background:white; color:black; padding:20px; border-radius:10px; margin-top:15px; border: 1px solid #ccc; font-size: 14px;">
+      <h3 style="margin-bottom:10px; color:#0891b2;">Detail Pelanggan</h3>
+      <p><b>ID Pelanggan:</b> ${c.customer_id || '-'}</p>
+      <p><b>Nama:</b> ${c.name || '-'}</p>
+      <p><b>NIK:</b> ${c.nik || '-'}</p>
+      <p><b>Alamat:</b> ${c.address || 'Tidak ada alamat'}</p>
+      <p><b>No Tlp:</b> ${c.phone || '-'}</p>
+      <p><b>Status:</b> ${c.status || '-'}</p>
+      <hr style="margin: 10px 0;">
+      <h4 style="margin-bottom:5px;">Info Paket</h4>
+      <p><b>Paket:</b> ${c.package?.name || '-'}</p>
+      <p><b>Harga:</b> Rp ${Number(c.package?.price || 0).toLocaleString('id-ID')}</p>
+      <p><b>Jatuh Tempo:</b> ${c.latest_due_date || '-'}</p>
+      <p><b>Status Tagihan:</b> <span style="color: ${c.latest_invoice_status === 'overdue' ? 'red' : 'green'}; font-weight:bold;">
+        ${c.latest_invoice_status || '-'}
+      </span></p>
+      
+      <div style="margin-top: 15px; display:flex; gap: 10px;">
+        <button class="btn-view" style="background:#3b82f6;" onclick="lihatRiwayat(${index})">Riwayat</button>
+      <button class="btn-view" style="background:#16a34a;" onclick="showView('form-pembayaran')">Bayar</button>
+      </div>
+    </div>
+  `;
+
+  closeCustomerModal();
+  showView('detail-customer-view');
+}
+function lihatRiwayat(index) {
+    const c = customerData[index];
+    if (!c || !c.invoices) {
+        alert('Data riwayat tidak tersedia');
+        return;
+    }
+
+    // Membangun baris tabel dengan kolom yang lengkap
+    let rows = c.invoices.map(inv => `
+        <tr style="border-bottom: 1px solid #dee2e6;">
+            <td style="padding:12px;">${inv.id}</td>
+            <td style="padding:12px;">${c.package_id || '-'}</td>
+            <td style="padding:12px;">${c.package?.name || '-'}</td>
+            <td style="padding:12px;">Rp ${Number(c.package?.price || 0).toLocaleString('id-ID')}</td>
+            <td style="padding:12px;">Rp ${Number(c.package?.price || 0).toLocaleString('id-ID')}</td>
+            <td style="padding:12px;">${inv.period_month}/${inv.period_year}</td>
+            <td style="padding:12px; font-weight:bold; color: ${inv.status === 'overdue' ? 'red' : 'inherit'};">
+                ${inv.status === 'overdue' ? 'Belum Lunas' : 'Lunas'}
+            </td>
+            <td style="padding:12px;">${inv.paid_date || ''}</td>
+            <td style="padding:12px;">-</td>
+            <td style="padding:12px;">-</td>
+            <td style="padding:12px;">
+                ${inv.status !== 'overdue' ? `
+                    <button class="btn-view" style="font-size:10px; background:#007bff; border:none; color:white; padding:5px; margin-right:2px;">Download bukti</button>
+                    <button class="btn-view" style="font-size:10px; background:#007bff; border:none; color:white; padding:5px; margin-right:2px;">Download Invoice</button>
+                    <button class="btn-view" style="font-size:10px; background:#17a2b8; border:none; color:white; padding:5px;">➤</button>
+                ` : ''}
+            </td>
+        </tr>
+    `).join('');
+
+    // Container tampilan
+    document.getElementById('customerDetailContent').innerHTML = `
+        <div style="background:white; color:black; padding:20px; overflow-x: auto;">
+            <h3>Histori Pembayaran</h3>
+            <table style="width:100%; border-collapse:collapse; margin-top:15px; font-size:12px;">
+                <thead>
+                    <tr style="background:#f8f9fa; border-bottom:2px solid #dee2e6;">
+                        <th style="padding:12px; text-align:left;">No Invoice</th>
+                        <th style="padding:12px; text-align:left;">ID Paket</th>
+                        <th style="padding:12px; text-align:left;">Nama Paket</th>
+                        <th style="padding:12px; text-align:left;">Harga</th>
+                        <th style="padding:12px; text-align:left;">Jumlah Bayar</th>
+                        <th style="padding:12px; text-align:left;">Periode</th>
+                        <th style="padding:12px; text-align:left;">Status</th>
+                        <th style="padding:12px; text-align:left;">Waktu Pembayaran</th>
+                        <th style="padding:12px; text-align:left;">Metode</th>
+                        <th style="padding:12px; text-align:left;">Keterangan</th>
+                        <th style="padding:12px; text-align:left;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
+    showView('detail-customer-view');
+}
+
+async function simpanPembayaran() {
+    const customer = customerData[currentCustomerIndex];
+    if (!customer) return alert("Pilih pelanggan!");
+
+    const nominal = document.getElementById('inputNominal').value;
+    const keterangan = document.getElementById('inputKeterangan').value;
+    const fileInput = document.getElementById('inputBukti');
+
+    const formData = new FormData();
+    formData.append('customer_id', customer.id);
+    formData.append('amount', nominal);
+    formData.append('total', nominal);
+    formData.append('keterangan', keterangan);
+    formData.append('period_month', new Date().getMonth() + 1);
+    formData.append('period_year', new Date().getFullYear());
+    
+    if (fileInput && fileInput.files[0]) {
+        formData.append('bukti_foto', fileInput.files[0]);
+    }
+
+    try {
+        const response = await fetch('/api/pembayaran', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+       if(result.success){
+
+    alert("Pembayaran berhasil");
+
+    await cariCustomer();
+
+    await loadLaporan();
+    await loadDashboardStat();
+    showView("dashboard-target");
+
+} else {
+            alert('Gagal: ' + result.message);
+        }
+    } catch (err) {
+        console.error('Error:', err);
+        alert('Terjadi kesalahan koneksi.');
+    }
+}
+function populateForm(customer) {
+    // 1. Set ID Pelanggan (readonly agar tidak salah input)
+    document.getElementById('inputCustomerId').value = customer.id;
+    
+    // 2. Set Paket Dinamis dari database
+    const selectPaket = document.getElementById('select-paket');
+    selectPaket.innerHTML = `
+        <option value="${customer.package.id}">
+            ${customer.package.name} - Rp ${Number(customer.package.price).toLocaleString('id-ID')}
+        </option>
+    `;
+    
+    // 3. Set Nominal otomatis dari harga paket
+    document.getElementById('inputNominal').value = customer.package.price;
+}
+
+async function loadLaporan() {
+
+    try {
+
+        const response = await fetch("/api/laporan-pembayaran");
+        const result = await response.json();
+
+        const tbody = document.getElementById("tabelLaporanBody");
+
+        let total = 0;
+
+        if (result.success && result.data.length > 0) {
+
+            tbody.innerHTML = result.data.map((item, index) => {
+
+                total += Number(item.total || item.amount || 0);
+
+                return `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${item.customer?.customer_id || "-"}</td>
+                        <td>${item.customer?.name || "-"}</td>
+                        <td>
+                            Rp ${Number(item.total || item.amount || 0).toLocaleString("id-ID")}
+                        </td>
+                        <td>${item.status}</td>
+                        <td>${new Date(item.createdAt).toLocaleDateString("id-ID")}</td>
+                    </tr>
+                `;
+
+            }).join("");
+
+        } else {
+
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align:center">
+                        Data tidak ditemukan
+                    </td>
+                </tr>
+            `;
+
+        }
+
+        // Total di halaman laporan
+        document.getElementById("totalPemasukan").innerHTML =
+            "Rp " + total.toLocaleString("id-ID");
+
+        // Total di CARD dashboard
+        const card = document.getElementById("totalTransaksiNominal");
+
+        if (card) {
+            card.innerHTML =
+                "Rp " + total.toLocaleString("id-ID");
+        }
+
+    } catch (err) {
+
+        console.log(err);
+
+        document.getElementById("tabelLaporanBody").innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align:center">
+                    Gagal memuat data
+                </td>
+            </tr>
+        `;
+
+    }
+
+}
+
+async function loadDashboardTotal(){
+
+    const res=await fetch("/api/dashboard-total");
+
+    const data=await res.json();
+
+    document.getElementById(
+        "totalTransaksiNominal"
+    ).innerHTML=
+    "Rp "+
+    Number(data.total).toLocaleString("id-ID");
+
+}
+
+async function loadDashboardStat(){
+
+    try{
+
+        const res=await fetch("/api/laporan-pembayaran");
+        const json=await res.json();
+
+        let total=0;
+
+        json.data.forEach(item=>{
+            total+=Number(item.total||0);
+        });
+
+        document.getElementById("todayIncome").innerHTML=
+            "Rp "+total.toLocaleString("id-ID");
+
+        document.getElementById("totalTrx").innerHTML=
+            json.data.length;
+
+    }catch(e){
+
+        console.log(e);
+
+    }
+
+}
+
+async function showDetailTransaksi(){
+
+    const res=await fetch("/api/laporan-pembayaran");
+
+    const json=await res.json();
+
+    const start=document.getElementById("filterStart").value;
+    const end=document.getElementById("filterEnd").value;
+    const status=document.getElementById("filterStatus").value;
+    const nama=document.getElementById("filterNama").value.toLowerCase();
+
+    let data=json.data;
+
+    if(start){
+
+        data=data.filter(x=>{
+
+            return x.createdAt.substring(0,10)>=start;
+
+        });
+
+    }
+
+    if(end){
+
+        data=data.filter(x=>{
+
+            return x.createdAt.substring(0,10)<=end;
+
+        });
+
+    }
+
+    if(status){
+
+        data=data.filter(x=>x.status==status);
+
+    }
+
+    if(nama){
+
+        data=data.filter(x=>{
+
+            return (x.customer?.name||"")
+            .toLowerCase()
+            .includes(nama);
+
+        });
+
+    }
+
+    let total=0;
+
+    let html="";
+
+    data.forEach((item,index)=>{
+
+        total+=Number(item.total);
+
+        html+=`
+
+        <tr>
+
+            <td>${index+1}</td>
+
+            <td>${item.invoice_number}</td>
+
+            <td>${item.customer?.customer_id||'-'}</td>
+
+            <td>${item.customer?.name||'-'}</td>
+
+            <td>
+                Rp ${Number(item.total).toLocaleString('id-ID')}
+            </td>
+
+            <td>${item.status}</td>
+
+            <td>
+                ${new Date(item.createdAt).toLocaleDateString('id-ID')}
+            </td>
+
+        </tr>
+
+        `;
+
+    });
+
+    document.getElementById("detailTransaksiBody").innerHTML=html;
+
+    document.getElementById("totalPemasukan").innerHTML=
+        "Rp "+total.toLocaleString("id-ID");
+
+    showView("detail-transaksi-view");
+
+}
+
+function resetFilter(){
+
+    document.getElementById("filterStart").value="";
+    document.getElementById("filterEnd").value="";
+    document.getElementById("filterStatus").value="";
+    document.getElementById("filterNama").value="";
+
+    showDetailTransaksi();
+
+}
+
+let currentUser = null;
+
+async function loadDataUser() {
+    try {
+
+        const token = localStorage.getItem("token");
+
+        // 🔥 guard tambahan biar tidak kirim "null"
+        if (!token || token === "null" || token === "undefined") {
+            console.log("NO VALID TOKEN");
+            window.location.href = "/login";
+            return;
+        }
+
+        const res = await fetch('/api/user/profile', {
+            method: "GET",
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        });
+
+        // 🔥 kalau unauthorized langsung redirect
+        if (res.status === 401) {
+            console.log("TOKEN EXPIRED / INVALID");
+            localStorage.removeItem("token");
+            window.location.href = "/login";
+            return;
+        }
+
+        // 🔥 pastikan response JSON
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            console.error("Response bukan JSON (kemungkinan redirect HTML)");
+            return;
+        }
+
+        const result = await res.json();
+
+        console.log("PROFILE RESULT:", result);
+
+        if (!result.success) return;
+
+        const currentUser = result.data;
+
+        document.getElementById("userTableBody").innerHTML = `
+        <tr>
+            <td>
+                <button onclick="editProfile()"
+                style="background:#0891b2;color:white;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;">
+                ✏ Edit
+                </button>
+            </td>
+
+            <td>${currentUser.name || "-"}</td>
+            <td>${currentUser.email || "-"}</td>
+            <td>${currentUser.role?.name || "-"}</td>
+            <td>${currentUser.status || "Aktif"}</td>
+        </tr>
+        `;
+
+    } catch (e) {
+        console.log("ERROR loadDataUser:", e);
+    }
+}
+
+window.saveProfile = async function () {
+
+    const body = {
+        name: document.getElementById("editName").value,
+        username: document.getElementById("editUsername").value,
+        password: document.getElementById("editPassword").value
+    };
+
+    const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + localStorage.getItem("token")
+        },
+        body: JSON.stringify(body)
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+
+        alert("Profile berhasil diupdate");
+
+        // 🔥 update cache
+        currentUser.name = body.name;
+        currentUser.email = body.username;
+
+        loadDataUser();
+
+        document.getElementById("modalEditProfile").classList.add("hidden");
+
+    } else {
+        alert(result.message);
+    }
+};
+
+window.editProfile = function () {
+
+    if (!currentUser) {
+        alert("User belum dimuat");
+        return;
+    }
+
+    document.getElementById("editName").value = currentUser.name || "";
+    document.getElementById("editUsername").value = currentUser.email || "";
+    document.getElementById("editPassword").value = "";
+
+    document.getElementById("modalEditProfile").classList.remove("hidden");
+};
+
+async function loadDashboardAgen() {
+  try {
+
+    const token = localStorage.getItem("token");
+    const date = document.getElementById("filterDate")?.value || "2026-06-01";
+
+    const res = await fetch(`/api/agen/dashboard?date=${date}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json"
+      }
+    });
+
+    const result = await res.json();
+    console.log(result);
+
+    if (!result.success) return;
+
+    const data = result.data.list;
+
+    const tbody = document.getElementById("agenTableBody");
+
+    tbody.innerHTML = data.map((item, i) => `
+      <tr>
+        <td>
+          <button>👁️</button>
+          <button>💵</button>
+        </td>
+        <td>${i + 1}</td>
+        <td>${item.nama_sales}</td>
+        <td>${item.alamat}</td>
+
+        <td>${item.jumlah_pelanggan}</td>
+        <td>${item.pelanggan_lunas}</td>
+        <td>${item.pelanggan_belum_lunas}</td>
+
+        <td>Rp ${num(item.pemasukan)}</td>
+        <td>Rp ${num(item.pengeluaran)}</td>
+        <td>Rp ${num(item.insentif)}</td>
+        <td>Rp ${num(item.balance)}</td>
+
+        <td>Rp ${num(item.cash)}</td>
+        <td>Rp ${num(item.transfer)}</td>
+        <td>Rp ${num(item.cash_disetor)}</td>
+        <td>Rp ${num(item.cash_belum_setor)}</td>
+
+        <td>Rp ${num(item.est_pemasukan)}</td>
+        <td>Rp ${num(item.est_insentif)}</td>
+        <td>Rp ${num(item.est_bersih)}</td>
+      </tr>
+    `).join('');
+
+    // SUMMARY
+    document.getElementById("totalPelanggan").innerText = result.data.total_pelanggan;
+    document.getElementById("totalIncome").innerText = rupiah(result.data.total_income);
+    document.getElementById("totalInsentif").innerText = rupiah(result.data.total_insentif);
+    document.getElementById("totalSetor").innerText = rupiah(result.data.total_setor);
+
+    document.getElementById("agenHeader").innerText =
+      `ℹ️ Dashboard Sales Bulan ${result.data.month_text}`;
+
+  } catch (err) {
+    console.log(err);
+  }
+}
+
+function num(val) {
+  return new Intl.NumberFormat('id-ID').format(val || 0);
+}
+
+function rupiah(val) {
+  return "Rp " + new Intl.NumberFormat('id-ID').format(val || 0);
+}
+
+function renderAgenTable(data) {
+  const tbody = document.getElementById("agenTableBody");
+
+  if (!data || data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6">Tidak ada data</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = data.map((item, index) => `
+    <tr>
+      <td>
+        <button onclick="viewAgen(${item.id})">👁️</button>
+        <button onclick="topupAgen(${item.id})">💵</button>
+      </td>
+      <td>${index + 1}</td>
+      <td>${item.name}</td>
+      <td>${item.address || '-'}</td>
+      <td>${item.total_customer}</td>
+      <td>Rp ${new Intl.NumberFormat('id-ID').format(item.total_income)}</td>
+    </tr>
+  `).join('');
+}
+
+window.addEventListener("load", async () => {
+
+    await loadDataUser();
+    await loadDashboardStat();
+
+    await loadLaporan();
+
+});
+
+</script>
+</body>
+</html>

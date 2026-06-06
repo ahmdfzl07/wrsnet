@@ -172,6 +172,179 @@ class UserController {
       res.status(500).json({ success: false, message: error.message });
     }
   }
+
+  static async getRoles(req, res) {
+
+  try {
+
+    const roles = await Role.findAll({
+      order: [['id', 'ASC']]
+    });
+
+    return res.json({
+      success: true,
+      data: roles
+    });
+
+  } catch (err) {
+
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
 }
+
+static async createRole(req, res) {
+
+  try {
+
+    const {
+      name,
+      display_name,
+      description
+    } = req.body;
+
+    if (!name || !display_name) {
+
+      return res.status(400).json({
+        success: false,
+        message: 'Nama role wajib diisi'
+      });
+    }
+
+    const exists = await Role.findOne({
+      where: { name }
+    });
+
+    if (exists) {
+
+      return res.status(400).json({
+        success: false,
+        message: 'Role sudah ada'
+      });
+    }
+
+    const role = await Role.create({
+      name,
+      display_name,
+      description
+    });
+
+    return res.json({
+      success: true,
+      data: role
+    });
+
+  } catch (err) {
+
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+}
+
+static async updateRole(req, res) {
+
+  try {
+
+    const role = await Role.findByPk(req.params.id);
+
+    if (!role) {
+
+      return res.status(404).json({
+        success: false,
+        message: 'Role tidak ditemukan'
+      });
+    }
+
+    await role.update(req.body);
+
+    return res.json({
+      success: true,
+      data: role
+    });
+
+  } catch (err) {
+
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+}
+
+
+static async deleteRole(req, res) {
+
+  try {
+
+    const role = await Role.findByPk(req.params.id);
+
+    if (!role) {
+
+      return res.status(404).json({
+        success: false,
+        message: 'Role tidak ditemukan'
+      });
+    }
+
+    await role.destroy();
+
+    return res.json({
+      success: true,
+      message: 'Role berhasil dihapus'
+    });
+
+  } catch (err) {
+
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+}
+
+}
+
+exports.profile=async(req,res)=>{
+
+    try{
+
+        const user=await db.User.findByPk(req.user.id,{
+            include:[
+                {
+                    model:db.Role,
+                    as:"role"
+                }
+            ]
+        });
+
+        res.json({
+
+            success:true,
+
+            data:user
+
+        });
+
+    }
+
+    catch(err){
+
+        res.status(500).json({
+
+            success:false,
+
+            message:err.message
+
+        });
+
+    }
+
+};
+
+
 
 module.exports = new UserController();

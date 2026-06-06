@@ -4,6 +4,7 @@
 const express = require("express");
 const router = express.Router();
 const { portalAuth } = require("../middleware/portalAuth");
+const authAgen = require('../middleware/authAgen');
 const PortalCtrl = require("../controllers/CustomerPortalController");
 const GenieacsController = require("../controllers/GenieacsController");
 const db = require("../models");
@@ -197,7 +198,48 @@ router.post("/api/chat/read-customer/:room", portalAuth, async (req, res) => {
       message: "Failed to update read status",
     });
   }
+  
 });
+
+const portalAgentAuthController =
+  require('../controllers/portalAgentAuthController');
+
+
+// LOGIN API AGEN
+router.post(
+  '/api/agen/login',
+  portalAgentAuthController.login
+);
+
+
+// PAGE LOGIN AGEN
+router.get('/login-agen', (req, res) => {
+  res.render('portal/agen/login-agen', {
+    title: 'Login Agen'
+  });
+});
+
+
+// DASHBOARD AGEN
+// DASHBOARD AGEN
+router.get(
+  '/agen/dashboard-agen',
+  authAgen,
+  async (req, res) => {
+
+    res.render(
+      'portal/agen/dashboard-agen',
+      {
+        title: 'Dashboard Agen',
+        user: req.user,
+        todayIncome: 0,
+        totalTrx: 0,
+        recent: []
+      }
+    );
+
+  }
+);
 
 router.get("/api/genieacs/devices", GenieacsController.getDevices);
 router.get("/api/genieacs/stats", GenieacsController.getStats);
