@@ -732,9 +732,9 @@ router.get("/register", (req, res) => {
 
 const AgenController = require('../controllers/AgenController');
 
-router.get('/portal/agen/dashboard-agen', (req, res) => {
-  res.render('portal/agen/dashboard-agen', {
-    title: 'Dashboard Agen',
+router.get('/portal/agen/login-agen', (req, res) => {
+  res.render('portal/agen/login-agen', {
+    title: 'Login Agen',
     appName: 'WRSNET'
   });
 });
