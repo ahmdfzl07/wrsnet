@@ -1,7 +1,12 @@
 const db = require("../models");
 const CustomerRegistration = db.CustomerRegistration;
+const Customer = db.Customer;
 const Ticket = db.Ticket;
 const WorkOrder = db.WorkOrder;
+const {
+  generateUniqueCustomerId,
+  paginateResponse,
+} = require("../utils/helpers");
 
 exports.register = async (req, res) => {
   const t = await db.sequelize.transaction();
@@ -24,6 +29,20 @@ exports.register = async (req, res) => {
     }
 
     // ================= CREATE CUSTOMER =================
+    if (data.customer_id) {
+      data.customer_id = data.customer_id.trim().toUpperCase();
+      const exists = await Customer.findOne({
+        where: { customer_id: data.customer_id },
+      });
+      if (exists)
+        return res.status(400).json({
+          success: false,
+          message: "ID " + data.customer_id + " sudah digunakan",
+        });
+    } else {
+      data.customer_id = await generateUniqueCustomerId(Customer);
+    }
+
     const customer = await CustomerRegistration.create(
       {
         ...data,

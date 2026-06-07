@@ -162,6 +162,7 @@ function includeBase() {
       as: "customerRegistration",
       attributes: [
         "id",
+        "customer_id",
         "name",
         "phone",
         "email",
@@ -194,7 +195,15 @@ function includeBase() {
     {
       model: InfrastructurePoint,
       as: "infraPoint",
-      attributes: ["id", "name", "type", "latitude", "longitude", "address"],
+      attributes: [
+        "id",
+        "name",
+        "type",
+        "latitude",
+        "longitude",
+        "address",
+        "ticket_id",
+      ],
     },
   ];
 }
@@ -364,6 +373,23 @@ exports.show = async (req, res) => {
       ],
     });
 
+    let customer = null;
+
+    if (ticket?.customerRegistration?.customer_id) {
+      customer = await Customer.findOne({
+        where: {
+          customer_id: ticket.customerRegistration.customer_id,
+        },
+        include: [
+          {
+            model: Package,
+            as: "package",
+            attributes: ["id", "name"],
+          },
+        ],
+      });
+    }
+
     if (!ticket) {
       return res.status(404).json({
         success: false,
@@ -374,9 +400,36 @@ exports.show = async (req, res) => {
     await attachAddons(ticket.customerRegistration);
     await attachAddons(ticket.customer);
 
+    const odp = await InfrastructurePoint.findOne({
+      where: {
+        ticket_id: ticket.id,
+      },
+      attributes: [
+        "id",
+        "name",
+        "type",
+        "latitude",
+        "longitude",
+        "address",
+        "notes",
+        "metadata",
+        "parent_id",
+        "ticket_id",
+      ],
+    });
+
+    let parentOdp = null;
+
+    if (odp?.parent_id) {
+      parentOdp = await InfrastructurePoint.findByPk(odp.parent_id);
+    }
+
     return res.json({
       success: true,
       data: ticket,
+      customer,
+      odp: odp || null,
+      parentOdp: parentOdp || null,
     });
   } catch (e) {
     console.error("ERROR SHOW TICKET:", e);
@@ -529,7 +582,7 @@ exports.update = async (req, res) => {
       });
     }
 
-    if (req.body.status === "closed" && ticket.is_registration == 1) {
+    if (req.body.status === "in_progress" && ticket.is_registration == 1) {
       const regis = await CustomerRegistration.findByPk(ticket.customer_id);
 
       if (regis) {
@@ -541,7 +594,7 @@ exports.update = async (req, res) => {
           const customerId = await generateCustomerId();
 
           await Customer.create({
-            customer_id: customerId,
+            customer_id: regis.customer_id,
 
             name: regis.name,
             phone: regis.phone,
@@ -658,12 +711,66 @@ exports.searchCustomers = async (req, res) => {
     const q = req.query.q || "";
     const customers = await Customer.findAll({
       where: { name: { [Op.like]: `%${q}%` } },
-      attributes: ["id", "name", "phone", "address", "latitude", "longitude"],
+      attributes: [
+        "id",
+        "customer_id",
+        "name",
+        "phone",
+        "address",
+        "latitude",
+        "longitude",
+        "package_id",
+        "status",
+      ],
       limit: 15,
     });
     res.json({ success: true, data: customers });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+exports.searchCustomersOdp = async (req, res) => {
+  try {
+    const q = req.query.q || "";
+
+    const customers = await Customer.findAll({
+      where: {
+        [Op.or]: [
+          { name: { [Op.like]: `%${q}%` } },
+          { customer_id: { [Op.like]: `%${q}%` } },
+        ],
+      },
+      attributes: [
+        "id",
+        "customer_id",
+        "name",
+        "phone",
+        "address",
+        "latitude",
+        "longitude",
+        "package_id",
+        "status",
+      ],
+      include: [
+        {
+          model: Package,
+          as: "package",
+          attributes: ["id", "name"],
+        },
+      ],
+      limit: 500,
+    });
+
+    res.json({
+      success: true,
+      data: customers,
+    });
+  } catch (e) {
+    res.status(500).json({
+      success: false,
+      message: e.message,
+    });
   }
 };
 

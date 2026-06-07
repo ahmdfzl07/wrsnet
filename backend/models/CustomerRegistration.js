@@ -5,6 +5,11 @@ module.exports = (sequelize) => {
     "CustomerRegistration",
     {
       id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      customer_id: {
+        type: DataTypes.STRING(20),
+        unique: true,
+        allowNull: false,
+      },
 
       nik: {
         type: DataTypes.STRING(16),
