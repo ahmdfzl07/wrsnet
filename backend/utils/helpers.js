@@ -76,7 +76,7 @@ const generateUniqueCustomerId = async (CustomerModel) => {
   }
 
   for (let i = nextNum; i < nextNum + 100; i++) {
-    const candidate = prefix + String(i).padStart(3, "0");
+    const candidate = prefix + String(i).padStart(4, "0");
 
     const exists = await CustomerModel.findOne({
       where: { customer_id: candidate },

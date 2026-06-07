@@ -176,6 +176,7 @@
     .qab svg{flex-shrink:0;}
     .qab-status{background:linear-gradient(135deg,#1e3a8a,#1d4ed8);color:#fff;}
     .qab-primary{background:linear-gradient(135deg,#1e40af,#2563eb);color:#fff;}
+    .qab-info{background:linear-gradient(135deg,#066f92,#07cafa);color:#fff;}
     .qab-warning{background:linear-gradient(135deg,#92400e,#d97706);color:#fff;}
     .qab-success{background:linear-gradient(135deg,#14532d,#16a34a);color:#fff;}
     .qab-gray{background:#f3f4f6;color:#374151;border:1.5px solid #e5e7eb;box-shadow:none;}
@@ -224,6 +225,120 @@
     .lbx{position:absolute;top:18px;right:28px;color:#fff;font-size:38px;cursor:pointer;}
     @keyframes spin{to{transform:rotate(360deg)}}
     @media(max-width:768px){.tkt-ttl{font-size:17px;}.frow{grid-template-columns:1fr;}}
+    .coord-preview {
+      background: var(--bg-secondary); border-radius: 8px; padding: 8px 12px;
+      font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .coord-preview svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* ── Anti tile-grid ── */
+    .leaflet-tile {
+      border: none !important;
+      outline: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+    }
+    .leaflet-container {
+      background: #e8e0d8;
+    }
+    .odp-modal{
+      width: 360px;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .odp-header{
+      background: linear-gradient(90deg,#2563eb,#60a5fa);
+      color:#fff;
+      padding:14px 16px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .odp-title{
+      font-weight:600;
+      font-size:16px;
+    }
+
+    .odp-status{
+      font-size:12px;
+      opacity:.9;
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+
+    .dot{
+      width:8px;
+      height:8px;
+      background:#22c55e;
+      border-radius:50%;
+    }
+
+    .odp-box{
+      margin-top:14px;
+      font-size:12px;
+    }
+
+    .odp-row{
+      display:flex;
+      justify-content:space-between;
+      margin-bottom:6px;
+      color:#444;
+    }
+
+    .odp-used{
+      color:#ef4444;
+      font-weight:600;
+    }
+
+    .progress-bar{
+      height:8px;
+      background:#eee;
+      border-radius:10px;
+      overflow:hidden;
+    }
+
+    .progress-fill{
+      height:100%;
+      width:70%;
+      background:#ef4444;
+    }
+
+    .odp-image-wrap{
+      margin-top:12px;
+      border-radius:10px;
+      overflow:hidden;
+      border:1px solid #eee;
+      height:180px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#fafafa;
+    }
+
+    .odp-image-wrap img{
+      height:100%;
+      width:100%;
+      object-fit:contain;
+    }
+
+    .odp-notes{
+      margin-top:10px;
+      font-size:12px;
+      color:#666;
+      font-style:italic;
+    }
+
+    .odp-footer{
+      display:flex;
+      gap:8px;
+    }
   </style>
 </head>
 <body>
@@ -353,6 +468,21 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
                 Tugaskan Teknisi
               </button>
+              <!-- <button class="qab qab-info" id="btnAssignOdp" onclick="openAssignOdpModal()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="16"/>
+                  <line x1="8" y1="12" x2="16" y2="12"/>
+                </svg>
+                Assign ODP
+              </button>
+
+              <button class="qab qab-success" id="btnCekOdp" onclick="openCekOdp()" style="display:none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M20 6L9 17l-5-5"/>
+                </svg>
+                Cek ODP
+              </button> -->
               <button class="qab qab-warning" onclick="openEditModal()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 Edit Detail
@@ -482,8 +612,134 @@
   </div>
 </div>
 
+<!-- Modal asign ODP -->
+<div class="modal-overlay" id="infraModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">Tambah Titik Infrastruktur</h2>
+      <button class="modal-close" onclick="closeModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--bg-secondary);border-radius:10px;padding:12px 14px;margin-bottom:14px;border:1.5px solid var(--border)">
+        <!-- Header row -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-primary)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Lokasi
+          </div>
+        </div>
+
+        <!-- Koordinat display -->
+        <div id="coordPreviewWrap" style="display:flex;align-items:center;gap:8px">
+          <div id="coordDot" style="width:8px;height:8px;border-radius:50%;background:#e2e8f0;flex-shrink:0"></div>
+          <span id="coordPreview" style="font-size:12px;color:var(--text-secondary)">Belum dipilih — klik tombol di atas</span>
+        </div>
+
+        <!-- Manual input (hidden by default) -->
+        <div id="coordManualWrap" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div>
+              <label style="font-size:10px;font-weight:600;color:var(--text-secondary);letter-spacing:.05em;text-transform:uppercase;display:block;margin-bottom:4px">Latitude</label>
+              <input type="number" id="manualLat" step="0.000001" placeholder="-6.391581" readonly
+                style="width:100%;padding:7px 10px;border-radius:7px;border:1.5px solid var(--border);background:var(--bg-card);font-size:12px;font-family:monospace;color:var(--text-primary);outline:none"
+                oninput="applyManualCoord()">
+            </div>
+            <div>
+              <label style="font-size:10px;font-weight:600;color:var(--text-secondary);letter-spacing:.05em;text-transform:uppercase;display:block;margin-bottom:4px">Longitude</label>
+              <input type="number" id="manualLng" step="0.000001" placeholder="106.457346" readonly
+                style="width:100%;padding:7px 10px;border-radius:7px;border:1.5px solid var(--border);background:var(--bg-card);font-size:12px;font-family:monospace;color:var(--text-primary);outline:none"
+                oninput="applyManualCoord()">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-panel" id="tab-odp">
+        <div class="form-group"><label class="form-label">Nama ODP *</label><input type="text" class="form-control" id="odp-name" placeholder="mis. ODP-BGR-001-A"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Kapasitas Port</label><input type="number" class="form-control" id="odp-capacity" placeholder="8" min="1"></div>
+          <div class="form-group"><label class="form-label">Port Terpakai</label><input type="number" class="form-control" id="odp-used" placeholder="0" min="0"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Parent ODC</label><select class="form-control" id="odp-parent"><option value="">-- Tidak ada --</option></select></div>
+        <div class="form-group"><label class="form-label">Alamat</label><input type="text" class="form-control" id="odp-address" placeholder="Alamat lokasi ODP"></div>
+        <div class="form-group"><label class="form-label">Status</label><select class="form-control" id="odp-status"><option value="active">Active</option><option value="inactive">Inactive</option><option value="maintenance">Maintenance</option></select></div>
+        <div class="form-group"><label class="form-label">Catatan</label><textarea class="form-control" id="odp-notes" rows="2" placeholder="Catatan..."></textarea></div>
+        <div class="form-group">
+          <label class="form-label">Foto ODP</label>
+          <div id="odp-photo-wrap" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <!-- Input file di luar label, trigger via JS -->
+            <input type="file" id="odp-photo-input" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
+            <button type="button" id="odp-upload-btn"
+              style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#eff6ff;color:#0c399b;border:1.5px dashed #93c5fd;border-radius:9px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload Foto
+            </button>
+            <img id="odp-photo-preview" src="" alt="" style="display:none;width:64px;height:64px;object-fit:cover;border-radius:8px;border:1.5px solid #e2e8f0;cursor:zoom-in">
+            <button type="button" id="odp-photo-remove" style="display:none;padding:4px 10px;background:#fff5f5;color:#dc2626;border:1px solid #fecaca;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Hapus</button>
+          </div>
+          <input type="hidden" id="odp-photo-url" value="">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Batal</button>
+      <button class="btn btn-primary" onclick="savePoint()" id="saveBtn">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cek ODP -->
+<div class="modal-overlay" id="cekOdpModal" style="display:none;">
+  <div class="modal odp-modal">
+
+    <!-- HEADER -->
+    <div class="modal-header odp-header">
+      <div>
+        <div class="odp-title">cek odp</div>
+        <div class="odp-status">
+          <span class="dot"></span> Active · ODP
+        </div>
+      </div>
+
+      <button class="modal-close" onclick="closeCekOdp()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- <div class="odp-box">
+        <div class="odp-row">
+          <span>Port Usage</span>
+          <span class="odp-used">
+            <span id="odpUsed">7</span> / <span id="odpCapacity">8</span> terhubung
+          </span>
+        </div>
+        <div class="progress-bar">
+          <div id="odpProgress" class="progress-fill"></div>
+        </div>
+      </div> -->
+      <div class="odp-image-wrap">
+        <img id="odpImage" />
+      </div>
+      <div class="odp-notes" id="odpNotes">
+        -
+      </div>
+
+    </div>
+
+    <div class="modal-footer odp-footer">
+      <button class="btn btn-success" onclick="navigateOdp()" style="padding:9px;background:#f0fdf4;color:#15803d;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:4px;transition:opacity .15s" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="3,11 22,2 13,21 11,13 3,11"/></svg>Navigasi</button>
+      <!-- <button class="btn btn-primary" onclick="editOdp()" style="padding:9px;background:#eff6ff;color:#1d4ed8;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:4px;transition:opacity .15s" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>Edit</button>
+      <button class="btn btn-danger" onclick="deleteOdp()" style="padding:9px;background:#fff5f5;color:#dc2626;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:4px;transition:opacity .15s" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19,6l-1,14a2,2,0,0,1-2,2H8a2,2,0,0,1-2-2L5,6"/></svg>Hapus</button> -->
+    </div>
+
+  </div>
+</div>
+
 <script>const TID='<%= ticketId %>';</script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
 'use strict';
 let tkData=null,leafMap=null,selFiles=[],selStatus=null;
@@ -648,6 +904,8 @@ function renderTicket(t){
 
     $('custCard').style.display='block';
     $('custGrid').innerHTML=`
+      <div class="info-item" style="grid-column:1/-1;"><div class="info-label">ID PELANGGAN</div><div class="info-value">${esc(c.customer_id||'—')}</div></div>
+
       <div class="info-item">
         <div class="info-label">NAMA LENGKAP</div>
         <div class="info-value">${esc(c.name)}</div>
@@ -1123,6 +1381,16 @@ async function submitAssign(){
   }catch(e){showToast(e.message,'error');}
 }
 
+// asign odp
+// function openAssignOdpModal(){
+//   if(!tkData) return;
+
+//   const note = document.getElementById('odp-notes');
+//   if(note) note.value = '';
+
+//   document.getElementById('infraModal').style.display = 'flex';
+// }
+
 // Edit
 function openEditModal(){
   if(!tkData)return;
@@ -1171,6 +1439,541 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){['mStatus','mAss','mEdit'].forEach(closeM);$('lb').classList.remove('show');}
   if(e.ctrlKey&&e.key==='Enter')sendComment();
 });
+
+// ─────────────────────────────────────────────────────────────
+// ASIGN ODP
+// ─────────────────────────────────────────────────────────────
+var pendingLat = null;
+var pendingLng = null;
+var map = null;
+var odpEventBound = false;
+
+function getTicketIdFromUrl() {
+  const path = window.location.pathname;
+  const parts = path.split("/").filter(Boolean);
+  return parts[parts.length - 1];
+}
+
+document.addEventListener("DOMContentLoaded", async function () {
+  updateCoordPreview(null, null);
+
+  try {
+    const ticketId = window.location.pathname.split("/").pop();
+
+    const response = await fetch(`/api/tickets/${ticketId}`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const res = await response.json();
+
+    const btnAssignOdp = document.getElementById("btnAssignOdp");
+    const btnCekOdp = document.getElementById("btnCekOdp");
+
+    const role = window.currentUser?.role;
+
+    // if (role === "technician") {
+    //   btnAssignOdp.style.display = "inline-flex";
+    // } else {
+    //   btnAssignOdp.style.display = "none";
+    // }
+
+    if (res.odp && res.odp.id) {
+      btnAssignOdp.style.display = "none";
+      btnCekOdp.style.display = "inline-flex";
+      window.currentOdp = res.odp;
+    } else {
+      btnCekOdp.style.display = "none";
+
+      if (role === "technician") {
+        btnAssignOdp.style.display = "inline-flex";
+      }
+    }
+
+  } catch (err) {
+    console.error("Gagal memuat data ticket:", err);
+  }
+
+  document.addEventListener("input", function (e) {
+    if (e.target.id === "manualLat" || e.target.id === "manualLng") {
+      applyManualCoord();
+    }
+  });
+
+  const latInput = document.getElementById("manualLat");
+  const lngInput = document.getElementById("manualLng");
+
+  if (latInput) latInput.setAttribute("readonly", true);
+  if (lngInput) lngInput.setAttribute("readonly", true);
+});
+
+function initMapOdp() {
+  if (typeof L === "undefined") return;
+
+  map = L.map("map").setView([-6.2, 106.8], 13);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+
+  map.on("click", function (e) {
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
+
+    pendingLat = lat;
+    pendingLng = lng;
+
+    document.getElementById("manualLat").value = lat.toFixed(6);
+    document.getElementById("manualLng").value = lng.toFixed(6);
+
+    updateCoordPreview(lat, lng);
+  });
+}
+
+async function openAssignOdpModal() {
+  const ticketId = getTicketIdFromUrl();
+
+  if (!ticketId) {
+    alert("ID ticket tidak ditemukan");
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/tickets/${ticketId}`);
+    if (!res.ok) return;
+
+    const result = await res.json();
+    const ticket = result.data;
+
+    if (!ticket) return;
+
+    const lat =
+      ticket.customerRegistration?.latitude ??
+      ticket.customer?.latitude ??
+      ticket.latitude ??
+      null;
+
+    const lng =
+      ticket.customerRegistration?.longitude ??
+      ticket.customer?.longitude ??
+      ticket.longitude ??
+      null;
+
+    pendingLat = lat;
+    pendingLng = lng;
+
+    document.getElementById("manualLat").value = lat ?? "";
+    document.getElementById("manualLng").value = lng ?? "";
+
+    updateCoordPreview(lat, lng);
+
+    if (lat && lng && map && typeof map.setView === "function") {
+      map.setView([lat, lng], 15);
+    }
+
+    await loadParentSelects(ticket);
+    updateOdpButton(ticket);
+
+    document.getElementById("infraModal").style.display = "flex";
+
+    if (!odpEventBound) {
+      odpEventBound = true;
+
+      document.addEventListener("click", function (e) {
+        const btn = e.target.closest("#odp-upload-btn");
+
+        if (btn) {
+          const input = document.getElementById("odp-photo-input");
+          if (input) {
+            input.value = "";
+            input.click();
+          }
+        }
+
+        const removeBtn = e.target.closest("#odp-photo-remove");
+        if (removeBtn) {
+          removeOdpPhoto();
+        }
+
+        if (e.target.id === "odp-photo-preview" && e.target.src) {
+          window.open(e.target.src, "_blank");
+        }
+      });
+
+      document.addEventListener("change", function (e) {
+        if (e.target.id !== "odp-photo-input") return;
+
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        const prev = document.getElementById("odp-photo-preview");
+        const remBtn = document.getElementById("odp-photo-remove");
+        const btn = document.getElementById("odp-upload-btn");
+
+        const reader = new FileReader();
+
+        reader.onload = (ev) => {
+          if (prev) {
+            prev.src = ev.target.result;
+            prev.style.display = "block";
+          }
+
+          if (remBtn) remBtn.style.display = "inline-block";
+
+          if (btn) {
+            btn.innerHTML =
+              '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> ' +
+              (file.name.length > 20
+                ? file.name.slice(0, 18) + "…"
+                : file.name);
+          }
+        };
+
+        reader.readAsDataURL(file);
+      });
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function openCekOdp() {
+  const modal = document.getElementById("cekOdpModal");
+  const odp = window.currentOdp;
+
+  if (!modal || !odp) return;
+
+  // document.getElementById("odpUsed").innerText = odp.used_ports || 0;
+  // document.getElementById("odpCapacity").innerText = odp.capacity || 0;
+
+  const percent = odp.capacity
+    ? (odp.used_ports / odp.capacity) * 100
+    : 0;
+
+  // document.getElementById("odpProgress").style.width = percent + "%";
+
+  document.getElementById("odpNotes").innerText = odp.notes || "-";
+
+  const img = document.getElementById("odpImage");
+
+  if (odp.metadata?.photo_url) {
+    img.src = odp.metadata.photo_url;
+  }
+
+  modal.style.display = "flex";
+}
+
+function navigateOdp() {
+  const odp = window.currentOdp;
+  if (!odp) return;
+
+  const lat = odp.latitude;
+  const lng = odp.longitude;
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const origin = `${pos.coords.latitude},${pos.coords.longitude}`;
+      const destination = `${lat},${lng}`;
+
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
+
+      window.open(url, "_blank");
+    });
+  } else {
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+    window.open(url, "_blank");
+  }
+}
+
+function updateOdpButton(ticket) {
+  const infra = ticket.infraPoint;
+
+  const assignBtn = document.getElementById("btnAssignOdp");
+  const cekBtn = document.getElementById("btnCekOdp");
+
+  const hasOdp = infra && infra.ticket_id;
+
+  if (hasOdp) {
+    if (assignBtn) assignBtn.style.display = "none";
+    if (cekBtn) cekBtn.style.display = "inline-flex";
+  } else {
+    if (assignBtn) assignBtn.style.display = "inline-flex";
+    if (cekBtn) cekBtn.style.display = "none";
+  }
+}
+
+async function loadParentSelects(ticket) {
+  const odcSel = document.getElementById("odp-parent");
+  if (!odcSel) return;
+
+  try {
+    const res = await fetch("/api/infrastructure?type=odc");
+    const result = await res.json();
+
+    console.log("ODC RESULT:", result);
+
+    const list = Array.isArray(result)
+      ? result
+      : result?.data || [];
+
+    odcSel.innerHTML = `<option value="">-- Tidak ada --</option>`;
+
+    list.forEach((item) => {
+      odcSel.innerHTML += `<option value="${item.id}">${item.name}</option>`;
+    });
+
+    const parentId =
+      ticket.customerRegistration?.parent_id ??
+      ticket.customer?.parent_id ??
+      null;
+
+    if (parentId) odcSel.value = parentId;
+
+  } catch (e) {
+    console.error("loadParentSelects error:", e);
+  }
+}
+
+function removeOdpPhoto() {
+  const prev = document.getElementById("odp-photo-preview");
+  const urlEl = document.getElementById("odp-photo-url");
+  const input = document.getElementById("odp-photo-input");
+  const remBtn = document.getElementById("odp-photo-remove");
+  const btn = document.getElementById("odp-upload-btn");
+
+  if (prev) {
+    prev.src = "";
+    prev.style.display = "none";
+  }
+
+  if (urlEl) urlEl.value = "";
+  if (input) input.value = "";
+  if (remBtn) remBtn.style.display = "none";
+
+  if (btn) {
+    btn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="17,8 12,3 7,8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      Upload Foto
+    `;
+  }
+}
+
+function applyManualCoord() {
+  const lat = parseFloat(document.getElementById("manualLat").value);
+  const lng = parseFloat(document.getElementById("manualLng").value);
+
+  if (
+    !isNaN(lat) &&
+    !isNaN(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  ) {
+    pendingLat = lat;
+    pendingLng = lng;
+
+    updateCoordPreview(lat, lng);
+
+    if (map) {
+      map.setView([lat, lng], map.getZoom ? map.getZoom() : 13);
+    }
+  }
+}
+
+function updateCoordPreview(lat, lng) {
+  const el = document.getElementById("coordPreview");
+  const dot = document.getElementById("coordDot");
+
+  if (!el) return;
+
+  if (lat !== null && lng !== null) {
+    el.innerHTML = `<strong>${(+lat).toFixed(6)}</strong>, <strong>${(+lng).toFixed(6)}</strong>`;
+    if (dot) dot.style.background = "#22c55e";
+  } else {
+    el.innerHTML = "Belum ada koordinat";
+    if (dot) dot.style.background = "#e2e8f0";
+  }
+}
+
+function closeModal() {
+  document.getElementById("infraModal").style.display = "none";
+}
+
+function closeCekOdp() {
+  document.getElementById("cekOdpModal").style.display = "none";
+}
+
+async function uploadOdpPhoto(file) {
+  const btn = document.getElementById("odp-upload-btn");
+  const preview = document.getElementById("odp-photo-preview");
+  const urlEl = document.getElementById("odp-photo-url");
+
+  if (btn) btn.innerHTML = "⏳ Mengupload...";
+
+  const form = new FormData();
+  form.append("photo", file);
+
+  const token = localStorage.getItem("token");
+  const headers = {};
+
+  if (token && token !== "null") {
+    headers["Authorization"] = "Bearer " + token;
+  }
+
+  try {
+    const res = await fetch("/api/upload/infra-photo", {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: form,
+    });
+
+    const data = await res.json();
+
+    if (!data.success) throw new Error(data.message || "Upload gagal");
+
+    if (urlEl) urlEl.value = data.url;
+    if (preview) preview.src = data.url;
+
+    if (btn) {
+      btn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 6L9 17l-5-5"/>
+        </svg> Terupload
+      `;
+    }
+
+    return data.url;
+  } catch (err) {
+    if (btn) {
+      btn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17,8 12,3 7,8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg> Upload Foto
+      `;
+    }
+
+    throw err;
+  }
+}
+
+async function savePoint() {
+  const ticketId = getTicketIdFromUrl();
+  if (pendingLat === null || pendingLng === null) {
+    const infraModal = document.getElementById("infraModal");
+
+    showToast("Klik peta untuk memilih koordinat lokasi", "warning");
+    enterPlaceMode(activeTab);
+    return;
+  }
+
+  const infraModal = document.getElementById("infraModal");
+
+  const btn = document.getElementById("saveBtn");
+  btn.textContent = "Menyimpan...";
+  btn.disabled = true;
+
+  let payload = {
+    latitude: pendingLat,
+    longitude: pendingLng,
+  };
+
+  try {
+    const name = document.getElementById("odp-name")?.value?.trim();
+    if (!name) {
+      alert("Nama ODP wajib");
+      return;
+    }
+    if (!ticketId) {
+      alert("ID Ticket tidak ditemukan");
+      return;
+    }
+
+    const photoFile = document.getElementById("odp-photo-input")?.files?.[0];
+    const photoUrlEl = document.getElementById("odp-photo-url");
+
+    let finalPhotoUrl = photoUrlEl?.value || "";
+
+    if (photoFile) {
+      finalPhotoUrl = await uploadOdpPhoto(photoFile);
+    }
+
+    let existMeta = {};
+    try {
+      existMeta = photoUrlEl?.dataset?.existMeta
+        ? JSON.parse(photoUrlEl.dataset.existMeta)
+        : {};
+    } catch (e) {
+      existMeta = {};
+    }
+
+    const metadata = {
+      ...existMeta,
+      photo_url: finalPhotoUrl || undefined,
+    };
+
+    if (!metadata.photo_url) delete metadata.photo_url;
+
+    payload = {
+      ...payload,
+      type: "odp",
+      name,
+      capacity:
+        parseInt(document.getElementById("odp-capacity")?.value) || null,
+      used_ports: parseInt(document.getElementById("odp-used")?.value) || 0,
+      parent_id: document.getElementById("odp-parent")?.value
+        ? parseInt(document.getElementById("odp-parent").value)
+        : null,
+      address: document.getElementById("odp-address")?.value || "",
+      status: document.getElementById("odp-status")?.value || "active",
+      notes: document.getElementById("odp-notes")?.value || "",
+      metadata: Object.keys(metadata).length ? metadata : null,
+      ticket_id: Number(ticketId),
+    };
+
+    const customerCoordPromise = payload._customerCoordPromise;
+    delete payload._customerCoordPromise;
+
+    const request = fetch("/api/infrastructure", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    }).then(async (res) => {
+      const data = await res.json();
+      return data;
+    });
+
+    const tasks = [request];
+
+    if (customerCoordPromise) {
+      tasks.push(customerCoordPromise);
+    }
+
+    const [res] = await Promise.all(tasks);
+
+    if (res?.success) {
+      showToast("ODP berhasil dibuat", "success");
+      closeModal();
+    } else {
+      alert("Gagal: " + (res?.message || "Error"));
+    }
+  } catch (e) {
+    console.error(e);
+    alert("Gagal menyimpan: " + (e?.message || "Network error"));
+  } finally {
+    btn.textContent = "Simpan";
+    btn.disabled = false;
+  }
+}
+
 </script>
 </body>
 </html>
