@@ -11,6 +11,9 @@ SIMPAN PEMBAYARAN
 */
 
 exports.simpanPembayaran = async (req, res) => {
+console.log(req.user);
+    console.log(req.headers.authorization);
+
     try {
 
         const {
@@ -27,9 +30,11 @@ exports.simpanPembayaran = async (req, res) => {
         const invoice = await Invoice.findOne({
 
             where: {
+
                 customer_id,
                 period_month,
                 period_year
+
             },
 
             order: [["id", "DESC"]]
@@ -39,52 +44,51 @@ exports.simpanPembayaran = async (req, res) => {
         if (!invoice) {
 
             return res.json({
+
                 success: false,
                 message: "Invoice tidak ditemukan"
+
             });
 
         }
 
-       await invoice.update({
+        await invoice.update({
 
-    amount: Number(amount),
-    total: Number(amount),
-    status: "paid",
-    paid_date: new Date(),
-    notes: keterangan,
-    pdf_path: bukti_foto
+            amount: Number(amount),
+            total: Number(amount),
+            status: "paid",
+            paid_date: new Date(),
+            notes: keterangan,
+            pdf_path: bukti_foto,
+             agen_id: req.user.id
 
-});
+        });
 
-        await Customer.update(
+        await Customer.update({
 
-            {
-                status: "active",
-                isolir_status: "active"
-            },
+            status: "active",
+            isolir_status: "active"
 
-            {
-                where: {
-                    id: customer_id
-                }
+        }, {
+
+            where: {
+                id: customer_id
             }
 
-        );
+        });
 
-        res.json({
+        return res.json({
 
             success: true,
             message: "Pembayaran berhasil"
 
         });
 
-    }
-
-    catch (err) {
+    } catch (err) {
 
         console.log(err);
 
-        res.status(500).json({
+        return res.status(500).json({
 
             success: false,
             message: err.message
@@ -92,8 +96,19 @@ exports.simpanPembayaran = async (req, res) => {
         });
 
     }
-};
+    await Invoice.create({
 
+    customer_id,
+    amount,
+    total: amount,
+    status: "paid",
+    agen_id: req.user.id,
+    period_month,
+    period_year
+
+});
+
+};
 
 
 /*
@@ -109,58 +124,32 @@ exports.totalTransaksi = async (req, res) => {
         const bulan = new Date().getMonth() + 1;
         const tahun = new Date().getFullYear();
 
-        const data = await Invoice.findOne({
-
-            attributes: [
-
-                [
-                    Sequelize.fn(
-                        "COALESCE",
-                        Sequelize.fn(
-                            "SUM",
-                            Sequelize.col("total")
-                        ),
-                        0
-                    ),
-                    "total"
-                ]
-
-            ],
+        const total = await Invoice.sum("total", {
 
             where: {
-
                 status: "paid",
                 period_month: bulan,
-                period_year: tahun
-
+                period_year: tahun,
+                agen_id: req.user.id
             }
 
         });
 
         res.json({
-
             success: true,
-            total: Number(
-                data.dataValues.total
-            )
-
+            total: Number(total || 0)
         });
 
-    }
-
-    catch (err) {
+    } catch (err) {
 
         res.status(500).json({
-
             success: false,
             message: err.message
-
         });
 
     }
 
 };
-
 
 
 /*
@@ -175,53 +164,56 @@ exports.laporanPembayaran = async (req, res) => {
 
         const data = await Invoice.findAll({
 
+            where: {
+                status: "paid",
+                agen_id: req.user.id
+            },
+
             include: [
-
                 {
-
                     model: Customer,
                     as: "customer"
-
                 }
-
             ],
 
-            order: [
-
-                ["created_at", "DESC"]
-
-            ]
+            order: [["createdAt", "DESC"]]
 
         });
 
-        res.json({
-
+        return res.json({
             success: true,
             data
-
         });
 
-    }
+    } catch (err) {
 
-    catch (err) {
-
-        res.status(500).json({
-
+        return res.status(500).json({
             success: false,
             message: err.message
-
         });
 
     }
 
 };
+
+
+/*
+=========================================
+TOTAL DASHBOARD
+=========================================
+*/
+
 exports.dashboardTotal = async (req, res) => {
+
     try {
 
-        const total = await db.Invoice.sum("total", {
+        const total = await Invoice.sum("total", {
+
             where: {
-                status: "paid"
+                status: "paid",
+                agen_id: req.user.id
             }
+
         });
 
         res.json({
@@ -231,75 +223,116 @@ exports.dashboardTotal = async (req, res) => {
 
     } catch (err) {
 
-        console.log(err);
-
         res.status(500).json({
             success: false,
             message: err.message
         });
 
     }
+
 };
+
+
+/*
+=========================================
+DASHBOARD
+=========================================
+*/
 
 exports.dashboard = async (req, res) => {
 
-    const today = new Date();
+    try {
 
-    const start = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate()
-    );
+        const today = new Date();
 
-    const end = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate() + 1
-    );
+        const start = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate()
+        );
 
-    const todayIncome = await db.Invoice.sum("total", {
-        where: {
-            status: "paid",
-            createdAt: {
-                [Op.gte]: start,
-                [Op.lt]: end
+        const end = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate() + 1
+        );
+
+        const todayIncome = await db.Invoice.sum("total", {
+
+            where: {
+
+                status: "paid",
+                agen_id: req.user.id,
+
+                createdAt: {
+                    [Op.gte]: start,
+                    [Op.lt]: end
+                }
+
             }
-        }
-    });
 
-    const totalTrx = await db.Invoice.count({
-        where: {
-            status: "paid"
-        }
-    });
+        });
 
-    res.render("dashboard-agen", {
+        const totalTrx = await db.Invoice.count({
 
-        title: "Dashboard",
+            where: {
 
-        user: req.user,
+                status: "paid",
+                agen_id: req.user.id
 
-        todayIncome: todayIncome || 0,
+            }
 
-        totalTrx: totalTrx || 0
+        });
 
-    });
+        res.render("dashboard-agen", {
+
+            title: "Dashboard",
+
+            user: req.user,
+
+            todayIncome: todayIncome || 0,
+
+            totalTrx: totalTrx || 0
+
+        });
+
+    } catch (err) {
+
+        console.log(err);
+
+        res.status(500).send(err.message);
+
+    }
 
 };
+
+
+/*
+=========================================
+DASHBOARD STAT
+=========================================
+*/
+
 exports.dashboardStat = async (req, res) => {
 
     try {
 
-        const totalIncome = await db.Invoice.sum("total", {
+        const totalIncome = await Invoice.sum("total", {
+
             where: {
-                status: "paid"
+                status: "paid",
+                agen_id: req.user.id
             }
+
         });
 
-        const totalTrx = await db.Invoice.count({
+        const totalTrx = await Invoice.count({
+
             where: {
-                status: "paid"
+                status: "paid",
+                agen_id: req.user.id
             }
+
         });
 
         res.json({
@@ -317,4 +350,4 @@ exports.dashboardStat = async (req, res) => {
 
     }
 
-}; 
+};

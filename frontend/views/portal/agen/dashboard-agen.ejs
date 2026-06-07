@@ -151,7 +151,8 @@
   </div>
   <div id="detail-transaksi-view" class="hidden">
 
-    <div style="
+    <div
+        style="
         background:#0891b2;
         color:white;
         padding:15px;
@@ -163,28 +164,30 @@
 
     </div>
 
-    <div style="
+    <div
+        style="
         background:white;
         color:black;
         padding:15px;
         overflow:auto;">
 
         <table
-        style="
-        width:100%;
-        border-collapse:collapse;
-        font-size:12px;">
+            style="
+            width:100%;
+            border-collapse:collapse;
+            font-size:12px;">
 
             <thead>
 
                 <tr style="background:#0891b2;color:white;">
 
-                    <th>No</th>
-                    <th>Invoice</th>
-                    <th>Pelanggan</th>
-                    <th>Nominal</th>
-                    <th>Status</th>
-                    <th>Tanggal</th>
+                    <th style="padding:8px;border:1px solid #ddd;">No</th>
+                    <th style="padding:8px;border:1px solid #ddd;">Invoice</th>
+                    <th style="padding:8px;border:1px solid #ddd;">ID Pelanggan</th>
+                    <th style="padding:8px;border:1px solid #ddd;">Nama Pelanggan</th>
+                    <th style="padding:8px;border:1px solid #ddd;">Nominal</th>
+                    <th style="padding:8px;border:1px solid #ddd;">Status</th>
+                    <th style="padding:8px;border:1px solid #ddd;">Tanggal</th>
 
                 </tr>
 
@@ -193,6 +196,24 @@
             <tbody id="detailTransaksiBody">
 
             </tbody>
+
+            <tfoot>
+
+                <tr style="font-weight:bold;background:#f8fafc;">
+
+                    <td colspan="4" style="padding:10px;text-align:right;">
+                        Total Pemasukan
+                    </td>
+
+                    <td id="totalPemasukan" style="padding:10px;">
+                        Rp 0
+                    </td>
+
+                    <td colspan="2"></td>
+
+                </tr>
+
+            </tfoot>
 
         </table>
 
@@ -205,13 +226,18 @@
         margin-top:20px;
         padding:12px;
         border:none;
-        border-radius:10px;">
+        border-radius:10px;
+        background:#0891b2;
+        color:white;
+        cursor:pointer;">
 
         Kembali
 
     </button>
 
 </div>
+
+
 
  <div id="dashboard-agen-view" class="hidden">
 
@@ -797,18 +823,37 @@ async function loadLaporan() {
 
     try {
 
-        const response = await fetch("/api/laporan-pembayaran");
-        const result = await response.json();
+        const token = localStorage.getItem("token");
+
+        const res = await fetch("/api/laporan-pembayaran", {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json"
+            }
+        });
+
+        const result = await res.json();
+
+        console.log("LAPORAN RESULT :", result);
 
         const tbody = document.getElementById("tabelLaporanBody");
 
         let total = 0;
 
-        if (result.success && result.data.length > 0) {
+        if (
+            result.success &&
+            Array.isArray(result.data) &&
+            result.data.length > 0
+        ) {
 
             tbody.innerHTML = result.data.map((item, index) => {
 
-                total += Number(item.total || item.amount || 0);
+                const nominal = Number(
+                    item.total || item.amount || 0
+                );
+
+                total += nominal;
 
                 return `
                     <tr>
@@ -816,10 +861,17 @@ async function loadLaporan() {
                         <td>${item.customer?.customer_id || "-"}</td>
                         <td>${item.customer?.name || "-"}</td>
                         <td>
-                            Rp ${Number(item.total || item.amount || 0).toLocaleString("id-ID")}
+                            Rp ${nominal.toLocaleString("id-ID")}
                         </td>
-                        <td>${item.status}</td>
-                        <td>${new Date(item.createdAt).toLocaleDateString("id-ID")}</td>
+                        <td>${item.status || "-"}</td>
+                        <td>
+                            ${
+                                item.createdAt
+                                    ? new Date(item.createdAt)
+                                          .toLocaleDateString("id-ID")
+                                    : "-"
+                            }
+                        </td>
                     </tr>
                 `;
 
@@ -837,23 +889,35 @@ async function loadLaporan() {
 
         }
 
-        // Total di halaman laporan
-        document.getElementById("totalPemasukan").innerHTML =
-            "Rp " + total.toLocaleString("id-ID");
+        const totalElement =
+            document.getElementById("totalPemasukan");
 
-        // Total di CARD dashboard
-        const card = document.getElementById("totalTransaksiNominal");
+        if (totalElement) {
+
+            totalElement.innerHTML =
+                "Rp " +
+                total.toLocaleString("id-ID");
+
+        }
+
+        const card =
+            document.getElementById("totalTransaksiNominal");
 
         if (card) {
+
             card.innerHTML =
-                "Rp " + total.toLocaleString("id-ID");
+                "Rp " +
+                total.toLocaleString("id-ID");
+
         }
 
     } catch (err) {
 
-        console.log(err);
+        console.error(err);
 
-        document.getElementById("tabelLaporanBody").innerHTML = `
+        document.getElementById(
+            "tabelLaporanBody"
+        ).innerHTML = `
             <tr>
                 <td colspan="6" style="text-align:center">
                     Gagal memuat data
@@ -865,40 +929,96 @@ async function loadLaporan() {
 
 }
 
-async function loadDashboardTotal(){
+async function loadDashboardTotal() {
 
-    const res=await fetch("/api/dashboard-total");
+    try {
 
-    const data=await res.json();
+        const token = localStorage.getItem("token");
 
-    document.getElementById(
-        "totalTransaksiNominal"
-    ).innerHTML=
-    "Rp "+
-    Number(data.total).toLocaleString("id-ID");
+        const res = await fetch("/api/dashboard-total", {
+
+            headers: {
+
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json"
+
+            }
+
+        });
+
+        const data = await res.json();
+
+        document.getElementById(
+            "totalTransaksiNominal"
+        ).innerHTML =
+            "Rp " +
+            Number(data.total || 0)
+                .toLocaleString("id-ID");
+
+    } catch (err) {
+
+        console.log(err);
+
+    }
 
 }
 
-async function loadDashboardStat(){
+async function loadDashboardStat() {
 
-    try{
+    try {
 
-        const res=await fetch("/api/laporan-pembayaran");
-        const json=await res.json();
+        const token = localStorage.getItem("token");
 
-        let total=0;
+        const res = await fetch("/api/laporan-pembayaran", {
 
-        json.data.forEach(item=>{
-            total+=Number(item.total||0);
+            headers: {
+
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json"
+
+            }
+
         });
 
-        document.getElementById("todayIncome").innerHTML=
-            "Rp "+total.toLocaleString("id-ID");
+        const json = await res.json();
 
-        document.getElementById("totalTrx").innerHTML=
-            json.data.length;
+        console.log("STAT RESULT :", json);
 
-    }catch(e){
+        const data = Array.isArray(json.data)
+            ? json.data
+            : [];
+
+        let total = 0;
+
+        data.forEach(item => {
+
+            total += Number(
+                item.total || item.amount || 0
+            );
+
+        });
+
+        const income =
+            document.getElementById("todayIncome");
+
+        if (income) {
+
+            income.innerHTML =
+                "Rp " +
+                total.toLocaleString("id-ID");
+
+        }
+
+        const trx =
+            document.getElementById("totalTrx");
+
+        if (trx) {
+
+            trx.innerHTML = data.length;
+
+        }
+
+    } catch (e) {
 
         console.log(e);
 
@@ -906,100 +1026,120 @@ async function loadDashboardStat(){
 
 }
 
-async function showDetailTransaksi(){
+async function showDetailTransaksi() {
 
-    const res=await fetch("/api/laporan-pembayaran");
+    try {
 
-    const json=await res.json();
+        const token = localStorage.getItem("token");
 
-    const start=document.getElementById("filterStart").value;
-    const end=document.getElementById("filterEnd").value;
-    const status=document.getElementById("filterStatus").value;
-    const nama=document.getElementById("filterNama").value.toLowerCase();
+        const res = await fetch("/api/laporan-pembayaran", {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json"
+            }
+        });
 
-    let data=json.data;
+        const json = await res.json();
 
-    if(start){
+        const start = document.getElementById("filterStart")?.value || "";
+        const end = document.getElementById("filterEnd")?.value || "";
+        const status = document.getElementById("filterStatus")?.value || "";
+        const nama = (document.getElementById("filterNama")?.value || "").toLowerCase();
 
-        data=data.filter(x=>{
+        let data = json.data || [];
 
-            return x.createdAt.substring(0,10)>=start;
+        if (start) {
+            data = data.filter(item =>
+                item.createdAt.substring(0, 10) >= start
+            );
+        }
+
+        if (end) {
+            data = data.filter(item =>
+                item.createdAt.substring(0, 10) <= end
+            );
+        }
+
+        if (status) {
+            data = data.filter(item =>
+                item.status === status
+            );
+        }
+
+        if (nama) {
+            data = data.filter(item =>
+                (item.customer?.name || "")
+                .toLowerCase()
+                .includes(nama)
+            );
+        }
+
+        let total = 0;
+        let html = "";
+
+        data.forEach((item, index) => {
+
+            total += Number(item.total || 0);
+
+            html += `
+                <tr>
+                    <td style="padding:8px;border:1px solid #ddd;text-align:center;">
+                        ${index + 1}
+                    </td>
+
+                    <td style="padding:8px;border:1px solid #ddd;">
+                        ${item.invoice_number || "-"}
+                    </td>
+
+                    <td style="padding:8px;border:1px solid #ddd;">
+                        ${item.customer?.customer_id || "-"}
+                    </td>
+
+                    <td style="padding:8px;border:1px solid #ddd;">
+                        ${item.customer?.name || "-"}
+                    </td>
+
+                    <td style="padding:8px;border:1px solid #ddd;text-align:right;">
+                        Rp ${Number(item.total || 0).toLocaleString("id-ID")}
+                    </td>
+
+                    <td style="padding:8px;border:1px solid #ddd;text-align:center;">
+                        ${item.status || "-"}
+                    </td>
+
+                    <td style="padding:8px;border:1px solid #ddd;text-align:center;">
+                        ${new Date(item.createdAt).toLocaleDateString("id-ID")}
+                    </td>
+                </tr>
+            `;
 
         });
 
-    }
+        if (data.length === 0) {
 
-    if(end){
+            html = `
+                <tr>
+                    <td colspan="7" style="padding:15px;text-align:center;">
+                        Tidak ada data
+                    </td>
+                </tr>
+            `;
 
-        data=data.filter(x=>{
+        }
 
-            return x.createdAt.substring(0,10)<=end;
+        document.getElementById("detailTransaksiBody").innerHTML = html;
 
-        });
+        document.getElementById("totalPemasukan").innerHTML =
+            "Rp " + total.toLocaleString("id-ID");
 
-    }
+        showView("detail-transaksi-view");
 
-    if(status){
+    } catch (err) {
 
-        data=data.filter(x=>x.status==status);
-
-    }
-
-    if(nama){
-
-        data=data.filter(x=>{
-
-            return (x.customer?.name||"")
-            .toLowerCase()
-            .includes(nama);
-
-        });
+        console.error(err);
+        alert("Gagal memuat data transaksi.");
 
     }
-
-    let total=0;
-
-    let html="";
-
-    data.forEach((item,index)=>{
-
-        total+=Number(item.total);
-
-        html+=`
-
-        <tr>
-
-            <td>${index+1}</td>
-
-            <td>${item.invoice_number}</td>
-
-            <td>${item.customer?.customer_id||'-'}</td>
-
-            <td>${item.customer?.name||'-'}</td>
-
-            <td>
-                Rp ${Number(item.total).toLocaleString('id-ID')}
-            </td>
-
-            <td>${item.status}</td>
-
-            <td>
-                ${new Date(item.createdAt).toLocaleDateString('id-ID')}
-            </td>
-
-        </tr>
-
-        `;
-
-    });
-
-    document.getElementById("detailTransaksiBody").innerHTML=html;
-
-    document.getElementById("totalPemasukan").innerHTML=
-        "Rp "+total.toLocaleString("id-ID");
-
-    showView("detail-transaksi-view");
-
 }
 
 function resetFilter(){

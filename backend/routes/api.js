@@ -34,6 +34,7 @@ const demoRoutes = require("./demo");
 
 // Controllers (existing)
 const AuthController = require("../controllers/AuthController");
+const PembayaranController = require("../controllers/PembayaranController");
 const AgenController = require('../controllers/AgenController'); 
 const authAgen = require('../middleware/authAgen');
 const UserController = require("../controllers/UserController");
@@ -3311,29 +3312,28 @@ const trackingRoutes = require("./tracking");
 router.use("/tracking", authenticate, demoGuard, trackingRoutes);
 
 const upload = multer({ dest: 'uploads/' });
-const PembayaranController = require('../controllers/PembayaranController');
 router.post(
     "/pembayaran",
+    authenticate,
     upload.single("bukti_foto"),
     PembayaranController.simpanPembayaran
-);
-router.get(
-    "/dashboard-total",
-    PembayaranController.totalTransaksi
-);
-
-router.get(
-    "/dashboard-total",
-    PembayaranController.dashboardTotal
 );
 
 router.get(
     "/laporan-pembayaran",
+    authenticate,
     PembayaranController.laporanPembayaran
 );
 
 router.get(
+    "/dashboard-total",
+    authenticate,
+    PembayaranController.dashboardTotal
+);
+
+router.get(
     "/dashboard-stat",
+    authenticate,
     PembayaranController.dashboardStat
 );
 
