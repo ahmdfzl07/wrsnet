@@ -1103,21 +1103,24 @@ if(t.customer){
 
   // Quick actions (teknisi)
   let qa='';
-  if(!['resolved','closed'].includes(t.status)){
+  if (t.status !== 'open') {
     qa+=`<button class="qab qab-info" id="btnAssignOdp" onclick="openAssignOdpModal()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="16"/>
-                  <line x1="8" y1="12" x2="16" y2="12"/>
-                </svg>
-                Assign ODP
-              </button>`;
-    qa+=`<button class="qab qab-warning" id="btnCekOdp" onclick="openCekOdp()" style="display:none;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M20 6L9 17l-5-5"/>
-                </svg>
-                Cek ODP
-              </button>`;
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="16"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+            Assign ODP
+          </button>`;
+
+    qa+=`<button class="qab qab-warning" id="btnCekOdp" onclick="openCekOdp()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M20 6L9 17l-5-5"/>
+            </svg>
+            Cek ODP
+          </button>`;
+  }
+  if(!['resolved','closed'].includes(t.status)){
     qa+=`<button class="qab qab-status" onclick="openStatusModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>Update Status</button>`;
     qa+=`<button class="qab qab-success" onclick="quickResolve()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Tandai Selesai</button>`;
   }
@@ -1401,6 +1404,7 @@ async function submitStatus(){
     if(j.success){
       if(note)await authFetch('/api/tickets/'+TID+'/timeline',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:note,type:'comment'})});
       closeM('mStatus');showToast('Status berhasil diupdate!','success');await loadTicket();
+      location.reload();
     }else showToast(j.message||'Error','error');
   }catch(e){showToast(e.message,'error');}
 }
@@ -1410,7 +1414,7 @@ async function quickResolve(){
   if(!confirm('Tandai tiket ini selesai?'))return;
   try{
     const j=await authFetch('/api/tickets/'+TID,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'resolved',resolved_at:new Date().toISOString()})}).then(r=>r.json());
-    if(j.success){showToast('Tiket ditandai selesai!','success');await loadTicket();}
+    if(j.success){showToast('Tiket ditandai selesai!','success');await loadTicket();location.reload();}
     else showToast(j.message||'Error','error');
   }catch(e){showToast(e.message,'error');}
 }
@@ -1422,7 +1426,7 @@ async function claimTicket(){
     const uid=me?.data?.id;
     if(!uid){showToast('Tidak dapat mengidentifikasi user','error');return;}
     const j=await authFetch('/api/tickets/'+TID,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({assigned_to:uid,status:'in_progress'})}).then(r=>r.json());
-    if(j.success){showToast('Tiket berhasil diambil!','success');await loadTicket();}
+    if(j.success){showToast('Tiket berhasil diambil!','success');await loadTicket();location.reload();}
     else showToast(j.message||'Error','error');
   }catch(e){showToast(e.message,'error');}
 }

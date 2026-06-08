@@ -464,7 +464,7 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
                 Update Status
               </button>
-              <button class="qab qab-primary" onclick="openAssignModal()">
+              <button class="qab qab-primary" id="tugaskanBtn" onclick="openAssignModal()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
                 Tugaskan Teknisi
               </button>
@@ -1023,6 +1023,10 @@ function renderTicket(t){
   if(!['resolved','closed'].includes(t.status)) $('closeBtn').style.display='flex';
   else $('closeBtn').style.display='none';
 
+  // Tugaskan btn
+  if(!t.assigned_to) $('tugaskanBtn').style.display='flex';
+  else $('tugaskanBtn').style.display='none';
+
   renderSLA(t);
   renderStatusFlow(t.status);
 
@@ -1419,10 +1423,23 @@ async function quickClose(){
 
 async function loadUsers(){
   try{
-    const j=await fetch('/api/users?limit=100').then(r=>r.json());
-    const us=j.data||j.users||[];const sel=$('assUid');
-    us.forEach(u=>{const o=document.createElement('option');o.value=u.id;o.textContent=u.name+(u.role?` (${u.role})`:''  );sel.appendChild(o);});
-  }catch(e){}
+    const j = await fetch('/api/users?limit=100')
+      .then(r => r.json());
+
+    const us = j.data || j.users || [];
+    const sel = $('assUid');
+    us
+      .filter(u => u.role && u.role.name === 'technician')
+      .forEach(u => {
+        const o = document.createElement('option');
+        o.value = u.id;
+        o.textContent = u.name + (u.role ? ` (${u.role.name})` : '');
+        sel.appendChild(o);
+      });
+
+  }catch(e){
+    console.error(e);
+  }
 }
 
 function showToast(msg,type='info'){
@@ -1708,8 +1725,6 @@ async function loadParentSelects(ticket) {
   try {
     const res = await fetch("/api/infrastructure?type=odc");
     const result = await res.json();
-
-    console.log("ODC RESULT:", result);
 
     const list = Array.isArray(result)
       ? result

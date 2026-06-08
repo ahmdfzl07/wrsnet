@@ -40,7 +40,10 @@ exports.register = async (req, res) => {
           message: "ID " + data.customer_id + " sudah digunakan",
         });
     } else {
-      data.customer_id = await generateUniqueCustomerId(Customer);
+      data.customer_id = await generateUniqueCustomerId(
+        Customer,
+        CustomerRegistration,
+      );
     }
 
     const customer = await CustomerRegistration.create(
