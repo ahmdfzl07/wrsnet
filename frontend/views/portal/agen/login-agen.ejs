@@ -91,8 +91,8 @@ document
     const password =
       document.getElementById('password').value.trim();
 
-    console.log(username);
-    console.log(password);
+    console.log('USERNAME =', username);
+    console.log('PASSWORD =', password);
 
     try {
 
@@ -103,7 +103,7 @@ document
           headers:{
             'Content-Type':'application/json'
           },
-          body:JSON.stringify({
+          body: JSON.stringify({
             username: username,
             password: password
           })
@@ -115,28 +115,17 @@ document
       console.log(result);
 
       if(!result.success){
-
         alert(result.message);
-
         return;
-
       }
-
-     if(result.success){
-
-  window.location.href =
-    '/portal/agen/dashboard-agen';
-
-}
 
       window.location.href =
         '/portal/agen/dashboard-agen';
 
     } catch(err){
 
-      console.log(err);
-
-      alert('Server error');
+      console.error(err);
+      alert('Server Error');
 
     }
 
