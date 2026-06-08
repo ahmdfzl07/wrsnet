@@ -71,11 +71,45 @@
 <div class="mobile">
   <div id="main-content">
     <div class="header">
-      <div class="profile">
-        <div class="avatar"></div>
-        <div class="name"><%= user.name %></div>
-      </div>
+  <div class="profile" onclick="toggleProfileMenu()" style="cursor:pointer;position:relative;">
+
+    <div class="avatar"></div>
+
+    <div class="name">
+      <%= user.name %> ▼
     </div>
+
+    <div id="profileMenu"
+      style="
+        display:none;
+        position:absolute;
+        top:45px;
+        right:0;
+        background:#fff;
+        min-width:160px;
+        border-radius:10px;
+        box-shadow:0 4px 12px rgba(0,0,0,.15);
+        z-index:999;
+      ">
+
+      <button
+        onclick="logout(event)"
+        style="
+          width:100%;
+          padding:12px;
+          border:none;
+          background:white;
+          text-align:left;
+          cursor:pointer;
+          border-radius:10px;
+        ">
+         Logout
+      </button>
+
+    </div>
+
+  </div>
+</div>
     <div class="card">
       <div style="color:#94a3b8;">AVAILABLE BALANCE</div>
       <div class="balance">Rp <%= Number(user.balance || 0).toLocaleString('id-ID') %></div>
@@ -246,7 +280,6 @@
     Dashboard Sales
   </div>
 
-  <!-- FILTER -->
   <div style="margin-bottom:15px;">
     <input type="date" id="filter-date" value="2026-06-01" style="padding:5px;">
     <button onclick="renderDashboardAgen()"
@@ -255,13 +288,11 @@
     </button>
   </div>
 
-  <!-- SEARCH -->
   <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
     <span>Show data</span>
     <input type="text" id="search" placeholder="Search..." oninput="renderDashboardAgen()">
   </div>
 
-  <!-- TABLE -->
   <div style="overflow-x:auto;border:1px solid #ddd;">
     <table style="width:100%;border-collapse:collapse;font-size:12px;text-align:center;">
       <thead id="tbl-head"></thead>
@@ -269,7 +300,6 @@
     </table>
   </div>
 
-  <!-- SUMMARY -->
   <div id="summary" style="margin-top:20px;border:1px solid #ddd;"></div>
 
 </div>
@@ -421,7 +451,6 @@
         Data Pemasukan
     </div>
 
-    <!-- FILTER -->
     <div style="
         background:#fff;
         padding:15px;
@@ -507,8 +536,6 @@
         </div>
 
     </div>
-
-    <!-- TABEL -->
     <div style="
         background:white;
         color:black;
@@ -705,7 +732,6 @@ function lihatRiwayat(index) {
         return;
     }
 
-    // Membangun baris tabel dengan kolom yang lengkap
     let rows = c.invoices.map(inv => `
         <tr style="border-bottom: 1px solid #dee2e6;">
             <td style="padding:12px;">${inv.id}</td>
@@ -730,7 +756,6 @@ function lihatRiwayat(index) {
         </tr>
     `).join('');
 
-    // Container tampilan
     document.getElementById('customerDetailContent').innerHTML = `
         <div style="background:white; color:black; padding:20px; overflow-x: auto;">
             <h3>Histori Pembayaran</h3>
@@ -804,19 +829,15 @@ async function simpanPembayaran() {
     }
 }
 function populateForm(customer) {
-    // 1. Set ID Pelanggan (readonly agar tidak salah input)
     document.getElementById('inputCustomerId').value = customer.id;
     
-    // 2. Set Paket Dinamis dari database
     const selectPaket = document.getElementById('select-paket');
     selectPaket.innerHTML = `
         <option value="${customer.package.id}">
             ${customer.package.name} - Rp ${Number(customer.package.price).toLocaleString('id-ID')}
         </option>
     `;
-    
-    // 3. Set Nominal otomatis dari harga paket
-    document.getElementById('inputNominal').value = customer.package.price;
+        document.getElementById('inputNominal').value = customer.package.price;
 }
 
 async function loadLaporan() {
@@ -1160,7 +1181,6 @@ async function loadDataUser() {
 
         const token = localStorage.getItem("token");
 
-        // 🔥 guard tambahan biar tidak kirim "null"
         if (!token || token === "null" || token === "undefined") {
             console.log("NO VALID TOKEN");
             window.location.href = "/login";
@@ -1176,7 +1196,6 @@ async function loadDataUser() {
             }
         });
 
-        // 🔥 kalau unauthorized langsung redirect
         if (res.status === 401) {
             console.log("TOKEN EXPIRED / INVALID");
             localStorage.removeItem("token");
@@ -1184,7 +1203,6 @@ async function loadDataUser() {
             return;
         }
 
-        // 🔥 pastikan response JSON
         const contentType = res.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
             console.error("Response bukan JSON (kemungkinan redirect HTML)");
@@ -1243,7 +1261,6 @@ window.saveProfile = async function () {
 
         alert("Profile berhasil diupdate");
 
-        // 🔥 update cache
         currentUser.name = body.name;
         currentUser.email = body.username;
 
@@ -1366,6 +1383,7 @@ function renderAgenTable(data) {
     </tr>
   `).join('');
 }
+
 
 window.addEventListener("load", async () => {
 
