@@ -51,6 +51,7 @@ class CustomerController {
             as: "invoices",
             attributes: [
               "id",
+              "invoice_number",
               "due_date",
               "status",
               "paid_date",

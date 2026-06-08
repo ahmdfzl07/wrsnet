@@ -344,6 +344,15 @@ async function loadInvoiceTpl() {
   return tpl;
 }
 
+router.get("/invoice-agen/inv/:invoiceId", async (req, res) => {
+  const tpl = await loadInvoiceTpl();
+  res.render("pages/invoice-agen", {
+    title: "Invoice",
+    user: req.user,
+    active: "billing",
+    tpl,
+  });
+});
 router.get(
   "/invoice/inv/:invoiceId",
   authenticate,
@@ -730,12 +739,12 @@ router.get("/register", (req, res) => {
   res.render("pages/register");
 });
 
-const AgenController = require('../controllers/AgenController');
+const AgenController = require("../controllers/AgenController");
 
-router.get('/portal/agen/login-agen', (req, res) => {
-  res.render('portal/agen/login-agen', {
-    title: 'Login Agen',
-    appName: 'WRSNET'
+router.get("/portal/agen/login-agen", (req, res) => {
+  res.render("portal/agen/login-agen", {
+    title: "Login Agen",
+    appName: "WRSNET",
   });
 });
 module.exports = router;

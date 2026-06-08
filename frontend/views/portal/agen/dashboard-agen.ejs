@@ -37,32 +37,33 @@
     .btn-view{ background:#16a34a; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; }
 
     .form-container {
-    background: #fff;
-    color: #333;
-    padding: 20px;
-    border-radius: 0 0 8px 8px;
-    border: 1px solid #dee2e6;
-}
-.form-row {
-    margin-bottom: 12px;
-}
-.form-row label {
-    display: block;
-    font-size: 14px;
-    margin-bottom: 4px;
-    font-weight: 500;
-}
-.form-row input, .form-row select {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-.btn-group {
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
-}
+        background: #fff;
+        color: #333;
+        padding: 20px;
+        border-radius: 0 0 8px 8px;
+        border: 1px solid #dee2e6;
+    }
+    .form-row {
+        margin-bottom: 12px;
+    }
+    .form-row label {
+        display: block;
+        font-size: 14px;
+        margin-bottom: 4px;
+        font-weight: 500;
+    }
+    .form-row input, .form-row select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    .btn-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+    .act-inv  { background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8; } .act-inv:hover  { background:#dbeafe; }
   </style>
 </head>
 
@@ -735,7 +736,7 @@ function lihatRiwayat(index) {
 
     let rows = c.invoices.map(inv => `
         <tr style="border-bottom: 1px solid #dee2e6;">
-            <td style="padding:12px;">${inv.id}</td>
+            <td style="padding:12px;">${inv.invoice_number}</td>
             <td style="padding:12px;">${c.package_id || '-'}</td>
             <td style="padding:12px;">${c.package?.name || '-'}</td>
             <td style="padding:12px;">Rp ${Number(c.package?.price || 0).toLocaleString('id-ID')}</td>
@@ -750,8 +751,10 @@ function lihatRiwayat(index) {
             <td style="padding:12px;">
                 ${inv.status !== 'overdue' ? `
                     <button class="btn-view" style="font-size:10px; background:#007bff; border:none; color:white; padding:5px; margin-right:2px;">Download bukti</button>
-                    <button class="btn-view" style="font-size:10px; background:#007bff; border:none; color:white; padding:5px; margin-right:2px;">Download Invoice</button>
-                    <button class="btn-view" style="font-size:10px; background:#17a2b8; border:none; color:white; padding:5px;">➤</button>
+                    <button class="act-btn act-inv" onclick="openInvoiceByInvId(${inv.id})">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Invoice
+                    </button>
+                    <button class="btn-view" style="font-size:10px; background:#17a2b8; border:none; color:white; padding:5px;">➤ Kirim</button>
                 ` : ''}
             </td>
         </tr>
@@ -782,6 +785,12 @@ function lihatRiwayat(index) {
     `;
     showView('detail-customer-view');
 }
+
+// ── INVOICE CETAK — buka langsung dari invoice id (unpaid/paid) ─
+window.openInvoiceByInvId = function (invoiceId) {
+  // Langsung buka halaman invoice by invoice ID — tidak perlu cek payment dulu
+  window.open("/invoice-agen/inv/" + invoiceId, "_blank");
+};
 
 async function simpanPembayaran() {
     const customer = customerData[currentCustomerIndex];
@@ -856,8 +865,6 @@ async function loadLaporan() {
         });
 
         const result = await res.json();
-
-        console.log("LAPORAN RESULT :", result);
 
         const tbody = document.getElementById("tabelLaporanBody");
 
@@ -1003,8 +1010,6 @@ async function loadDashboardStat() {
         });
 
         const json = await res.json();
-
-        console.log("STAT RESULT :", json);
 
         const data = Array.isArray(json.data)
             ? json.data
@@ -1183,7 +1188,6 @@ async function loadDataUser() {
         const token = localStorage.getItem("agen_token");
 
         if (!token || token === "null" || token === "undefined") {
-            console.log("NO VALID TOKEN");
             window.location.href = "/login";
             return;
         }
@@ -1198,7 +1202,6 @@ async function loadDataUser() {
         });
 
         if (res.status === 401) {
-            console.log("TOKEN EXPIRED / INVALID");
             localStorage.removeItem("token");
             window.location.href = "/login";
             return;
@@ -1211,8 +1214,6 @@ async function loadDataUser() {
         }
 
         const result = await res.json();
-
-        console.log("PROFILE RESULT:", result);
 
         if (!result.success) return;
 
@@ -1302,7 +1303,6 @@ async function loadDashboardAgen() {
     });
 
     const result = await res.json();
-    console.log(result);
 
     if (!result.success) return;
 

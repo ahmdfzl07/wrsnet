@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><%= typeof title !== 'undefined' ? title : 'Invoice' %> - <%= appName %></title>
+<%
+  // Template settings (defaults if not configured yet)
+  const t = (typeof tpl === 'object' && tpl) ? tpl : {};
+  const tplVars = {
+    primary_color:    t.primary_color || '#1a6ef5',
+    accent_color:     t.accent_color  || '#1d4ed8',
+    text_color:       t.text_color    || '#0f172a',
+    font_family:      t.font_family   || 'Inter',
+    header_style:     t.header_style  || 'banner',
+    show_logo:        t.show_logo,
+    logo_url:         t.logo_url || '',
+    company_name:     t.company_name    || '',
+    company_tagline:  t.company_tagline || '',
+    company_address:  t.company_address || '',
+    company_phone:    t.company_phone   || '',
+    company_email:    t.company_email   || '',
+    show_subtotal:       t.show_subtotal,
+    show_tax:            t.show_tax,
+    show_due_date:       t.show_due_date,
+    show_payment_method: t.show_payment_method,
+    show_active_until:   t.show_active_until,
+    show_bank_info:      t.show_bank_info,
+    show_signature:      t.show_signature,
+    invoice_label:           t.invoice_label || 'INVOICE',
+    section_recipient_label: t.section_recipient_label || 'TAGIHAN UNTUK',
+    section_detail_label:    t.section_detail_label    || 'DETAIL INVOICE',
+    thank_you_text:          t.thank_you_text || '',
+    footer_text:             t.footer_text    || ''
+  };
+%>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    font-family: '<%= tplVars.font_family %>', -apple-system, BlinkMacSystemFont, sans-serif;
+    background:#f0f4f8; color:#1e293b; min-height:100vh; padding:20px;
+  }
+
+  /* ── Action bar ── */
+  .action-bar {
+    max-width:780px; margin:0 auto 16px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  }
+  .action-bar a, .action-bar button {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600;
+    cursor:pointer; text-decoration:none; border:none; font-family:inherit; transition:all .15s;
+  }
+  .btn-back  { background:#fff; border:1px solid #e2e8f0; color:#64748b; }
+  .btn-back:hover { background:#f1f5f9; }
+  .btn-print { background: <%= tplVars.primary_color %>; color:#fff; }
+  .btn-print:hover { filter: brightness(0.92); }
+  .btn-wa    { background:#16a34a; color:#fff; }
+  .btn-wa:hover { background:#15803d; }
+  .btn-wa.sent { background:#64748b; cursor:default; opacity:.8; }
+
+  /* ── Invoice card wrapper ── */
+  .invoice-wrap {
+    max-width:780px; margin:0 auto; background:#fff;
+    border-radius:16px; overflow:hidden; box-shadow:0 4px 32px rgba(0,0,0,.10);
+  }
+
+  /* ── Loading & alert ── */
+  .alert-box {
+    max-width:780px; margin:0 auto 16px;
+    padding:14px 18px; border-radius:10px; font-size:13px; font-weight:500;
+    display:flex; align-items:center; gap:10px;
+  }
+  .alert-err { background:#fef2f2; color:#991b1b; border:1.5px solid #fca5a5; }
+
+  .loading-state {
+    max-width:780px; margin:0 auto; padding:80px 20px; text-align:center;
+    background:#fff; border-radius:16px; color:#94a3b8;
+  }
+  .loading-state svg { width:40px; height:40px; margin:0 auto 12px; animation:invSpin 1s linear infinite; }
+  @keyframes invSpin { to { transform:rotate(360deg); } }
+
+  /* ── Print styles ── */
+  @media print {
+    body { padding:0; background:#fff; }
+    .action-bar, #alertWrap, .preview-ribbon { display:none !important; }
+    .invoice-wrap { max-width:none; box-shadow:none; border-radius:0; margin:0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Action bar -->
+<div class="action-bar" id="actionBar" style="display:none;">
+  <a href="javascript:history.back()" class="btn-back">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    Kembali
+  </a>
+  <div style="display:flex;gap:8px;">
+    <button class="btn-wa" id="btnSendWa" onclick="sendInvoiceWa()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+      <span id="btnSendWaText">Kirim via WA</span>
+    </button>
+    <button class="btn-print" onclick="window.print()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print / Save PDF
+    </button>
+  </div>
+</div>
+
+<div id="alertWrap"></div>
+
+<!-- Loading -->
+<div class="loading-state" id="invLoading">
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#94a3b8" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+  <p>Memuat invoice...</p>
+</div>
+
+<!-- Invoice wrapper (rendered by shared renderer) -->
+<div class="invoice-wrap" id="invoiceWrap" style="display:none;"></div>
+
+<!-- <script src="/js/app.js"></script> -->
+<script src="/js/invoice-renderer.js"></script>
+<script>
+// Template settings di-inject dari server
+window.INVTPL = <%- JSON.stringify(tplVars) %>;
+console.log('[INVTPL] Template settings loaded:', window.INVTPL);
+
+// Support tiga mode:
+//   /invoice/123                       — payment view
+//   /invoice/inv/456                   — invoice view
+//   /invoice-template/preview-print    — preview template dengan data dummy
+const _pathParts = location.pathname.split('/').filter(Boolean);
+const _isInvMode      = _pathParts.includes('inv');
+const _isPreviewMode  = _pathParts[0] === 'invoice-template' && _pathParts[1] === 'preview-print';
+const _payId          = _pathParts[_pathParts.length - 1];
+
+async function loadInvoice() {
+  let d;
+  if (_isPreviewMode) {
+    // Preview mode — pakai data dummy dari renderer
+    d = { success: true, data: InvoiceRenderer.sampleData() };
+  } else {
+    const endpoint = '/portal/invoices/' + _payId + '/invoice-data';
+    d = await fetch(endpoint, {
+        method: "GET",
+        credentials: "include",
+      }).then(r => r.json());
+  }
+  document.getElementById('invLoading').style.display = 'none';
+  if (!d?.success) {
+    document.getElementById('alertWrap').innerHTML =
+      '<div class="alert-box alert-err">Invoice tidak ditemukan atau terjadi kesalahan.</div>';
+    return;
+  }
+
+  // Fallback: kalau template belum punya company_name, pakai dari env (data.company)
+  if (d.data.company && !window.INVTPL.company_name) {
+    window.INVTPL.company_name = d.data.company.name || 'ISP Provider';
+  }
+  if (d.data.company && !window.INVTPL.company_tagline) {
+    window.INVTPL.company_tagline = 'Internet Service Provider';
+  }
+
+  // Render dengan shared renderer — guaranteed identik dengan designer preview
+  InvoiceRenderer.render('#invoiceWrap', d.data, window.INVTPL);
+  document.getElementById('invoiceWrap').style.display = 'block';
+
+  if (_isPreviewMode) {
+    // Hide normal action bar; show preview ribbon
+    const ribbon = document.createElement('div');
+    ribbon.className = 'preview-ribbon';
+    ribbon.style.cssText = 'max-width:780px;margin:0 auto 16px;background:#fef3c7;border:1.5px solid #fde68a;border-radius:10px;padding:11px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;';
+    ribbon.innerHTML =
+      '<div style="display:flex;align-items:center;gap:9px;color:#92400e;font-size:13px;font-weight:600;">' +
+        '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+        '<span>Preview Mode — data contoh, bukan tagihan asli</span>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;">' +
+        '<button onclick="window.close()" style="padding:7px 13px;border-radius:8px;background:#fff;border:1.5px solid #fde68a;color:#92400e;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;">Tutup</button>' +
+        '<button onclick="window.print()" style="padding:7px 13px;border-radius:8px;background:' + (window.INVTPL.primary_color || '#1e40af') + ';border:none;color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print / Save PDF</button>' +
+      '</div>';
+    document.body.insertBefore(ribbon, document.getElementById('invoiceWrap'));
+  } else {
+    document.getElementById('actionBar').style.display = 'flex';
+  }
+}
+
+async function sendInvoiceWa() {
+  if (_isInvMode || _isPreviewMode) {
+    App.showToast('Kirim WA hanya tersedia setelah invoice dibayar', 'info');
+    return;
+  }
+  const btn = document.getElementById('btnSendWa');
+  const txt = document.getElementById('btnSendWaText');
+  if (btn.classList.contains('sent')) return;
+  btn.disabled = true;
+  txt.textContent = 'Mengirim...';
+  try {
+    const res = await fetch('/portal/payments/' + _payId + '/send-wa-invoice', {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({})
+    });
+
+    const d = await res.json();
+    if (d?.success) {
+      btn.classList.add('sent');
+      txt.textContent = '✓ Terkirim';
+    } else {
+      App.showToast(d?.message || 'Gagal kirim WA', 'error');
+      txt.textContent = 'Kirim via WA';
+    }
+  } catch (e) {
+    App.showToast(e.message || 'Error', 'error');
+    txt.textContent = 'Kirim via WA';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+loadInvoice();
+</script>
+</body>
+</html>
