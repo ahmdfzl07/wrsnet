@@ -1179,7 +1179,7 @@ let currentUser = null;
 async function loadDataUser() {
     try {
 
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("agen_token");
 
         if (!token || token === "null" || token === "undefined") {
             console.log("NO VALID TOKEN");

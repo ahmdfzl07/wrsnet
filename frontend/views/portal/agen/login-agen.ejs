@@ -112,7 +112,15 @@ document
 
       const result = await response.json();
 
-      console.log(result);
+      localStorage.setItem(
+        'agen_token',
+        result.token
+      );
+
+      localStorage.setItem(
+        'agen_user',
+        JSON.stringify(result.user)
+      );
 
       if(!result.success){
         alert(result.message);
