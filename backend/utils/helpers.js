@@ -48,7 +48,10 @@ const generateCustomerId = (number = 1) => {
 //   // Fallback: pakai timestamp
 //   return prefix + Date.now().toString().slice(-6);
 // };
-const generateUniqueCustomerId = async (CustomerModel) => {
+const generateUniqueCustomerId = async (
+  CustomerModel,
+  CustomerRegistrationModel,
+) => {
   const { Op } = require("sequelize");
 
   const now = new Date();
@@ -58,34 +61,36 @@ const generateUniqueCustomerId = async (CustomerModel) => {
 
   const prefix = `${y}${m}${d}`;
 
-  const last = await CustomerModel.findOne({
+  const lastCustomer = await CustomerModel.findOne({
     where: {
-      customer_id: {
-        [Op.like]: prefix + "%",
-      },
+      customer_id: { [Op.like]: prefix + "%" },
     },
     order: [["customer_id", "DESC"]],
     attributes: ["customer_id"],
   });
 
-  let nextNum = 1;
+  const lastRegistration = await CustomerRegistrationModel.findOne({
+    where: {
+      customer_id: { [Op.like]: prefix + "%" },
+    },
+    order: [["customer_id", "DESC"]],
+    attributes: ["customer_id"],
+  });
 
-  if (last) {
-    const match = last.customer_id.replace(prefix, "").match(/^(\d+)/);
-    if (match) nextNum = parseInt(match[1]) + 1;
-  }
+  const extractNumber = (data) => {
+    if (!data) return 0;
+    const match = data.customer_id.replace(prefix, "").match(/^(\d+)/);
+    return match ? parseInt(match[1]) : 0;
+  };
 
-  for (let i = nextNum; i < nextNum + 100; i++) {
-    const candidate = prefix + String(i).padStart(4, "0");
+  const lastNumCustomer = extractNumber(lastCustomer);
+  const lastNumRegistration = extractNumber(lastRegistration);
 
-    const exists = await CustomerModel.findOne({
-      where: { customer_id: candidate },
-    });
+  const nextNum = Math.max(lastNumCustomer, lastNumRegistration) + 1;
 
-    if (!exists) return candidate;
-  }
+  const newId = prefix + String(nextNum).padStart(4, "0");
 
-  return prefix + Date.now().toString().slice(-6);
+  return newId;
 };
 
 // Generate invoice number
