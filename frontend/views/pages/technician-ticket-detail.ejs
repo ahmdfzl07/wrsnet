@@ -2310,15 +2310,16 @@ async function savePoint() {
   try {
     const pid=document.getElementById('cust-parent').value;
     if (!selectedCustomerId) {
-      alert("Pilih pelanggan");
+      showToast("Pilih pelanggan", "warning");
       return;
     }
     if (!pid || pid === "-- Tidak ada --") {
-      alert("Pilih ODP");
+      showToast("Pilih ODP", "warning");
       return;
     }
     if (!ticketId) {
       alert("ID Ticket tidak ditemukan");
+      showToast("ID Ticket tidak ditemukan", "warning");
       return;
     }
 
