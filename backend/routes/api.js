@@ -3341,4 +3341,9 @@ router.get('/user/profile', authenticate, AuthController.profile);
 router.put("/user/profile", authenticate, AuthController.updateProfile);
 router.put("/user/password", authenticate, AuthController.changePassword);
 router.get('/agen/profile', authAgen, AgenController.profile);
+router.get(
+  '/agen/customers',
+  authAgen,
+  CustomerController.index
+);
 module.exports = router;

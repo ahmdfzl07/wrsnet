@@ -671,8 +671,9 @@
   async function cariCustomer() {
     const keyword = document.getElementById('keywordCustomer').value;
     try {
-      const response = await fetch(`/api/customers?search=${encodeURIComponent(keyword)}`);
-      const result = await response.json();
+        const response = await fetch(
+        `/api/agen/customers?search=${encodeURIComponent(keyword)}`
+        );      const result = await response.json();
       customerData = Array.isArray(result.data) ? result.data : [result.data];
       let html = customerData.map((item, index) => `<tr><td>${index+1}</td><td><button class="btn-view" onclick="lihatCustomer(${index})">👁️</button></td><td>${item.customer_id}</td><td>${item.name}</td></tr>`).join('');
       document.getElementById('tableCustomerBody').innerHTML = html;
