@@ -274,6 +274,17 @@ function normalizeMethod(provider, method) {
   return map[provider]?.[method] || method;
 }
 
+function calculateFinalAmount(amount, fee) {
+  if (!fee) return amount;
+
+  if (typeof fee === "string" && fee.includes("%")) {
+    const percent = parseFloat(fee.replace("%", ""));
+    return Math.ceil(amount + (amount * percent) / 100);
+  }
+
+  return amount + parseInt(fee || 0);
+}
+
 module.exports = {
   generateCustomerId,
   generateUniqueCustomerId,
@@ -288,4 +299,5 @@ module.exports = {
   sanitizeSnmpValue,
   pickGateway,
   normalizeMethod,
+  calculateFinalAmount,
 };

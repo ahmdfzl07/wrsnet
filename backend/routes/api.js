@@ -2995,9 +2995,13 @@ router.post("/payment/create", async (req, res) => {
   try {
     const crypto = require("crypto");
     const axios = require("axios");
-    const { pickGateway, normalizeMethod } = require("../utils/helpers");
+    const {
+      pickGateway,
+      normalizeMethod,
+      calculateFinalAmount,
+    } = require("../utils/helpers");
 
-    const { invoice_id, method } = req.body;
+    const { invoice_id, method, fee } = req.body;
 
     const invoice = await Invoice.findByPk(invoice_id, {
       include: [{ model: Customer, as: "customer" }],
@@ -3010,7 +3014,8 @@ router.post("/payment/create", async (req, res) => {
       });
     }
 
-    const amount = parseInt(invoice.total);
+    // const amount = parseInt(invoice.total);
+    const amount = calculateFinalAmount(parseInt(invoice.total), fee);
 
     let selectedMethod = method || "QRIS";
     const provider = pickGateway(selectedMethod);
@@ -3210,6 +3215,89 @@ router.post("/payment/create", async (req, res) => {
         token: response.data.token,
       });
     }
+
+    // if (provider === "midtrans") {
+    //   const orderId = `INV-${invoice.id}-${Date.now()}`;
+
+    //   const serverKey = process.env.MIDTRANS_SERVER_KEY;
+    //   const auth = Buffer.from(serverKey + ":").toString("base64");
+
+    //   const isProduction = process.env.MODE_ENV_PROD === "production";
+
+    //   const baseUrl = isProduction
+    //     ? "https://app.midtrans.com"
+    //     : "https://app.sandbox.midtrans.com";
+
+    //   // =========================
+    //   // GOPAY (HP ONLY VIA SNAP)
+    //   // =========================
+    //   if (selectedMethod === "gopay") {
+    //     const response = await axios.post(
+    //       `${baseUrl}/snap/v1/transactions`,
+    //       {
+    //         transaction_details: {
+    //           order_id: orderId,
+    //           gross_amount: amount,
+    //         },
+    //         customer_details: {
+    //           first_name: invoice.customer?.name || "Customer",
+    //           email: invoice.customer?.email || "customer@gmail.com",
+    //           phone: invoice.customer?.phone || "628123456789",
+    //         },
+    //         enabled_payments: ["gopay"],
+    //         callbacks: {
+    //           finish: `${process.env.APP_URL}/payment-success`,
+    //         },
+    //       },
+    //       {
+    //         headers: {
+    //           "Content-Type": "application/json",
+    //           Authorization: "Basic " + auth,
+    //         },
+    //       },
+    //     );
+
+    //     return res.json({
+    //       success: true,
+    //       payment_url: response.data.redirect_url,
+    //       type: "gopay",
+    //     });
+    //   }
+
+    //   // =========================
+    //   // QRIS (DESKTOP DEFAULT)
+    //   // =========================
+    //   const response = await axios.post(
+    //     `${baseUrl}/snap/v1/transactions`,
+    //     {
+    //       transaction_details: {
+    //         order_id: orderId,
+    //         gross_amount: amount,
+    //       },
+    //       customer_details: {
+    //         first_name: invoice.customer?.name || "Customer",
+    //         email: invoice.customer?.email || "customer@gmail.com",
+    //         phone: invoice.customer?.phone || "628123456789",
+    //       },
+    //       enabled_payments: ["qris"],
+    //       callbacks: {
+    //         finish: `${process.env.APP_URL}/payment-success`,
+    //       },
+    //     },
+    //     {
+    //       headers: {
+    //         "Content-Type": "application/json",
+    //         Authorization: "Basic " + auth,
+    //       },
+    //     },
+    //   );
+
+    //   return res.json({
+    //     success: true,
+    //     payment_url: response.data.redirect_url,
+    //     type: "qris",
+    //   });
+    // }
 
     return res.status(400).json({
       success: false,
