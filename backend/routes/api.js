@@ -3151,6 +3151,10 @@ router.post("/payment/create", async (req, res) => {
         enabledPayments = ["qris"];
       }
 
+      if (selectedMethod === "gopay") {
+        enabledPayments = ["gopay"];
+      }
+
       const parameter = {
         transaction_details: {
           order_id: orderId,
@@ -3186,7 +3190,7 @@ router.post("/payment/create", async (req, res) => {
       const serverKey = process.env.MIDTRANS_SERVER_KEY;
       const auth = Buffer.from(serverKey + ":").toString("base64");
 
-      const isProduction = process.env.APP_ENV === "production";
+      const isProduction = process.env.MODE_ENV_PROD === "production";
 
       const snapUrl = isProduction
         ? "https://app.midtrans.com/snap/v1/transactions"
