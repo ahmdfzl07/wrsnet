@@ -619,6 +619,28 @@ exports.update = async (req, res) => {
 
             status: "active",
           });
+        } else {
+          await existing.update({
+            name: regis.name,
+            phone: regis.phone,
+            email: regis.email,
+            installation_date: regis.installation_date,
+            province_id: regis.province_id,
+            kabupaten: regis.kabupaten,
+            kecamatan: regis.kecamatan,
+            kelurahan: regis.kelurahan,
+            rt: regis.rt,
+            rw: regis.rw,
+            address: regis.address,
+
+            latitude: regis.latitude,
+            longitude: regis.longitude,
+
+            package_id: regis.package_id,
+            addon_id: regis.addon_id,
+
+            status: "active",
+          });
         }
       }
     }
