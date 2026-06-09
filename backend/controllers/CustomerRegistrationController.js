@@ -4,7 +4,7 @@ const Customer = db.Customer;
 const Ticket = db.Ticket;
 const WorkOrder = db.WorkOrder;
 const {
-  generateUniqueCustomerId,
+  generateUniqueCustomerRegisId,
   paginateResponse,
 } = require("../utils/helpers");
 
@@ -40,7 +40,7 @@ exports.register = async (req, res) => {
           message: "ID " + data.customer_id + " sudah digunakan",
         });
     } else {
-      data.customer_id = await generateUniqueCustomerId(
+      data.customer_id = await generateUniqueCustomerRegisId(
         Customer,
         CustomerRegistration,
       );
