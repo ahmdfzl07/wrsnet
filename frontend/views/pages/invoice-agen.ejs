@@ -87,6 +87,111 @@
     .action-bar, #alertWrap, .preview-ribbon { display:none !important; }
     .invoice-wrap { max-width:none; box-shadow:none; border-radius:0; margin:0; }
   }
+  
+  .invoice-paper {
+    width: 100%;
+  }
+
+  .inv-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .inv-table {
+    min-width: 650px;
+  }
+
+  /* ================= MOBILE ================= */
+  @media (max-width: 768px) {
+
+    body {
+      padding: 10px;
+    }
+
+    .invoice-wrap {
+      border-radius: 12px;
+    }
+
+    .invoice-paper {
+      padding: 24px !important;
+    }
+
+    .inv-header-row {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 16px !important;
+    }
+
+    .inv-recipient-row {
+      flex-direction: column !important;
+      gap: 20px !important;
+    }
+
+    .inv-recipient-row > div {
+      max-width: 100% !important;
+      width: 100% !important;
+      text-align: left !important;
+    }
+
+    .inv-total-box {
+      width: 100% !important;
+      min-width: 100% !important;
+    }
+
+    .inv-payment-box {
+      flex-direction: column !important;
+      gap: 14px !important;
+    }
+
+    .inv-footer {
+      flex-direction: column !important;
+      gap: 20px !important;
+    }
+
+    .action-bar {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .action-bar > div {
+      width: 100%;
+      display: flex;
+    }
+
+    .action-bar button,
+    .action-bar a {
+      flex: 1;
+      justify-content: center;
+    }
+
+    .invoice-paper {
+      font-size: 14px;
+    }
+
+    .invoice-paper h1,
+    .invoice-paper h2 {
+      font-size: 20px !important;
+    }
+  }
+
+  /* Extra small devices */
+  @media (max-width: 480px) {
+
+    .invoice-paper {
+      padding: 16px !important;
+    }
+
+    .inv-table {
+      min-width: 550px;
+    }
+
+    .btn-print,
+    .btn-wa,
+    .btn-back {
+      font-size: 12px;
+      padding: 10px;
+    }
+  }
 </style>
 </head>
 <body>
