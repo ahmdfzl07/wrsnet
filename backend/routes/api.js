@@ -35,8 +35,8 @@ const demoRoutes = require("./demo");
 // Controllers (existing)
 const AuthController = require("../controllers/AuthController");
 const PembayaranController = require("../controllers/PembayaranController");
-const AgenController = require('../controllers/AgenController'); 
-const authAgen = require('../middleware/authAgen');
+const AgenController = require("../controllers/AgenController");
+const authAgen = require("../middleware/authAgen");
 const UserController = require("../controllers/UserController");
 const CustomerController = require("../controllers/CustomerController");
 const PackageController = require("../controllers/PackageController");
@@ -3186,16 +3186,18 @@ router.post("/payment/create", async (req, res) => {
       const serverKey = process.env.MIDTRANS_SERVER_KEY;
       const auth = Buffer.from(serverKey + ":").toString("base64");
 
-      const response = await axios.post(
-        "https://app.sandbox.midtrans.com/snap/v1/transactions",
-        parameter,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Basic " + auth,
-          },
+      const isProduction = process.env.APP_ENV === "production";
+
+      const snapUrl = isProduction
+        ? "https://app.midtrans.com/snap/v1/transactions"
+        : "https://app.sandbox.midtrans.com/snap/v1/transactions";
+
+      const response = await axios.post(snapUrl, parameter, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Basic " + auth,
         },
-      );
+      });
 
       return res.json({
         success: true,
@@ -3311,39 +3313,31 @@ router.delete("/roles/:id", authenticate, UserController.deleteRole);
 const trackingRoutes = require("./tracking");
 router.use("/tracking", authenticate, demoGuard, trackingRoutes);
 
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ dest: "uploads/" });
 router.post(
-    "/pembayaran",
-    authenticate,
-    upload.single("bukti_foto"),
-    PembayaranController.simpanPembayaran
+  "/pembayaran",
+  authenticate,
+  upload.single("bukti_foto"),
+  PembayaranController.simpanPembayaran,
 );
 
 router.get(
-    "/laporan-pembayaran",
-    authenticate,
-    PembayaranController.laporanPembayaran
+  "/laporan-pembayaran",
+  authenticate,
+  PembayaranController.laporanPembayaran,
 );
 
 router.get(
-    "/dashboard-total",
-    authenticate,
-    PembayaranController.dashboardTotal
+  "/dashboard-total",
+  authenticate,
+  PembayaranController.dashboardTotal,
 );
 
-router.get(
-    "/dashboard-stat",
-    authenticate,
-    PembayaranController.dashboardStat
-);
+router.get("/dashboard-stat", authenticate, PembayaranController.dashboardStat);
 
-router.get('/user/profile', authenticate, AuthController.profile);
+router.get("/user/profile", authenticate, AuthController.profile);
 router.put("/user/profile", authenticate, AuthController.updateProfile);
 router.put("/user/password", authenticate, AuthController.changePassword);
-router.get('/agen/profile', authAgen, AgenController.profile);
-router.get(
-  '/agen/customers',
-  authAgen,
-  CustomerController.index
-);
+router.get("/agen/profile", authAgen, AgenController.profile);
+router.get("/agen/customers", authAgen, CustomerController.index);
 module.exports = router;
