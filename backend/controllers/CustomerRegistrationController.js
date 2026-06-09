@@ -121,3 +121,84 @@ exports.register = async (req, res) => {
     });
   }
 };
+
+exports.update = async (req, res) => {
+  const t = await db.sequelize.transaction();
+
+  try {
+    const { id } = req.params;
+    const data = req.body;
+
+    const customer = await CustomerRegistration.findByPk(id, {
+      transaction: t,
+    });
+
+    if (!customer) {
+      await t.rollback();
+      return res.status(404).json({
+        success: false,
+        message: "Data customer tidak ditemukan",
+      });
+    }
+
+    if (!data.phone || !data.email) {
+      await t.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Phone dan Email wajib diisi",
+      });
+    }
+
+    if (isNaN(parseFloat(data.latitude)) || isNaN(parseFloat(data.longitude))) {
+      await t.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Koordinat tidak valid",
+      });
+    }
+
+    await CustomerRegistration.update(
+      {
+        phone: data.phone,
+        email: data.email,
+        address: data.address,
+        latitude: data.latitude,
+        longitude: data.longitude,
+      },
+      {
+        where: { id },
+        transaction: t,
+      },
+    );
+
+    await Ticket.update(
+      {
+        latitude: data.latitude,
+        longitude: data.longitude,
+        location_note: data.address,
+      },
+      {
+        where: {
+          customer_id: id,
+          is_registration: "1",
+        },
+        transaction: t,
+      },
+    );
+
+    await t.commit();
+
+    return res.json({
+      success: true,
+      message: "Data pelanggan berhasil diupdate",
+    });
+  } catch (err) {
+    await t.rollback();
+
+    console.error(err);
+    return res.status(500).json({
+      success: false,
+      message: "Gagal update data pelanggan",
+    });
+  }
+};

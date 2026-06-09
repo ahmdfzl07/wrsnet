@@ -356,6 +356,7 @@ exports.show = async (req, res) => {
         "resolved_at",
         "closed_at",
         "tags",
+        "is_registration",
         "created_at",
         "updated_at",
       ],

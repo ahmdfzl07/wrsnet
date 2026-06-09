@@ -420,6 +420,12 @@
 
         <input id="custCoordinates" class="input md:col-span-2" readonly>
 
+        <div class="md:col-span-2">
+          <button type="button" id="btnDetectLocation" onclick="detectLocation()" 
+            class="btn btn-primary w-full mb-2">
+            📍 Gunakan Lokasi Saya
+          </button>
+        </div>
         <div id="map" class="md:col-span-2"></div>
 
       </div>
@@ -740,8 +746,16 @@
   }
 
   function detectLocation(){
+    const btn = document.getElementById('btnDetectLocation');
+
+    btn.disabled = true;
+    btn.innerText = "⏳ Mendeteksi lokasi...";
+
     if (!navigator.geolocation) {
-      console.warn("Geolocation tidak didukung");
+      alert("Browser tidak mendukung GPS");
+
+      btn.disabled = false;
+      btn.innerText = "📍 Gunakan Lokasi Saya";
       return;
     }
 
@@ -750,25 +764,27 @@
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
 
-        if (!map || !marker) return;
+        if (!map || !marker) {
+          initMap(lat, lng);
+        } else {
+          map.setView([lat, lng], 17);
+          marker.setLatLng([lat, lng]);
+          setCoordinates(lat, lng);
+        }
 
-        map.setView([lat, lng], 17);
-
-        marker.setLatLng([lat, lng]);
-        setCoordinates(lat, lng);
+        btn.disabled = false;
+        btn.innerText = "📍 Gunakan Lokasi Saya";
       },
       (err) => {
-        console.warn("User menolak lokasi / error:", err.message);
+        console.warn("GPS gagal:", err.message);
+        alert("Gagal mengambil lokasi. Aktifkan GPS atau izinkan akses lokasi.");
 
-        if (map && marker) {
-          map.setView([defaultLat, defaultLng], 12);
-          marker.setLatLng([defaultLat, defaultLng]);
-          setCoordinates(defaultLat, defaultLng);
-        }
+        btn.disabled = false;
+        btn.innerText = "📍 Gunakan Lokasi Saya";
       },
       {
         enableHighAccuracy: true,
-        timeout: 8000,
+        timeout: 10000,
         maximumAge: 0
       }
     );
