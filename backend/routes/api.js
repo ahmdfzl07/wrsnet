@@ -1965,6 +1965,12 @@ router.get(
   demoGuard,
   InfrastructureController.index,
 );
+router.get(
+  "/tabel-infrastructure",
+  authenticate,
+  demoGuard,
+  InfrastructureController.index_infrastructur,
+);
 router.post(
   "/infrastructure",
   authenticate,

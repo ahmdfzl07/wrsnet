@@ -545,6 +545,19 @@ router.get("/infrastructure", authenticate, blockFinanceArea, (req, res) => {
   });
 });
 
+router.get(
+  "/tabel-infrastructure",
+  authenticate,
+  blockFinanceArea,
+  (req, res) => {
+    res.render("pages/tabel-infrastructure", {
+      title: "Infrastructure Map",
+      user: req.user,
+      active: "tabel-infrastructure",
+    });
+  },
+);
+
 // ─── SYSTEM ──────────────────────────────────────────────────
 router.get("/system/resources", authenticate, blockFinanceArea, (req, res) => {
   res.render("pages/resources", {
