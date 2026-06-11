@@ -4,7 +4,7 @@
 const express = require("express");
 const router = express.Router();
 const { portalAuth } = require("../middleware/portalAuth");
-const authAgen = require('../middleware/authAgen');
+const authAgen = require("../middleware/authAgen");
 const PortalCtrl = require("../controllers/CustomerPortalController");
 const GenieacsController = require("../controllers/GenieacsController");
 const db = require("../models");
@@ -198,47 +198,41 @@ router.post("/api/chat/read-customer/:room", portalAuth, async (req, res) => {
       message: "Failed to update read status",
     });
   }
-  
 });
 
-const portalAgentAuthController =
-  require('../controllers/portalAgentAuthController');
-
+const portalAgentAuthController = require("../controllers/portalAgentAuthController");
 
 // LOGIN API AGEN
-router.post(
-  '/api/agen/login',
-  portalAgentAuthController.login
-);
-
+router.post("/api/agen/login", portalAgentAuthController.login);
 
 // PAGE LOGIN AGEN
-router.get('/login-agen', (req, res) => {
-  res.render('portal/agen/login-agen', {
-    title: 'Login Agen'
+router.get("/login-agen", (req, res) => {
+  res.render("portal/agen/login-agen", {
+    title: "Login Agen",
   });
 });
 
+// DASHBOARD AGEN
+router.get("/agen/dashboard-agen", authAgen, async (req, res) => {
+  res.render("portal/agen/dashboard-agen", {
+    title: "Dashboard Agen",
+    user: req.user,
+    todayIncome: 0,
+    totalTrx: 0,
+    recent: [],
+  });
+});
 
-// DASHBOARD AGEN
-// DASHBOARD AGEN
+const PaymentController = require("../controllers/PaymentController");
 router.get(
-  '/agen/dashboard-agen',
+  "/payments/:id/invoice-data",
   authAgen,
-  async (req, res) => {
-
-    res.render(
-      'portal/agen/dashboard-agen',
-      {
-        title: 'Dashboard Agen',
-        user: req.user,
-        todayIncome: 0,
-        totalTrx: 0,
-        recent: []
-      }
-    );
-
-  }
+  PaymentController.invoiceData,
+);
+router.get(
+  "/invoices/:id/invoice-data",
+  authAgen,
+  PaymentController.invoiceDataByInvoiceId,
 );
 
 router.get("/api/genieacs/devices", GenieacsController.getDevices);

@@ -3939,11 +3939,12 @@ function openPayModal(arg1, invNum, period, total) {
 
 let selectedPaymentMethod = "";
 let openGroup = null;
+let groups = [];
 
 function renderPaymentAccordion() {
   const container = document.getElementById("payAccordion");
 
-  const groups = [
+  groups = [
     // VIRTUAL ACCOUNT
     {
       key: "va",
@@ -4095,6 +4096,13 @@ async function payAuto() {
 
     document.getElementById("paymentLoading").style.display = "flex";
 
+    let fee = 0;
+
+    groups.forEach(group => {
+      const found = group.methods.find(m => m.code === selectedPaymentMethod);
+      if (found) fee = found.fee;
+    });
+
     const response = await fetch("/api/payment/create", {
       method: "POST",
       headers: {
@@ -4102,7 +4110,8 @@ async function payAuto() {
       },
       body: JSON.stringify({
         invoice_id: PAY_CONTEXT.invoice_id,
-        method: selectedPaymentMethod
+        method: selectedPaymentMethod,
+        fee: fee,
       }),
     });
 

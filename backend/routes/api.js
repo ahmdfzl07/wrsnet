@@ -65,6 +65,7 @@ router.use("/demo", demoRoutes);
 
 // register customer tanpa login
 router.post("/register/customer", CustomerRegistrationController.register);
+router.put("/customer-registration/:id", CustomerRegistrationController.update);
 router.get("/packages/public", PackageController.index);
 
 // ===== AUTH =====
@@ -1965,6 +1966,12 @@ router.get(
   demoGuard,
   InfrastructureController.index,
 );
+router.get(
+  "/tabel-infrastructure",
+  authenticate,
+  demoGuard,
+  InfrastructureController.index_infrastructur,
+);
 router.post(
   "/infrastructure",
   authenticate,
@@ -2996,9 +3003,13 @@ router.post("/payment/create", async (req, res) => {
   try {
     const crypto = require("crypto");
     const axios = require("axios");
-    const { pickGateway, normalizeMethod } = require("../utils/helpers");
+    const {
+      pickGateway,
+      normalizeMethod,
+      calculateFinalAmount,
+    } = require("../utils/helpers");
 
-    const { invoice_id, method } = req.body;
+    const { invoice_id, method, fee } = req.body;
 
     const invoice = await Invoice.findByPk(invoice_id, {
       include: [{ model: Customer, as: "customer" }],
@@ -3011,7 +3022,8 @@ router.post("/payment/create", async (req, res) => {
       });
     }
 
-    const amount = parseInt(invoice.total);
+    // const amount = parseInt(invoice.total);
+    const amount = calculateFinalAmount(parseInt(invoice.total), fee);
 
     let selectedMethod = method || "QRIS";
     const provider = pickGateway(selectedMethod);
@@ -3152,6 +3164,10 @@ router.post("/payment/create", async (req, res) => {
         enabledPayments = ["qris"];
       }
 
+      if (selectedMethod === "gopay") {
+        enabledPayments = ["gopay"];
+      }
+
       const parameter = {
         transaction_details: {
           order_id: orderId,
@@ -3187,16 +3203,18 @@ router.post("/payment/create", async (req, res) => {
       const serverKey = process.env.MIDTRANS_SERVER_KEY;
       const auth = Buffer.from(serverKey + ":").toString("base64");
 
-      const response = await axios.post(
-        "https://app.sandbox.midtrans.com/snap/v1/transactions",
-        parameter,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Basic " + auth,
-          },
+      const isProduction = process.env.MODE_ENV_PROD === "production";
+
+      const snapUrl = isProduction
+        ? "https://app.midtrans.com/snap/v1/transactions"
+        : "https://app.sandbox.midtrans.com/snap/v1/transactions";
+
+      const response = await axios.post(snapUrl, parameter, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Basic " + auth,
         },
-      );
+      });
 
       return res.json({
         success: true,
@@ -3205,6 +3223,89 @@ router.post("/payment/create", async (req, res) => {
         token: response.data.token,
       });
     }
+
+    // if (provider === "midtrans") {
+    //   const orderId = `INV-${invoice.id}-${Date.now()}`;
+
+    //   const serverKey = process.env.MIDTRANS_SERVER_KEY;
+    //   const auth = Buffer.from(serverKey + ":").toString("base64");
+
+    //   const isProduction = process.env.MODE_ENV_PROD === "production";
+
+    //   const baseUrl = isProduction
+    //     ? "https://app.midtrans.com"
+    //     : "https://app.sandbox.midtrans.com";
+
+    //   // =========================
+    //   // GOPAY (HP ONLY VIA SNAP)
+    //   // =========================
+    //   if (selectedMethod === "gopay") {
+    //     const response = await axios.post(
+    //       `${baseUrl}/snap/v1/transactions`,
+    //       {
+    //         transaction_details: {
+    //           order_id: orderId,
+    //           gross_amount: amount,
+    //         },
+    //         customer_details: {
+    //           first_name: invoice.customer?.name || "Customer",
+    //           email: invoice.customer?.email || "customer@gmail.com",
+    //           phone: invoice.customer?.phone || "628123456789",
+    //         },
+    //         enabled_payments: ["gopay"],
+    //         callbacks: {
+    //           finish: `${process.env.APP_URL}/payment-success`,
+    //         },
+    //       },
+    //       {
+    //         headers: {
+    //           "Content-Type": "application/json",
+    //           Authorization: "Basic " + auth,
+    //         },
+    //       },
+    //     );
+
+    //     return res.json({
+    //       success: true,
+    //       payment_url: response.data.redirect_url,
+    //       type: "gopay",
+    //     });
+    //   }
+
+    //   // =========================
+    //   // QRIS (DESKTOP DEFAULT)
+    //   // =========================
+    //   const response = await axios.post(
+    //     `${baseUrl}/snap/v1/transactions`,
+    //     {
+    //       transaction_details: {
+    //         order_id: orderId,
+    //         gross_amount: amount,
+    //       },
+    //       customer_details: {
+    //         first_name: invoice.customer?.name || "Customer",
+    //         email: invoice.customer?.email || "customer@gmail.com",
+    //         phone: invoice.customer?.phone || "628123456789",
+    //       },
+    //       enabled_payments: ["qris"],
+    //       callbacks: {
+    //         finish: `${process.env.APP_URL}/payment-success`,
+    //       },
+    //     },
+    //     {
+    //       headers: {
+    //         "Content-Type": "application/json",
+    //         Authorization: "Basic " + auth,
+    //       },
+    //     },
+    //   );
+
+    //   return res.json({
+    //     success: true,
+    //     payment_url: response.data.redirect_url,
+    //     type: "qris",
+    //   });
+    // }
 
     return res.status(400).json({
       success: false,
@@ -3312,33 +3413,29 @@ router.delete("/roles/:id", authenticate, UserController.deleteRole);
 const trackingRoutes = require("./tracking");
 router.use("/tracking", authenticate, demoGuard, trackingRoutes);
 
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ dest: "uploads/" });
 router.post(
-    "/pembayaran",
-    authenticate,
-    upload.single("bukti_foto"),
-    PembayaranController.simpanPembayaran
+  "/pembayaran",
+  authenticate,
+  upload.single("bukti_foto"),
+  PembayaranController.simpanPembayaran,
 );
 
 router.get(
-    "/laporan-pembayaran",
-    authenticate,
-    PembayaranController.laporanPembayaran
+  "/laporan-pembayaran",
+  authenticate,
+  PembayaranController.laporanPembayaran,
 );
 
 router.get(
-    "/dashboard-total",
-    authenticate,
-    PembayaranController.dashboardTotal
+  "/dashboard-total",
+  authenticate,
+  PembayaranController.dashboardTotal,
 );
 
-router.get(
-    "/dashboard-stat",
-    authenticate,
-    PembayaranController.dashboardStat
-);
+router.get("/dashboard-stat", authenticate, PembayaranController.dashboardStat);
 
-router.get('/user/profile', authenticate, AuthController.profile);
+router.get("/user/profile", authenticate, AuthController.profile);
 router.put("/user/profile", authenticate, AuthController.updateProfile);
 router.put("/user/password", authenticate, AuthController.changePassword);
 router.get('/agen/profile', authAgen, AgenController.profile);

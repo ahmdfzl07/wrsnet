@@ -87,7 +87,7 @@
     .action-bar, #alertWrap, .preview-ribbon { display:none !important; }
     .invoice-wrap { max-width:none; box-shadow:none; border-radius:0; margin:0; }
   }
-
+  
   .invoice-paper {
     width: 100%;
   }
@@ -225,7 +225,7 @@
 <!-- Invoice wrapper (rendered by shared renderer) -->
 <div class="invoice-wrap" id="invoiceWrap" style="display:none;"></div>
 
-<script src="/js/app.js"></script>
+<!-- <script src="/js/app.js"></script> -->
 <script src="/js/invoice-renderer.js"></script>
 <script>
 // Template settings di-inject dari server
@@ -247,10 +247,11 @@ async function loadInvoice() {
     // Preview mode — pakai data dummy dari renderer
     d = { success: true, data: InvoiceRenderer.sampleData() };
   } else {
-    const endpoint = _isInvMode
-      ? '/invoices/' + _payId + '/invoice-data'
-      : '/payments/' + _payId + '/invoice-data';
-    d = await App.api(endpoint);
+    const endpoint = '/portal/invoices/' + _payId + '/invoice-data';
+    d = await fetch(endpoint, {
+        method: "GET",
+        credentials: "include",
+      }).then(r => r.json());
   }
   document.getElementById('invLoading').style.display = 'none';
   if (!d?.success) {
@@ -302,7 +303,17 @@ async function sendInvoiceWa() {
   btn.disabled = true;
   txt.textContent = 'Mengirim...';
   try {
-    const d = await App.api('/payments/' + _payId + '/send-wa-invoice', { method:'POST', body:'{}' });
+    const res = await fetch('/portal/payments/' + _payId + '/send-wa-invoice', {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({})
+    });
+
+    const d = await res.json();
     if (d?.success) {
       btn.classList.add('sent');
       txt.textContent = '✓ Terkirim';

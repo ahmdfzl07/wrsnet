@@ -1,6 +1,6 @@
 "use strict";
 
-const { InfrastructurePoint, Customer } = require("../models");
+const { InfrastructurePoint, Customer, Package } = require("../models");
 const { Op } = require("sequelize");
 
 class InfrastructureController {
@@ -18,6 +18,81 @@ class InfrastructureController {
         order: [["created_at", "DESC"]],
       });
       res.json({ success: true, data: points });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  }
+
+  async index_infrastructur(req, res) {
+    try {
+      const { type, status, search } = req.query;
+      const where = {};
+
+      if (type) where.type = type;
+      if (status) where.status = status;
+      if (search) where.name = { [Op.like]: `%${search}%` };
+
+      const points = await InfrastructurePoint.findAll({
+        where,
+        include: [
+          {
+            model: InfrastructurePoint,
+            as: "parent",
+            attributes: ["id", "name", "type"],
+          },
+        ],
+        order: [["created_at", "DESC"]],
+      });
+
+      // === AMBIL SEMUA customer_id DARI METADATA ===
+      const customerIds = [];
+
+      points.forEach((p) => {
+        if (p.type === "customer" && p.metadata?.customer_id) {
+          customerIds.push(p.metadata.customer_id);
+        }
+      });
+
+      const customers = await Customer.findAll({
+        where: { id: customerIds },
+        attributes: [
+          "id",
+          "name",
+          "package_id",
+          "phone",
+          "customer_id",
+          "latitude",
+          "longitude",
+        ],
+        include: [
+          {
+            model: Package,
+            as: "package",
+            attributes: ["id", "name", "price"],
+          },
+        ],
+      });
+
+      const customerMap = {};
+      customers.forEach((c) => {
+        customerMap[c.id] = c;
+      });
+
+      // === INJECT KE RESPONSE ===
+      const result = points.map((p) => {
+        let customer = null;
+
+        if (p.type === "customer" && p.metadata?.customer_id) {
+          customer = customerMap[p.metadata.customer_id] || null;
+        }
+
+        return {
+          ...p.toJSON(),
+          customer,
+        };
+      });
+
+      res.json({ success: true, data: result });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
     }

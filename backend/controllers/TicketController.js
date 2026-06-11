@@ -356,6 +356,7 @@ exports.show = async (req, res) => {
         "resolved_at",
         "closed_at",
         "tags",
+        "is_registration",
         "created_at",
         "updated_at",
       ],
@@ -609,6 +610,28 @@ exports.update = async (req, res) => {
             address: regis.address,
 
             nik: regis.nik,
+
+            latitude: regis.latitude,
+            longitude: regis.longitude,
+
+            package_id: regis.package_id,
+            addon_id: regis.addon_id,
+
+            status: "active",
+          });
+        } else {
+          await existing.update({
+            name: regis.name,
+            phone: regis.phone,
+            email: regis.email,
+            installation_date: regis.installation_date,
+            province_id: regis.province_id,
+            kabupaten: regis.kabupaten,
+            kecamatan: regis.kecamatan,
+            kelurahan: regis.kelurahan,
+            rt: regis.rt,
+            rw: regis.rw,
+            address: regis.address,
 
             latitude: regis.latitude,
             longitude: regis.longitude,

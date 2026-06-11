@@ -483,6 +483,10 @@
                 </svg>
                 Cek ODP
               </button> -->
+              <button class="qab qab-warning" id="editPelangganBtn" onclick="openEditModalPelanggan()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Edit Informasi Pelanggan
+              </button>
               <button class="qab qab-warning" onclick="openEditModal()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 Edit Detail
@@ -568,6 +572,49 @@
       </div>
       <button class="btn btn-prim" style="width:100%;" onclick="submitAssign()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>Tugaskan
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Edit pelanggan-->
+<div class="mover" id="mEditPelanggan">
+  <div class="mbox" style="max-width:540px;">
+    <div class="mhd">
+      <h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit Detail Pelanggan</h3>
+      <button class="mcls" onclick="closeM('mEditPelanggan')">×</button>
+    </div>
+    <div class="mbdy">
+      <div class="frow">
+        <div class="fg">
+          <label class="fl">No HP *</label>
+          <input type="text" id="eNoHp" class="fc" placeholder="no  hp...">
+        </div>
+        <div class="fg">
+          <label class="fl">Email *</label>
+          <input type="text" id="eMail" class="fc" placeholder="Email...">
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl">Alamat</label>
+        <textarea id="eAlamat" class="fc" rows="4" placeholder="Alamat detail..."></textarea>
+      </div>
+      <div class="frow">
+        <div class="fg">
+          <label class="fl">latitude *</label>
+          <input type="text" id="eLat" class="fc" readonly>
+        </div>
+        <div class="fg">
+          <label class="fl">longitude *</label>
+          <input type="text" id="eLong" class="fc" readonly>
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl">Pilih Lokasi di Map</label>
+        <div id="mapEdit" style="height:300px; border-radius:8px;"></div>
+      </div>
+      <button class="btn btn-prim" style="width:100%;" onclick="submitEditPelanggan()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 0-2-2V5a2 2 0 0 0 2-2h11l5 5v14a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>Simpan
       </button>
     </div>
   </div>
@@ -739,7 +786,8 @@
 
 <script>const TID='<%= ticketId %>';</script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
 'use strict';
 let tkData=null,leafMap=null,selFiles=[],selStatus=null;
@@ -1026,6 +1074,11 @@ function renderTicket(t){
   // Tugaskan btn
   if(!t.assigned_to) $('tugaskanBtn').style.display='flex';
   else $('tugaskanBtn').style.display='none';
+
+  console.log(t);
+  // edit pelanggan btn btn
+  if(t.is_registration === "1" && t.status === "open") $('editPelangganBtn').style.display='flex';
+  else $('editPelangganBtn').style.display='none';
 
   renderSLA(t);
   renderStatusFlow(t.status);
@@ -1394,6 +1447,123 @@ async function submitAssign(){
 
 //   document.getElementById('infraModal').style.display = 'flex';
 // }
+
+// Edit pelanggan
+let mapEdit, markerEdit;
+
+function initMapEdit(lat, lng) {
+
+  if (mapEdit) {
+    mapEdit.remove();
+  }
+
+  mapEdit = L.map('mapEdit').setView([lat, lng], 15);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(mapEdit);
+
+  markerEdit = L.marker([lat, lng], { draggable: true }).addTo(mapEdit);
+
+  setCoordinatesEdit(lat, lng);
+
+  markerEdit.on('dragend', function (e) {
+    const { lat, lng } = e.target.getLatLng();
+    setCoordinatesEdit(lat, lng);
+  });
+
+  mapEdit.on('click', function (e) {
+    const { lat, lng } = e.latlng;
+    markerEdit.setLatLng([lat, lng]);
+    setCoordinatesEdit(lat, lng);
+  });
+
+  setTimeout(() => {
+    mapEdit.invalidateSize();
+  }, 300);
+}
+
+function setCoordinatesEdit(lat, lng){
+  $('eLat').value = lat.toFixed(6);
+  $('eLong').value = lng.toFixed(6);
+}
+
+function openEditModalPelanggan(){
+  if(!tkData) return;
+
+  $('eNoHp').value = tkData.customerRegistration.phone || '';
+  $('eMail').value = tkData.customerRegistration.email || '';
+  $('eAlamat').value = tkData.customerRegistration.address || '';
+
+  const lat = parseFloat(tkData.customerRegistration.latitude);
+  const lng = parseFloat(tkData.customerRegistration.longitude);
+
+  if (isNaN(lat) || isNaN(lng)) {
+    alert('Koordinat pelanggan belum tersedia di database!');
+    return;
+  }
+
+  $('eLat').value = lat;
+  $('eLong').value = lng;
+
+  openM('mEditPelanggan');
+
+  setTimeout(() => {
+    initMapEdit(lat, lng);
+  }, 200);
+}
+async function submitEditPelanggan(){
+  const phone = $('eNoHp').value.trim();
+  const email = $('eMail').value.trim();
+  const address = $('eAlamat').value.trim();
+  const lat = parseFloat($('eLat').value);
+  const lng = parseFloat($('eLong').value);
+
+  if(!phone){
+    showToast('No HP wajib diisi!','warn');
+    return;
+  }
+
+  if(!email){
+    showToast('Email wajib diisi!','warn');
+    return;
+  }
+
+  if (isNaN(lat) || isNaN(lng)) {
+    showToast('Koordinat belum valid!','warn');
+    return;
+  }
+
+  try{
+    const res = await fetch('/api/customer-registration/' + tkData.customerRegistration.id, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        phone: phone,
+        email: email,
+        address: address || null,
+        latitude: lat,
+        longitude: lng
+      })
+    });
+
+    const j = await res.json();
+
+    if(j.success){
+      closeM('mEditPelanggan');
+      showToast('Data pelanggan berhasil diupdate!','success');
+
+      await loadTicket(); 
+    }else{
+      showToast(j.message || 'Gagal update','error');
+    }
+
+  }catch(e){
+    showToast(e.message,'error');
+  }
+}
 
 // Edit
 function openEditModal(){

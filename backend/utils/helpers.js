@@ -48,7 +48,40 @@ const generateCustomerId = (number = 1) => {
 //   // Fallback: pakai timestamp
 //   return prefix + Date.now().toString().slice(-6);
 // };
-const generateUniqueCustomerId = async (
+const generateUniqueCustomerId = async (CustomerModel) => {
+  const { Op } = require("sequelize");
+
+  const now = new Date();
+  const y = String(now.getFullYear()).slice(-2);
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+
+  const prefix = `${y}${m}${d}`;
+
+  const lastCustomer = await CustomerModel.findOne({
+    where: {
+      customer_id: { [Op.like]: prefix + "%" },
+    },
+    order: [["customer_id", "DESC"]],
+    attributes: ["customer_id"],
+  });
+
+  const extractNumber = (data) => {
+    if (!data) return 0;
+    const match = data.customer_id.replace(prefix, "").match(/^(\d+)/);
+    return match ? parseInt(match[1]) : 0;
+  };
+
+  const lastNumCustomer = extractNumber(lastCustomer);
+
+  const nextNum = Math.max(lastNumCustomer) + 1;
+
+  const newId = prefix + String(nextNum).padStart(4, "0");
+
+  return newId;
+};
+
+const generateUniqueCustomerRegisId = async (
   CustomerModel,
   CustomerRegistrationModel,
 ) => {
@@ -241,9 +274,21 @@ function normalizeMethod(provider, method) {
   return map[provider]?.[method] || method;
 }
 
+function calculateFinalAmount(amount, fee) {
+  if (!fee) return amount;
+
+  if (typeof fee === "string" && fee.includes("%")) {
+    const percent = parseFloat(fee.replace("%", ""));
+    return Math.ceil(amount + (amount * percent) / 100);
+  }
+
+  return amount + parseInt(fee || 0);
+}
+
 module.exports = {
   generateCustomerId,
   generateUniqueCustomerId,
+  generateUniqueCustomerRegisId,
   generateInvoiceNumber,
   formatBytes,
   formatBps,
@@ -254,4 +299,5 @@ module.exports = {
   sanitizeSnmpValue,
   pickGateway,
   normalizeMethod,
+  calculateFinalAmount,
 };

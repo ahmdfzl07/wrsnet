@@ -360,7 +360,7 @@
       "," +
       darken(cfg.primary, 15) +
       ');color:#fff;margin:-50px -60px 30px;padding:36px 60px 30px;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;">' +
+      '<div class="inv-header-row"style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;">' +
       '<div style="display:flex;gap:14px;align-items:center;">' +
       (cfg.showLogo ? renderLogo(cfg, true) : "") +
       "<div>" +
@@ -398,7 +398,7 @@
       (MONTHS_ID[p.period_month] || p.period_month) + " " + p.period_year;
     return (
       "" +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:30px;">' +
+      '<div class="inv-recipient-row" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:30px;">' +
       '<div style="flex:1;">' +
       '<div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#94a3b8;margin-bottom:8px;">' +
       escHtml(cfg.sectionRecipientLabel) +
@@ -507,7 +507,8 @@
 
     return (
       "" +
-      '<table style="width:100%;border-collapse:collapse;margin-top:30px;font-size:12px;">' +
+      '<div class="inv-table-wrap">' +
+      '<table class="inv-table" style="width:100%;border-collapse:collapse;margin-top:30px;font-size:12px;">' +
       "<thead>" +
       "<tr>" +
       '<th style="font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;background:#f8fafc;padding:12px 14px;text-align:left;width:30px;">#</th>' +
@@ -546,7 +547,8 @@
       "</tr>" +
       addonRows +
       "</tbody>" +
-      "</table>"
+      "</table>" +
+      "</div>"
     );
   }
 
@@ -570,7 +572,7 @@
     return (
       "" +
       '<div style="margin-top:18px;display:flex;justify-content:flex-end;">' +
-      '<div style="min-width:280px;">' +
+      '<div class="inv-total-box" style="min-width:280px;">' +
       rows +
       '<div style="display:flex;justify-content:space-between;margin-top:6px;border-radius:8px;padding:14px;font-weight:800;color:#fff;background:' +
       cfg.accent +
@@ -602,7 +604,7 @@
       : "";
     return (
       "" +
-      '<div style="margin-top:30px;padding:14px 18px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;display:flex;gap:30px;font-size:11px;flex-wrap:wrap;">' +
+      '<div class="inv-payment-box"style="margin-top:30px;padding:14px 18px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;display:flex;gap:30px;font-size:11px;flex-wrap:wrap;">' +
       '<div><span style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;font-weight:700;display:block;margin-bottom:4px;">Metode Pembayaran</span><span style="color:' +
       cfg.text +
       ';font-weight:700;">' +
@@ -677,7 +679,7 @@
       "</a>" +
       "</div>";
     return (
-      '<div style="margin-top:30px;padding-top:18px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:flex-start;gap:30px;">' +
+      '<div class="inv-footer" style="margin-top:30px;padding-top:18px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:flex-start;gap:30px;">' +
       '<div style="font-size:11px;color:#64748b;line-height:1.7;flex:1;">' +
       (cfg.thankYouText
         ? '<div style="margin-bottom:8px;color:' +
