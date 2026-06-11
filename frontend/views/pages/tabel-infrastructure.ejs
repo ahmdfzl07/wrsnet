@@ -1357,7 +1357,7 @@ function renderCards(data) {
   data.forEach(pt => {
 
     const parentName =
-      pt.parent && pt.parent.type === 'odp'
+      pt.parent && (pt.parent.type === 'odp' || pt.parent.type === 'odc')
         ? pt.parent.name
         : '-';
 
