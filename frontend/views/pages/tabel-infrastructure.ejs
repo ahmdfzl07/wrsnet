@@ -2096,7 +2096,12 @@ function openModal() {
 }
 
 function closeModal() {
-    document.getElementById('infraModal').style.display = 'none';
+  const modal = document.getElementById('infraModal');
+  modal.style.display = 'none';
+
+  if (editId) {
+    window.location.reload();
+  }
 }
 
 function switchTab(type, btn) {
