@@ -1204,7 +1204,7 @@
             <img id="odc-photo-preview"
               style="display:none;width:64px;height:64px;object-fit:cover;border-radius:8px;border:1.5px solid #e2e8f0;cursor:zoom-in">
 
-            <button type="button" id="odc-photo-remove"
+            <button type="button" id="odc-photo-remove" onclick="removeImage('odc-photo-input','odc-photo-preview','odc-photo-url','odc-photo-remove')"
               style="display:none;padding:4px 10px;background:#fff5f5;color:#dc2626;border:1px solid #fecaca;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer">
               Hapus
             </button>
@@ -1213,10 +1213,6 @@
 
           <input type="hidden" id="odc-photo-url">
         </div>
-
-        <button type="button" id="odc-photo-remove" class="btn-outline" style="display:none">
-          Hapus Foto
-        </button>
 
       </div>
 
@@ -1281,7 +1277,7 @@
             <img id="odp-photo-preview"
               style="display:none;width:64px;height:64px;object-fit:cover;border-radius:8px;border:1.5px solid #e2e8f0;cursor:zoom-in">
 
-            <button type="button" id="odp-photo-remove"
+            <button type="button" id="odp-photo-remove" onclick="removeImage('odp-photo-input','odp-photo-preview','odp-photo-url','odp-photo-remove')"
               style="display:none;padding:4px 10px;background:#fff5f5;color:#dc2626;border:1px solid #fecaca;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer">
               Hapus
             </button>
@@ -1380,7 +1376,7 @@
             <img id="pop-photo-preview"
               style="display:none;width:64px;height:64px;object-fit:cover;border-radius:8px;border:1.5px solid #e2e8f0;cursor:zoom-in">
 
-            <button type="button" id="pop-photo-remove"
+            <button type="button" id="pop-photo-remove" onclick="removeImage('pop-photo-input','pop-photo-preview','pop-photo-url','pop-photo-remove')"
               style="display:none;padding:4px 10px;background:#fff5f5;color:#dc2626;border:1px solid #fecaca;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer">
               Hapus
             </button>
@@ -1471,6 +1467,25 @@ function showToast(msg,type='info'){
   const t=document.createElement('div');
   t.style.cssText=`position:fixed;bottom:20px;right:20px;z-index:99999;padding:11px 18px;border-radius:9px;background:${COL[type]||'#1d4ed8'};color:#fff;font-size:13px;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,.2);animation:mIn .25s ease-out;max-width:300px;`;
   t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3000);
+}
+
+function setImagePreview(url, imgId, btnId) {
+  const img = document.getElementById(imgId);
+  const btn = document.getElementById(btnId);
+
+  if (!img) return;
+
+  if (url) {
+    img.src = url;
+    img.style.display = 'block';
+
+    if (btn) btn.style.display = 'inline-block';
+  } else {
+    img.src = '';
+    img.style.display = 'none';
+
+    if (btn) btn.style.display = 'none';
+  }
 }
 
 async function loadInfrastructure() {
@@ -1649,6 +1664,21 @@ function renderCards(data) {
           </div>
         </div>
 
+        <div class="divider"></div>
+
+        <div style="display:flex; gap:8px; margin-bottom:10px;">
+          <button class="btn-outline"
+            onclick="handleEdit('${pt.id}')">
+            ✏️ Edit
+          </button>
+
+          <button class="btn-outline"
+            style="color:#dc2626;border-color:#fecaca"
+            onclick="handleDelete('${pt.id}')">
+            🗑️ Hapus
+          </button>
+        </div>
+
       </div>
 
     </div>
@@ -1660,6 +1690,140 @@ function renderCards(data) {
 // <button class="btn-detail" onclick="handleDetail('${pt.type}', '${pt.id}')">
 //         Detail
 //       </button>
+
+function handleEdit(id) {
+  const data = allData.find(x => x.id == id);
+  if (!data) return;
+
+  resetForm();
+
+  editId = id;
+  currentType = data.type;
+
+  openModal();
+
+  setTimeout(() => {
+    const tabBtn = document.querySelector(`.modal-tab[data-tab="${data.type}"]`);
+    if (tabBtn) switchTab(data.type, tabBtn);
+
+    if (data.latitude && data.longitude) {
+      setLocation(data.latitude, data.longitude, data.address || '');
+    }
+
+    fillFormByType(data);
+  }, 250);
+}
+
+function removeImage(inputId, imgId, hiddenId, btnId) {
+  document.getElementById(inputId).value = '';
+  document.getElementById(hiddenId).value = '';
+
+  setImagePreview('', imgId, btnId);
+}
+
+function fillFormByType(data) {
+
+  switch (data.type) {
+
+    case 'odc':
+      document.getElementById('odc-name').value = data.name || '';
+      document.getElementById('odc-capacity').value = data.capacity || '';
+      document.getElementById('odc-used').value = data.used_ports || '';
+      document.getElementById('odc-address').value = data.address || '';
+      document.getElementById('odc-status').value = data.status || 'active';
+      document.getElementById('odc-notes').value = data.notes || '';
+
+      const odcPhoto = data.metadata?.photo_url || '';
+      document.getElementById('odc-photo-url').value = odcPhoto;
+
+      setImagePreview(odcPhoto, 'odc-photo-preview', 'odc-photo-remove');
+      break;
+
+    case 'odp':
+      document.getElementById('odp-name').value = data.name || '';
+      document.getElementById('odp-capacity').value = data.capacity || '';
+      document.getElementById('odp-used').value = data.used_ports || '';
+      document.getElementById('odp-parent').value = data.parent_id || '';
+      document.getElementById('odp-address').value = data.address || '';
+      document.getElementById('odp-status').value = data.status || 'active';
+      document.getElementById('odp-notes').value = data.notes || '';
+
+      const odpPhoto = data.metadata?.photo_url || '';
+      document.getElementById('odp-photo-url').value = odpPhoto;
+
+      setImagePreview(odpPhoto, 'odp-photo-preview', 'odp-photo-remove');
+      break;
+
+    case 'tower':
+      document.getElementById('tower-name').value = data.name || '';
+      document.getElementById('tower-address').value = data.address || '';
+      document.getElementById('tower-status').value = data.status || 'active';
+      document.getElementById('tower-notes').value = data.notes || '';
+      break;
+
+    case 'pop':
+      document.getElementById('pop-name').value = data.name || '';
+      document.getElementById('pop-capacity').value = data.capacity || '';
+      document.getElementById('pop-used').value = data.used_ports || '';
+      document.getElementById('pop-address').value = data.address || '';
+      document.getElementById('pop-status').value = data.status || 'active';
+      document.getElementById('pop-notes').value = data.notes || '';
+      document.getElementById('pop-pop-type').value = data.metadata?.pop_type || 'olt';
+
+      const popPhoto = data.metadata?.photo_url || '';
+      document.getElementById('pop-photo-url').value = popPhoto;
+
+      setImagePreview(popPhoto, 'pop-photo-preview', 'pop-photo-remove');
+      break;
+
+    case 'customer':
+      selectedCustomer = data.metadata?.customer_id || null;
+
+      if (selectedCustomer) {
+        const cust = allCustomers.find(c => c.id == selectedCustomer);
+
+        if (cust) {
+          document.getElementById('cust-search').value = cust.name;
+          document.getElementById('custSelected').style.display = 'block';
+          document.getElementById('custSelName').textContent = cust.name;
+          document.getElementById('custSelDetail').textContent =
+            `${cust.customer_id} · ${cust.package?.name || '-'}`;
+        }
+      }
+
+      document.getElementById('cust-parent').value = data.parent_id || '';
+      document.getElementById('cust-address').value = data.address || '';
+      document.getElementById('cust-notes').value = data.notes || '';
+      break;
+  }
+}
+
+async function handleDelete(id) {
+  if (!confirm('Yakin mau hapus data ini?')) return;
+
+  try {
+    const res = await fetch(`/api/infrastructure/${id}`, {
+      method: 'DELETE'
+    });
+
+    const result = await res.json();
+
+    if (!result.success) {
+      showToast('Gagal hapus data', 'error');
+      return;
+    }
+
+    showToast('Berhasil dihapus', 'success');
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 800);
+
+  } catch (err) {
+    console.error(err);
+    showToast('Error saat hapus', 'error');
+  }
+}
 
 function renderPagination() {
   const totalPage = Math.ceil(filteredData.length / perPage);
@@ -1937,62 +2101,49 @@ function closeModal() {
 
 function switchTab(type, btn) {
 
-    currentType = type;
+  currentType = type;
 
-    document
-        .querySelectorAll('.modal-tab')
-        .forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.modal-tab')
+    .forEach(el => el.classList.remove('active'));
 
-    btn.classList.add('active');
+  btn.classList.add('active');
 
-    document
-        .querySelectorAll('.tab-panel')
-        .forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-panel')
+    .forEach(el => el.classList.remove('active'));
 
-    const target = document.getElementById(`tab-${type}`);
-    target.classList.add('active');
+  const target = document.getElementById(`tab-${type}`);
+  if (target) target.classList.add('active');
 
-    const title = document.getElementById('modalTitle');
+  const title = document.getElementById('modalTitle');
 
-    title.style.opacity = 0;
-
-    setTimeout(() => {
-        title.innerText = editId
-            ? `Edit ${type.toUpperCase()}`
-            : `Tambah ${type.toUpperCase()}`;
-
-        title.style.opacity = 1;
-    }, 150);
+  title.innerText = editId
+    ? `Edit ${type.toUpperCase()}`
+    : `Tambah ${type.toUpperCase()}`;
 }
 
 function resetForm() {
-    editId = null;
-    document
-        .querySelectorAll('#infraModal input')
-        .forEach(el => {
+  editId = null;
+  selectedCustomer = null;
 
-            if (
-                el.type !== 'hidden' &&
-                el.type !== 'file'
-            ) {
-                el.value = '';
-            }
+  selectedLat = null;
+  selectedLng = null;
 
-        });
+  document.querySelectorAll('#infraModal input').forEach(el => {
+    if (el.type !== 'hidden' && el.type !== 'file') el.value = '';
+  });
 
-    document
-        .querySelectorAll('#infraModal textarea')
-        .forEach(el => el.value = '');
+  document.querySelectorAll('#infraModal textarea').forEach(el => el.value = '');
 
-    document
-        .querySelectorAll('#infraModal select')
-        .forEach(el => {
-            if(el.options.length)
-                el.selectedIndex = 0;
-        });
+  document.querySelectorAll('#infraModal select').forEach(el => {
+    if (el.options.length) el.selectedIndex = 0;
+  });
 
-    selectedCustomer = null;
-    updateCoordinatePreview();
+  updateCoordinatePreview();
+
+  if (marker && map) {
+    map.removeLayer(marker);
+    marker = null;
+  }
 }
 
 function setCoordinate(lat, lng) {
