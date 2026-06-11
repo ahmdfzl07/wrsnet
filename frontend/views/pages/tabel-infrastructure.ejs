@@ -795,6 +795,101 @@
       max-width: 60%;
       word-break: break-word;
     }
+    .search-results{
+      border:1px solid #ddd;
+      border-radius:8px;
+      background:#fff;
+      max-height:250px;
+      overflow:auto;
+      margin-top:4px;
+    }
+
+    .search-item{
+      padding:10px;
+      cursor:pointer;
+    }
+
+    .search-item:hover{
+      background:#f3f4f6;
+    }
+    .location-picker{
+      margin-bottom:12px;
+    }
+
+    .picker-label{
+      font-size:13px;
+      font-weight:600;
+      color:#374151;
+      margin-bottom:6px;
+    }
+
+    .picker-separator{
+      text-align:center;
+      margin:12px 0;
+      color:#9ca3af;
+      font-size:12px;
+      font-weight:600;
+      text-transform:uppercase;
+      position:relative;
+    }
+
+    .picker-separator::before,
+    .picker-separator::after{
+      content:'';
+      position:absolute;
+      top:50%;
+      width:40%;
+      height:1px;
+      background:#e5e7eb;
+    }
+
+    .picker-separator::before{
+      left:0;
+    }
+
+    .picker-separator::after{
+      right:0;
+    }
+
+    .map-hint{
+      margin-top:6px;
+      font-size:12px;
+      color:#6b7280;
+    }
+    .coord-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+    }
+
+    .coord-info{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      min-width:0;
+    }
+
+    .nav-btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:4px;
+      padding:4px 10px;
+      border-radius:8px;
+      background:#eff6ff;
+      color:#2563eb;
+      text-decoration:none;
+      font-size:12px;
+      font-weight:600;
+      border:1px solid #bfdbfe;
+      white-space:nowrap;
+      flex-shrink:0;
+    }
+
+    .nav-btn:hover{
+      background:#dbeafe;
+    }
   </style>
 </head>
 <body>
@@ -1029,6 +1124,33 @@
             Ubah Lokasi
           </button>
 
+        </div>
+        <div class="location-picker">
+
+          <div class="picker-label">
+            🔎 Cari Alamat
+          </div>
+
+          <input
+            type="text"
+            id="addressSearch"
+            class="finput"
+            placeholder="Ketik alamat, jalan, desa, atau koordinat..."
+          >
+
+          <div id="searchResults" class="search-results"></div>
+
+          <div class="picker-separator">
+            atau
+          </div>
+
+          <div class="picker-label">
+            📍 Pilih dari Maps
+          </div>
+
+        </div>
+        <div class="map-hint">
+          Klik pada peta untuk memilih titik lokasi
         </div>
         <div id="mapPick"
           style="height:300px;border-radius:12px;margin-top:10px"></div>
@@ -1299,7 +1421,7 @@
         <select id="cust-parent" class="finput"></select>
 
         <label class="flbl">Alamat</label>
-        <textarea id="cust-address" class="finput"></textarea>
+          <textarea id="cust-address" class="finput" placeholder="Masukkan alamat lengkap"></textarea>
 
         <label class="flbl">Catatan</label>
         <textarea id="cust-notes" class="finput"></textarea>
@@ -1456,10 +1578,27 @@ function renderCards(data) {
 
       <div class="pkg-card-body">
 
-        <div class="info-block">
-          <span>📍</span>
-          <span>${pt.latitude}, ${pt.longitude}</span>
+        <div class="info-block coord-row">
+          <div class="coord-info">
+            <span>📍</span>
+            <span>${pt.latitude}, ${pt.longitude}</span>
+          </div>
+
+          <a
+            href="https://www.google.com/maps/dir/?api=1&destination=${pt.latitude},${pt.longitude}"
+            target="_blank"
+            class="nav-btn"
+          >
+            🧭 Navigasi
+          </a>
         </div>
+
+        ${pt.address ? `
+          <div class="info-block address-block">
+            <span>🏠</span>
+            <span>${pt.address}</span>
+          </div>
+          ` : ''}
 
         <div class="info-block">
           <span>🔗</span>
@@ -1629,6 +1768,7 @@ let selectedCustomer = null;
 let editId = null;
 let map, marker;
 let allCustomers = [];
+let searchTimeout;
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadAllCustomers();
@@ -1655,6 +1795,96 @@ async function loadAllCustomers() {
   }
 }
 
+document.addEventListener('input', async (e) => {
+  if (e.target.id !== 'addressSearch') return;
+
+  clearTimeout(searchTimeout);
+
+  searchTimeout = setTimeout(() => {
+    searchAddress(e.target.value);
+  }, 500);
+});
+
+async function searchAddress(keyword) {
+  if (!keyword || keyword.length < 3) {
+    document.getElementById('searchResults').innerHTML = '';
+    return;
+  }
+
+  try {
+
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(keyword)}&limit=5`
+    );
+
+    const data = await res.json();
+
+    const results = document.getElementById('searchResults');
+
+    results.innerHTML = data.map(item => `
+      <div class="search-item"
+           onclick="selectSearchLocation(
+             ${item.lat},
+             ${item.lon},
+             '${item.display_name.replace(/'/g,"\\'")}'
+           )">
+        ${item.display_name}
+      </div>
+    `).join('');
+
+  } catch(err) {
+    console.error(err);
+  }
+
+}
+
+function setLocation(lat, lng, address = '') {
+
+  selectedLat = parseFloat(lat);
+  selectedLng = parseFloat(lng);
+
+  document.getElementById("coordPreview").innerHTML =
+    `${selectedLat.toFixed(6)}, ${selectedLng.toFixed(6)}`;
+
+  const status = document.getElementById("coordStatus");
+
+  status.textContent = "Lokasi dipilih";
+  status.classList.remove("empty");
+  status.classList.add("filled");
+
+  document.getElementById("rePickBtn").style.display = "inline-flex";
+
+  if (marker) {
+    marker.setLatLng([selectedLat, selectedLng]);
+  } else {
+    marker = L.marker([selectedLat, selectedLng]).addTo(map);
+  }
+
+  const activeTab =
+    document.querySelector('#modalTabs .modal-tab.active').dataset.tab;
+
+  const fieldMap = {
+    odc: 'odc-address',
+    odp: 'odp-address',
+    tower: 'tower-address',
+    pop: 'pop-address',
+    customer: 'cust-address'
+  };
+
+  const addressField =
+    document.getElementById(fieldMap[activeTab]);
+
+  if (addressField && address) {
+    addressField.value = address;
+  }
+}
+
+async function selectSearchLocation(lat, lng, address) {
+  setLocation(lat, lng, address);
+  map.setView([lat, lng], 18);
+  document.getElementById('searchResults').innerHTML = '';
+}
+
 function initMapPicker() {
   if (map) return;
 
@@ -1664,29 +1894,32 @@ function initMapPicker() {
     attribution: '&copy; OpenStreetMap'
   }).addTo(map);
 
-  map.on('click', function(e) {
+  map.on('click', async function(e) {
 
     const { lat, lng } = e.latlng;
 
-    selectedLat = lat;
-    selectedLng = lng;
-    document.getElementById("coordPreview").innerHTML =
-      `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    try {
 
-    const status = document.getElementById("coordStatus");
-    status.textContent = "Lokasi dipilih";
-    status.classList.remove("empty");
-    status.classList.add("filled");
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+      );
 
-    if (marker) {
-      marker.setLatLng(e.latlng);
-    } else {
-      marker = L.marker(e.latlng).addTo(map);
+      const data = await res.json();
+
+      setLocation(
+        lat,
+        lng,
+        data.display_name || ''
+      );
+
+    } catch(err) {
+
+      console.error(err);
+
+      setLocation(lat, lng);
+
     }
-
-    document.getElementById("rePickBtn").style.display = "inline-flex";
   });
-
 }
 
 function openModal() {
