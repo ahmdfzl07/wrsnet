@@ -61,7 +61,6 @@
     .xc-spark svg { width:72px; height:36px; }
     .sp-fill { transition:fill .3s; }
     .sp-line { stroke-width:1.8; fill:none; stroke-linecap:round; stroke-linejoin:round; }
-    .sp-dot  { }
     @media(max-width:700px) {
       .fin-grid, .fin-grid-4 { grid-template-columns:repeat(2,1fr); }
       .fin-card { border-right:none; border-bottom:1px solid #e8eaed; }
@@ -88,7 +87,7 @@
       background: linear-gradient(135deg, #16a34a, #065f46); /* green */
     }
 
-    .pkg-card-header.ont {
+    .pkg-card-header.tower {
       background: linear-gradient(135deg, #f97316, #9a3412); /* orange */
     }
 
@@ -561,11 +560,50 @@
         border-radius:12px;
         margin-bottom:15px;
     }
+    .coord-box {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 12px 14px;
+      border: 1px solid #e2e8f0;
+    }
 
-    #coordPreview{
-        color:#64748b;
-        margin-top:5px;
-        font-size:14px;
+    .coord-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+    }
+
+    .coord-value {
+      margin-top: 6px;
+      font-size: 13px;
+      color: #334155;
+      font-family: monospace;
+    }
+
+    .badge {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+
+    .badge.empty {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+
+    .badge.filled {
+      background: #dcfce7;
+      color: #16a34a;
+    }
+    .coord-value {
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .coord-value:hover {
+      color: #2563eb;
     }
 
     @media(max-width:768px){
@@ -639,6 +677,156 @@
     .flbl .req {
       color:#ef4444;
     }
+    .pkg-card {
+      border-radius: 16px;
+      border: 1px solid #e2e8f0;
+      overflow: hidden;
+      transition: all .25s ease;
+    }
+
+    .pkg-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 30px rgba(0,0,0,.08);
+    }
+
+    .status-badge {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+
+    .status-badge.active {
+      background: #dcfce7;
+      color: #16a34a;
+    }
+
+    .status-badge.inactive {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    .pkg-card.new {
+      border-radius: 18px;
+      overflow: hidden;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      transition: all .3s ease;
+      position: relative;
+    }
+
+    .pkg-card.new:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 20px 50px rgba(0,0,0,.12);
+    }
+
+    .pkg-card-header {
+      position: relative;
+      padding: 16px;
+      color: white;
+    }
+
+    .hdr-overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top right, rgba(255,255,255,.25), transparent);
+      pointer-events: none;
+    }
+
+    .hdr-content {
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .hdr-left {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .icon-box {
+      background: rgba(255,255,255,.2);
+      padding: 8px;
+      border-radius: 10px;
+      font-size: 16px;
+      backdrop-filter: blur(6px);
+    }
+
+    .pkg-sub {
+      font-size: 11px;
+      opacity: .8;
+    }
+
+    .pkg-card-body {
+      padding: 16px;
+    }
+
+    .info-block {
+      display: flex;
+      gap: 8px;
+      font-size: 13px;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+
+    .divider {
+      height: 1px;
+      background: #e2e8f0;
+      margin: 12px 0;
+    }
+
+    .bottom-stats {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .stat-val {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .status-badge {
+      font-size: 10px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+
+    .status-badge.active {
+      background: rgba(134,239,172,.2);
+      color: #bbf7d0;
+    }
+
+    .status-badge.inactive {
+      background: rgba(252,165,165,.2);
+      color: #fecaca;
+    }
+    .note-box {
+      background: #f8fafc;
+      border: 1px dashed #e2e8f0;
+      border-radius: 10px;
+      padding: 10px;
+      margin-top: 6px;
+    }
+
+    .note-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+
+    .note-text {
+      font-size: 12.5px;
+      color: #334155;
+      line-height: 1.4;
+    }
   </style>
 </head>
 <body>
@@ -709,7 +897,7 @@
         </div>
 
         <!-- ONT -->
-        <div class="fin-card" onclick="filterType('ont', event)">
+        <div class="fin-card" onclick="filterType('tower', event)">
           <div class="xc-lbl">ONT</div>
           <div class="xc-body">
             <div class="xc-left">
@@ -832,12 +1020,16 @@
 
         <div style="display:flex;justify-content:space-between;align-items:center">
 
-          <div>
-            <div style="font-weight:700">Koordinat Lokasi</div>
-
-            <div id="coordPreview">
-              Belum dipilih
+          <div class="coord-box">
+            <div class="coord-header">
+              <span>📍 Lokasi</span>
+              <span id="coordStatus" class="badge empty">Belum dipilih</span>
             </div>
+
+            <div id="coordPreview" class="coord-value" onclick="copyCoord()">
+              -
+            </div>
+
           </div>
 
           <button
@@ -1134,7 +1326,7 @@ function updateStats(data) {
   document.getElementById('scTotal').innerText = data.length || 0;
   document.getElementById('scODP').innerText = count('odp') || 0;
   document.getElementById('scODC').innerText = count('odc') || 0;
-  document.getElementById('scONT').innerText = count('ont') || 0;
+  document.getElementById('scONT').innerText = count('tower') || 0;
   document.getElementById('scCustomer').innerText = count('customer') || 0;
 }
 
@@ -1153,7 +1345,7 @@ function renderPage(page) {
 const getIcon = (type) => {
   if (type === 'odp') return '📡';
   if (type === 'odc') return '🗄️';
-  if (type === 'ont') return '📶';
+  if (type === 'tower') return '📶';
   if (type === 'customer') return '👤';
   return '📦';
 };
@@ -1175,86 +1367,84 @@ function renderCards(data) {
     }
 
     const card = `
-  <div class="pkg-card">
+    <div class="pkg-card new">
 
-    <div class="pkg-card-header ${pt.type}">
-      
-      <div style="display:flex;align-items:center;gap:10px">
-        
-        <div style="background:rgba(255,255,255,.15);padding:6px;border-radius:8px;display:flex">
-          ${getIcon(pt.type)}
-        </div>
+      <div class="pkg-card-header ${pt.type}">
 
-        <div style="display:flex;flex-direction:column">
-  
-          <div class="pkg-name" style="margin:0">${pt.name}</div>
+        <div class="hdr-overlay"></div>
 
-          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;font-size:11px;font-weight:600">
-            
-            <span style="color:rgba(255,255,255,.75)">
-              ${pt.type.toUpperCase()}
-            </span>
+        <div class="hdr-content">
 
-            <span style="color:rgba(255,255,255,.5)">•</span>
+          <div class="hdr-left">
+            <div class="icon-box">
+              ${getIcon(pt.type)}
+            </div>
 
-            <span style="color:${pt.status === 'active' ? '#86efac' : '#fecaca'}">
-              ${pt.status}
-            </span>
+            <div>
+              <div class="pkg-name">${pt.name}</div>
+              <div class="pkg-sub">
+                ${pt.type.toUpperCase()}
+              </div>
+            </div>
+          </div>
 
+          <div class="status-badge ${pt.status}">
+            ${pt.status}
           </div>
 
         </div>
 
       </div>
 
-    </div>
+      <div class="pkg-card-body">
 
-    <div class="pkg-card-body">
-
-      <div class="pkg-meta clean">
-        <div class="meta-item">
-          📍 ${pt.latitude}
+        <div class="info-block">
+          <span>📍</span>
+          <span>${pt.latitude}, ${pt.longitude}</span>
         </div>
-        <div class="meta-item">
-          📍 ${pt.longitude}
-        </div>
-      </div>
 
-      <div style="font-size:12px;color:#64748b;margin-bottom:6px">
-        <div class="meta-row">
-          🔗 ${parentName}
+        <div class="info-block">
+          <span>🔗</span>
+          <span>${parentName}</span>
         </div>
-      </div>
 
-      ${pt.type === 'customer' ? `
-        <div style="font-size:12px;color:#64748b;margin-bottom:6px">
-          <div class="meta-row">
-            👤 ${customerName}
+        ${pt.type === 'customer' ? `
+        <div class="info-block">
+          <span>👤</span>
+          <span>${customerName}</span>
+        </div>
+        ` : ''}
+
+        <div class="note-box">
+          <div class="note-title">Catatan</div>
+          <div class="note-text">
+            ${pt.notes ?? '-'}
           </div>
         </div>
-      ` : ''}
+        <div class="divider"></div>
 
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
-
-        <div class="meta-bottom">
-          <span>${pt.capacity ?? '-'}</span>
-          <span>${pt.used_ports}</span>
+        <div class="bottom-stats">
+          <div>
+            <div class="stat-label">Capacity</div>
+            <div class="stat-val">${pt.capacity ?? '-'}</div>
+          </div>
+          <div>
+            <div class="stat-label">Used</div>
+            <div class="stat-val">${pt.used_ports ?? 0}</div>
+          </div>
         </div>
-
-        
 
       </div>
 
     </div>
-  </div>
-`;
+    `;
+
     grid.innerHTML += card;
   });
-
-  // <button class="btn-detail" onclick="handleDetail('${pt.type}', '${pt.id}')">
-  //         Detail
-  //       </button>
 }
+// <button class="btn-detail" onclick="handleDetail('${pt.type}', '${pt.id}')">
+//         Detail
+//       </button>
 
 function renderPagination() {
   const totalPage = Math.ceil(filteredData.length / perPage);
@@ -1345,7 +1535,7 @@ function handleDetail(type, id) {
   else if (type === 'odc') {
     openCekOdc(data);
   } 
-  else if (type === 'ont') {
+  else if (type === 'tower') {
     openCekOnt(data);
   } 
   else if (type === 'customer') {
@@ -1383,8 +1573,6 @@ async function loadAllCustomers() {
       allCustomers = [];
     }
 
-    console.log('Customers loaded:', allCustomers.length);
-
   } catch (err) {
     console.error('Gagal load customer:', err);
     allCustomers = [];
@@ -1407,7 +1595,12 @@ function initMapPicker() {
     selectedLat = lat;
     selectedLng = lng;
     document.getElementById("coordPreview").innerHTML =
-      `Lat: ${lat.toFixed(6)} , Lng: ${lng.toFixed(6)}`;
+      `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+    const status = document.getElementById("coordStatus");
+    status.textContent = "Lokasi dipilih";
+    status.classList.remove("empty");
+    status.classList.add("filled");
 
     if (marker) {
       marker.setLatLng(e.latlng);
@@ -1503,21 +1696,35 @@ function setCoordinate(lat, lng) {
 
 function updateCoordinatePreview() {
 
-    const el = document.getElementById('coordPreview');
+  const status = document.getElementById('coordStatus');
+  const el = document.getElementById('coordPreview');
 
-    if(selectedLat && selectedLng){
+  if (selectedLat !== null && selectedLng !== null) {
 
-        el.innerHTML =
-            `
-            Lat : ${selectedLat}<br>
-            Lng : ${selectedLng}
-            `;
+    el.innerHTML = `${selectedLat.toFixed(6)}, ${selectedLng.toFixed(6)}`;
 
-    }else{
+    status.textContent = "Lokasi dipilih";
+    status.classList.remove("empty");
+    status.classList.add("filled");
 
-        el.innerHTML = 'Belum dipilih';
+  } else {
 
-    }
+    el.innerHTML = '-';
+
+    status.textContent = "Belum dipilih";
+    status.classList.remove("filled");
+    status.classList.add("empty");
+
+  }
+}
+
+function copyCoord() {
+  if (selectedLat === null || selectedLng === null) return;
+
+  const text = `${selectedLat.toFixed(6)}, ${selectedLng.toFixed(6)}`;
+  navigator.clipboard.writeText(text);
+
+  showToast('Koordinat disalin', 'success');
 }
 
 function setupImagePreview(
@@ -1666,9 +1873,9 @@ function selectCustomer(id, name, custId, address, pkg) {
   document.getElementById('custSelName').textContent = name;
   document.getElementById('custSelDetail').textContent = `${custId} · ${pkg}`;
 
-  if (!document.getElementById('cust-address').value) {
+  // if (!document.getElementById('cust-address').value) {
     document.getElementById('cust-address').value = address;
-  }
+  // }
 }
 
 function enterPlaceMode(type) {
@@ -1869,6 +2076,7 @@ async function savePoint() {
     showToast('Gagal menyimpan data', 'error');
   }
 }
+
 // ================= modal add ============== 
 
 // ============= CUSTOMER ================= 
