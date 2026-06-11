@@ -111,10 +111,20 @@
   </div>
 </div>
     <div class="card">
-      <div style="color:#94a3b8;">AVAILABLE BALANCE</div>
-      <div class="balance">Rp <%= Number(user.balance || 0).toLocaleString('id-ID') %></div>
-      <button class="topup">Top Up</button>
+    <div style="color:#94a3b8">
+        AVAILABLE BALANCE
     </div>
+
+    <div class="balance">
+        Rp <%= Number(user.balance || 0).toLocaleString('id-ID') %>
+    </div>
+
+    <button
+    class="topup"
+    onclick="showView('form-topup')">
+    Top Up Saldo
+</button>
+</div>
     <div class="stats">
 
     <div class="stat">
@@ -141,7 +151,7 @@
     <div class="services">
       <h3>Quick Services</h3>
       <div class="service-grid">
-        <div class="service" onclick="showView('dashboard-target')"><div class="service-icon">🌐</div><div>Dashboard</div></div>
+        <div class="service" onclick="showView('dashboard-target')"><div class="service-icon">🌐</div><div>Pembayaran</div></div>
         <!-- <div class="service" onclick="showView('dashboard-agen-view')"><div class="service-icon">⚡</div><div>Dashboard Agen</div></div> -->
         <div class="service" onclick="showView('view-data-user')"><div class="service-icon">👤</div><div>User</div></div>
       </div>
@@ -424,6 +434,130 @@
       <button style="flex:1; padding:10px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">Simpan</button>
       <button onclick="showView('detail-customer-view')" style="flex:1; padding:10px; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer;">Batal</button>
     </div> -->
+
+    <div id="form-topup" class="hidden">
+
+    <div
+        style="
+        background:#0891b2;
+        padding:15px;
+        color:white;
+        margin-top:20px;
+        font-weight:bold;
+        border-radius:10px;">
+
+        Form Pengajuan Top Up
+
+    </div>
+
+    <div
+        style="
+        background:white;
+        color:black;
+        padding:20px;
+        border-radius:0 0 10px 10px;">
+
+        <div style="margin-bottom:15px;">
+            <label>Nominal Top Up</label>
+
+            <input
+                id="topupAmount"
+                type="number"
+                placeholder="Contoh 100000"
+                style="
+                width:100%;
+                padding:10px;
+                margin-top:5px;">
+        </div>
+
+        <div style="margin-bottom:15px;">
+
+            <label>Metode Pembayaran</label>
+
+            <select
+                id="topupMethod"
+                style="
+                width:100%;
+                padding:10px;
+                margin-top:5px;">
+
+                <option value="Transfer Bank">
+                    Transfer Bank
+                </option>
+
+                <option value="QRIS">
+                    QRIS
+                </option>
+
+                <option value="E-Wallet">
+                    E-Wallet
+                </option>
+
+            </select>
+
+        </div>
+
+        <div style="margin-bottom:15px;">
+
+            <label>Bukti Transfer</label>
+
+            <input
+                id="topupProof"
+                type="file"
+                accept="image/*"
+                style="
+                width:100%;
+                margin-top:5px;">
+
+        </div>
+
+        <div style="margin-bottom:15px;">
+
+            <label>Keterangan</label>
+
+            <textarea
+                id="topupNote"
+                style="
+                width:100%;
+                padding:10px;
+                height:80px;"></textarea>
+
+        </div>
+
+        <button
+            onclick="submitTopup()"
+            style="
+            width:100%;
+            padding:12px;
+            background:#16a34a;
+            color:white;
+            border:none;
+            border-radius:8px;
+            cursor:pointer;">
+
+            Kirim Pengajuan
+
+        </button>
+
+        <button
+            onclick="backToHome()"
+            style="
+            width:100%;
+            margin-top:10px;
+            padding:12px;
+            background:#64748b;
+            color:white;
+            border:none;
+            border-radius:8px;
+            cursor:pointer;">
+
+            Kembali
+
+        </button>
+
+    </div>
+
+</div>
   </div>
 </div>
 </div>
@@ -647,7 +781,8 @@
         'detail-customer-view',
         'form-pembayaran',
         'laporan-pembayaran',
-        'detail-transaksi-view'
+        'detail-transaksi-view',
+         'form-topup'
     ];
 
     views.forEach(function(v){
@@ -784,50 +919,72 @@ function lihatRiwayat(index) {
 }
 
 async function simpanPembayaran() {
-    const customer = customerData[currentCustomerIndex];
-    if (!customer) return alert("Pilih pelanggan!");
 
-    const nominal = document.getElementById('inputNominal').value;
-    const keterangan = document.getElementById('inputKeterangan').value;
-    const fileInput = document.getElementById('inputBukti');
+    
+
+    const customer = customerData[currentCustomerIndex];
+
+    if (!customer) {
+        return alert("Pilih pelanggan!");
+    }
+
+    const nominal = document.getElementById("inputNominal").value;
+    const keterangan = document.getElementById("inputKeterangan").value;
+    const fileInput = document.getElementById("inputBukti");
 
     const formData = new FormData();
-    formData.append('customer_id', customer.id);
-    formData.append('amount', nominal);
-    formData.append('total', nominal);
-    formData.append('keterangan', keterangan);
-    formData.append('period_month', new Date().getMonth() + 1);
-    formData.append('period_year', new Date().getFullYear());
-    
-    if (fileInput && fileInput.files[0]) {
-        formData.append('bukti_foto', fileInput.files[0]);
+
+    formData.append("customer_id", customer.id);
+    formData.append("amount", nominal);
+    formData.append("total", nominal);
+    formData.append("keterangan", keterangan);
+    formData.append("period_month", new Date().getMonth() + 1);
+    formData.append("period_year", new Date().getFullYear());
+
+    if (fileInput.files.length > 0) {
+        formData.append("bukti_foto", fileInput.files[0]);
     }
 
     try {
-        const response = await fetch('/api/pembayaran', {
-            method: 'POST',
+
+        const token = localStorage.getItem("token");
+
+        const response = await fetch("/api/pembayaran", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${token}`
+            },
             body: formData
         });
-        
+
         const result = await response.json();
-        
-       if(result.success){
 
-    alert("Pembayaran berhasil");
+        console.log("STATUS =", response.status);
+        console.log("RESULT =", result);
 
-    await cariCustomer();
+        if (result.success) {
 
-    await loadLaporan();
-    await loadDashboardStat();
-    showView("dashboard-target");
+            alert("Pembayaran berhasil");
 
-} else {
-            alert('Gagal: ' + result.message);
+            await cariCustomer();
+            await loadLaporan();
+            await loadDashboardStat();
+
+            showView("dashboard-target");
+
+        } else {
+
+            alert(result.message);
+
         }
+
     } catch (err) {
-        console.error('Error:', err);
-        alert('Terjadi kesalahan koneksi.');
+
+        console.log(err);
+        alert(err.message);
+
     }
+
 }
 function populateForm(customer) {
     document.getElementById('inputCustomerId').value = customer.id;
@@ -1178,65 +1335,55 @@ function resetFilter(){
 let currentUser = null;
 
 async function loadDataUser() {
+
     try {
 
-        const token = localStorage.getItem("agen_token");
-
-        if (!token || token === "null" || token === "undefined") {
-            console.log("NO VALID TOKEN");
-            window.location.href = "/login";
-            return;
-        }
-
-        const res = await fetch('/api/user/profile', {
+        const res = await fetch("/api/agen/profile", {
             method: "GET",
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }
+            credentials: "include"
         });
-
-        if (res.status === 401) {
-            console.log("TOKEN EXPIRED / INVALID");
-            localStorage.removeItem("token");
-            window.location.href = "/login";
-            return;
-        }
-
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-            console.error("Response bukan JSON (kemungkinan redirect HTML)");
-            return;
-        }
 
         const result = await res.json();
 
-        console.log("PROFILE RESULT:", result);
+        console.log(result);
 
-        if (!result.success) return;
+        if (!result.success) {
+            alert(result.message);
+            return;
+        }
 
-        const currentUser = result.data;
+        currentUser = result.data;
 
         document.getElementById("userTableBody").innerHTML = `
-        <tr>
-            <td>
-                <button onclick="editProfile()"
-                style="background:#0891b2;color:white;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;">
-                ✏ Edit
-                </button>
-            </td>
+            <tr>
+                <td>
+                    <button
+                        onclick="editProfile()"
+                        style="
+                            background:#0891b2;
+                            color:white;
+                            border:none;
+                            padding:5px 10px;
+                            border-radius:5px;
+                            cursor:pointer;
+                        ">
+                        ✏ Edit
+                    </button>
+                </td>
 
-            <td>${currentUser.name || "-"}</td>
-            <td>${currentUser.email || "-"}</td>
-            <td>${currentUser.role?.name || "-"}</td>
-            <td>${currentUser.status || "Aktif"}</td>
-        </tr>
+                <td>${currentUser.name || "-"}</td>
+                <td>${currentUser.email || "-"}</td>
+                <td>${currentUser.role?.name || "-"}</td>
+                <td>Aktif</td>
+            </tr>
         `;
 
-    } catch (e) {
-        console.log("ERROR loadDataUser:", e);
+    } catch (err) {
+
+        console.log(err);
+
     }
+
 }
 
 window.saveProfile = async function () {
@@ -1385,6 +1532,84 @@ function renderAgenTable(data) {
   `).join('');
 }
 
+
+async function submitTopup() {
+
+    if (!currentUser) {
+        alert("User belum dimuat, silakan refresh halaman.");
+        return;
+    }
+
+    const amount =
+        document.getElementById("topupAmount").value;
+
+    const payment_method =
+        document.getElementById("topupMethod").value;
+
+    const description =
+        document.getElementById("topupNote").value;
+
+    const proof =
+        document.getElementById("topupProof").files[0];
+
+    if (!amount || Number(amount) <= 0) {
+        alert("Masukkan nominal yang benar.");
+        return;
+    }
+
+    const formData = new FormData();
+
+    formData.append("user_id", currentUser.id);
+    formData.append("amount", amount);
+    formData.append("payment_method", payment_method);
+    formData.append("description", description);
+
+    if (proof) {
+        formData.append("proof", proof);
+    }
+
+    console.log({
+        user_id: currentUser.id,
+        amount,
+        payment_method,
+        description
+    });
+
+    try {
+
+        const res = await fetch("/api/topup", {
+            method: "POST",
+            body: formData,
+            credentials: "include"
+        });
+
+        const result = await res.json();
+
+        console.log(result);
+
+        if (result.success) {
+
+            alert(result.message);
+
+            document.getElementById("topupAmount").value = "";
+            document.getElementById("topupNote").value = "";
+            document.getElementById("topupProof").value = "";
+
+        } else {
+
+            alert(result.message);
+
+        }
+
+    } catch (err) {
+
+        console.log(err);
+
+        alert("Terjadi kesalahan server");
+
+    }
+
+}
 
 window.addEventListener("load", async () => {
 

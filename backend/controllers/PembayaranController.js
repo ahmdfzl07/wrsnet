@@ -3,7 +3,7 @@ const { Op, Sequelize } = require("sequelize");
 
 const Invoice = db.Invoice;
 const Customer = db.Customer;
-
+const User = db.User;
 /*
 =========================================
 SIMPAN PEMBAYARAN
@@ -11,10 +11,11 @@ SIMPAN PEMBAYARAN
 */
 
 exports.simpanPembayaran = async (req, res) => {
-console.log(req.user);
-    console.log(req.headers.authorization);
-
     try {
+
+        console.log("=========== PEMBAYARAN ===========");
+        console.log("REQ USER :", req.user);
+        console.log("REQ BODY :", req.body);
 
         const {
             customer_id,
@@ -24,90 +25,97 @@ console.log(req.user);
             period_year
         } = req.body;
 
-        const bukti_foto =
-            req.file ? req.file.filename : null;
+        const nominal = Number(amount);
+
+        // Ambil user
+        const user = await db.User.findByPk(req.user.id);
+
+        console.log("USER DB :", user ? user.toJSON() : null);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User tidak ditemukan"
+            });
+        }
+
+        const saldo = Number(user.balance || 0);
+
+        console.log("SALDO :", saldo);
+        console.log("NOMINAL :", nominal);
+
+        if (saldo < nominal) {
+            return res.status(400).json({
+                success: false,
+                message: `Saldo tidak cukup. Saldo=${saldo}, Nominal=${nominal}`
+            });
+        }
 
         const invoice = await Invoice.findOne({
-
             where: {
-
                 customer_id,
                 period_month,
                 period_year
-
             },
-
             order: [["id", "DESC"]]
-
         });
 
+        console.log("INVOICE :", invoice);
+
         if (!invoice) {
-
-            return res.json({
-
+            return res.status(400).json({
                 success: false,
                 message: "Invoice tidak ditemukan"
-
             });
-
         }
 
         await invoice.update({
-
-            amount: Number(amount),
-            total: Number(amount),
+            amount: nominal,
+            total: nominal,
             status: "paid",
             paid_date: new Date(),
             notes: keterangan,
-            pdf_path: bukti_foto,
-             agen_id: req.user.id
-
+            pdf_path: req.file ? req.file.filename : null,
+            agen_id: req.user.id
         });
 
-        await Customer.update({
-
-            status: "active",
-            isolir_status: "active"
-
-        }, {
-
-            where: {
-                id: customer_id
+        await Customer.update(
+            {
+                status: "active",
+                isolir_status: "active"
+            },
+            {
+                where: {
+                    id: customer_id
+                }
             }
+        );
 
-        });
+        // Kurangi saldo
+        user.balance = saldo - nominal;
+        await user.save();
 
         return res.json({
-
             success: true,
-            message: "Pembayaran berhasil"
-
+            message: "Pembayaran berhasil",
+            data: {
+                saldo_awal: saldo,
+                nominal,
+                saldo_akhir: user.balance
+            }
         });
 
     } catch (err) {
 
-        console.log(err);
+        console.error("ERROR :", err);
+        console.error(err.stack);
 
         return res.status(500).json({
-
             success: false,
             message: err.message
-
         });
 
     }
-    await Invoice.create({
-
-    customer_id,
-    amount,
-    total: amount,
-    status: "paid",
-    agen_id: req.user.id,
-    period_month,
-    period_year
-
-});
-
 };
 
 

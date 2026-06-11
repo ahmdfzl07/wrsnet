@@ -738,4 +738,22 @@ router.get('/portal/agen/login-agen', (req, res) => {
     appName: 'WRSNET'
   });
 });
+
+const TopupController = require("../controllers/TopupController");
+
+router.get("/topup", TopupController.form);
+router.post("/topup", TopupController.store);
+
+
+router.post(
+  "/topup/:id/approve",
+  TopupController.approve
+);
+
+router.post(
+  "/topup/:id/reject",
+  TopupController.reject
+);
+
+
 module.exports = router;

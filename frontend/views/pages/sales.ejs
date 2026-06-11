@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title><%= title %> - <%= appName %></title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  >
+
+  <link rel="stylesheet" href="/css/app.css">
+
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+  >
+</head>
+
+<body>
+
+  <div class="app-layout">
+
+    <!-- SIDEBAR -->
+    <%- include('../partials/sidebar') %>
+
+    <div class="main-content">
+
+      <!-- TOPBAR -->
+      <%- include('../partials/topbar') %>
+
+      <main class="page-content">
+
+        <!-- PAGE HEADER -->
+        <div class="page-header">
+
+          <div class="page-header-left">
+            <h1>Dashboard Sales</h1>
+
+            <p class="page-subtitle">
+              Monitoring performa sales dan pemasukan bulanan
+            </p>
+          </div>
+
+          <div class="page-header-right">
+
+            <input
+              type="month"
+              class="sales-filter"
+              id="filterBulan"
+            >
+
+            <button class="btn-primary">
+              Pilih
+            </button>
+
+          </div>
+
+        </div>
+
+        <!-- SUMMARY CARDS -->
+        <div class="summary-cards">
+
+          <div class="summary-card gradient-blue">
+            <div class="sc-label">
+              Total Sales
+            </div>
+
+            <div class="sc-value">
+              <%= sales.length %>
+            </div>
+
+            <div class="sc-sub">
+              Sales aktif
+            </div>
+          </div>
+
+          <div class="summary-card gradient-green">
+            <div class="sc-label">
+              Total Pelanggan
+            </div>
+
+            <div class="sc-value">
+              <%= sales.reduce((a,b)=>a + (b.jumlah_pelanggan || 0),0) %>
+            </div>
+
+            <div class="sc-sub">
+              Semua pelanggan
+            </div>
+          </div>
+
+          <div class="summary-card gradient-orange">
+            <div class="sc-label">
+              Pelanggan Lunas
+            </div>
+
+            <div class="sc-value">
+              <%= sales.reduce((a,b)=>a + (b.pelanggan_lunas || 0),0) %>
+            </div>
+
+            <div class="sc-sub">
+              Pembayaran berhasil
+            </div>
+          </div>
+
+          <div class="summary-card gradient-red">
+            <div class="sc-label">
+              Belum Lunas
+            </div>
+
+            <div class="sc-value">
+              <%= sales.reduce((a,b)=>a + (b.pelanggan_belum_lunas || 0),0) %>
+            </div>
+
+            <div class="sc-sub">
+              Tagihan pending
+            </div>
+          </div>
+
+        </div>
+
+        <!-- MAIN TABLE -->
+        <div class="card">
+
+          <div class="card-header">
+
+            <div class="card-title-group">
+
+              <svg
+                class="card-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                <polyline points="17 6 23 6 23 12"></polyline>
+              </svg>
+
+              <h3>
+                Dashboard Sales Bulan
+                <%= typeof bulan !== 'undefined' ? bulan : 'May 2026' %>
+              </h3>
+
+            </div>
+
+          </div>
+
+          <div class="card-body">
+
+            <div class="table-responsive">
+
+              <table class="sales-table">
+
+                <thead>
+                  <tr>
+                    <th width="120">Aksi</th>
+                    <th>No</th>
+                    <th>Nama Sales</th>
+                    <th>Alamat</th>
+                    <th>Jumlah Pelanggan</th>
+                    <th>Pelanggan Lunas</th>
+                    <th>Pelanggan Belum Lunas</th>
+                    <th>Total Pemasukan</th>
+                    <th>Total Pengeluaran</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  <% if (sales && sales.length > 0) { %>
+
+                    <% sales.forEach((item,index)=> { %>
+
+                      <tr>
+
+                        <td>
+
+                          <div class="action-buttons">
+
+                            <a
+                              href="/sales/detail/<%= item.id %>"
+                              class="btn-action green"
+                            >
+                              <i class="fas fa-eye"></i>
+                            </a>
+
+                            <a
+                              href="/sales/report/<%= item.id %>"
+                              class="btn-action blue"
+                            >
+                              <i class="fas fa-file-invoice"></i>
+                            </a>
+
+                          </div>
+
+                        </td>
+
+                        <td class="text-center">
+                          <%= index + 1 %>
+                        </td>
+
+                        <td class="fw-bold">
+                          <%= item.nama_sales %>
+                        </td>
+
+                        <td>
+                          <%= item.alamat %>
+                        </td>
+
+                        <td class="text-center">
+                          <%= item.jumlah_pelanggan %>
+                        </td>
+
+                        <td class="text-center text-primary fw-bold">
+                          <%= item.pelanggan_lunas %>
+                        </td>
+
+                        <td class="text-center text-danger fw-bold">
+                          <%= item.pelanggan_belum_lunas %>
+                        </td>
+
+                        <td class="text-end fw-semibold">
+                          Rp
+                          <%= Number(item.total_pemasukan || 0)
+                          .toLocaleString('id-ID') %>
+                        </td>
+
+                        <td class="text-end fw-semibold">
+                          Rp
+                          <%= Number(item.total_pengeluaran || 0)
+                          .toLocaleString('id-ID') %>
+                        </td>
+
+                      </tr>
+
+                    <% }) %>
+
+                  <% } else { %>
+
+                    <tr>
+                      <td colspan="9" class="empty-state">
+                        Tidak ada data sales
+                      </td>
+                    </tr>
+
+                  <% } %>
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </main>
+
+      <!-- FOOTER -->
+      <%- include('../partials/footer') %>
+
+    </div>
+
+  </div>
+
+  <style>
+
+    .page-subtitle{
+      color:#64748b;
+      font-size:14px;
+      margin-top:4px;
+    }
+
+    .page-header-right{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .sales-filter{
+      border:1px solid #dbe2ea;
+      border-radius:10px;
+      padding:10px 14px;
+      font-size:14px;
+      background:#fff;
+      color:#1e293b;
+    }
+
+    .summary-cards{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+      gap:20px;
+      margin-bottom:24px;
+    }
+
+    .summary-card{
+      border-radius:18px;
+      padding:22px;
+      color:white;
+      position:relative;
+      overflow:hidden;
+      box-shadow:0 10px 25px rgba(15,23,42,.08);
+    }
+
+    .gradient-blue{
+      background:linear-gradient(135deg,#2563eb,#1d4ed8);
+    }
+
+    .gradient-green{
+      background:linear-gradient(135deg,#16a34a,#15803d);
+    }
+
+    .gradient-orange{
+      background:linear-gradient(135deg,#f59e0b,#d97706);
+    }
+
+    .gradient-red{
+      background:linear-gradient(135deg,#ef4444,#dc2626);
+    }
+
+    .sc-label{
+      font-size:14px;
+      opacity:.9;
+      margin-bottom:10px;
+    }
+
+    .sc-value{
+      font-size:32px;
+      font-weight:700;
+      line-height:1;
+      margin-bottom:8px;
+    }
+
+    .sc-sub{
+      font-size:13px;
+      opacity:.85;
+    }
+
+    .sales-table{
+      width:100%;
+      border-collapse:collapse;
+    }
+
+    .sales-table thead th{
+      background:#f8fafc;
+      color:#334155;
+      font-size:13px;
+      font-weight:700;
+      padding:14px;
+      border-bottom:1px solid #e2e8f0;
+      white-space:nowrap;
+      text-align:center;
+    }
+
+    .sales-table tbody td{
+      padding:14px;
+      border-bottom:1px solid #f1f5f9;
+      font-size:14px;
+      color:#1e293b;
+      vertical-align:middle;
+    }
+
+    .sales-table tbody tr:hover{
+      background:#f8fafc;
+    }
+
+    .action-buttons{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+    }
+
+    .btn-action{
+      width:34px;
+      height:34px;
+      border-radius:10px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-decoration:none;
+      color:white;
+      transition:.2s;
+    }
+
+    .btn-action:hover{
+      transform:translateY(-2px);
+      opacity:.9;
+    }
+
+    .btn-action.green{
+      background:#16a34a;
+    }
+
+    .btn-action.blue{
+      background:#2563eb;
+    }
+
+    .empty-state{
+      text-align:center;
+      padding:40px !important;
+      color:#94a3b8;
+    }
+
+    .text-center{
+      text-align:center;
+    }
+
+    .text-end{
+      text-align:right;
+    }
+
+    .fw-bold{
+      font-weight:700;
+    }
+
+    .fw-semibold{
+      font-weight:600;
+    }
+
+    .text-primary{
+      color:#2563eb;
+    }
+
+    .text-danger{
+      color:#ef4444;
+    }
+
+    @media(max-width:768px){
+
+      .page-header{
+        flex-direction:column;
+        align-items:flex-start;
+        gap:16px;
+      }
+
+      .page-header-right{
+        width:100%;
+      }
+
+      .sales-filter{
+        width:100%;
+      }
+
+      .btn-primary{
+        width:100%;
+      }
+
+    }
+
+  </style>
+
+</body>
+</html>

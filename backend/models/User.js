@@ -54,6 +54,11 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(20),
       allowNull: true
     },
+    balance: {
+      type: DataTypes.DECIMAL(18, 2),
+      allowNull: false,
+      defaultValue: 0
+    },
     is_active: {
       type: DataTypes.BOOLEAN,
       defaultValue: true

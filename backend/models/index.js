@@ -45,6 +45,7 @@ const CustomerPushSubscription = require("./CustomerPushSubscription")(
 const Package = require("./Package")(sequelize);
 const Invoice = require("./Invoice")(sequelize);
 const Payment = require("./Payment")(sequelize);
+const Topup = require("./Topup")(sequelize);
 const Device = require("./Device")(sequelize);
 const DeviceLog = require("./DeviceLog")(sequelize);
 const InfrastructurePoint = require("./InfrastructurePoint")(sequelize);
@@ -208,6 +209,16 @@ Payment.belongsTo(Invoice, { foreignKey: "invoice_id", as: "invoice" });
 User.hasMany(Payment, { foreignKey: "recorded_by", as: "recorded_payments" });
 Payment.belongsTo(User, { foreignKey: "recorded_by", as: "recorder" });
 
+User.hasMany(Topup, {
+    foreignKey: "user_id",
+    as: "topups"
+});
+
+Topup.belongsTo(User, {
+    foreignKey: "user_id",
+    as: "user"
+});
+
 // Device <-> DeviceLog
 Device.hasMany(DeviceLog, { foreignKey: "device_id", as: "logs" });
 DeviceLog.belongsTo(Device, { foreignKey: "device_id", as: "device" });
@@ -272,6 +283,7 @@ const db = {
   Ticket,
   TicketTimeline,
   Todo,
+  Topup,
   WorkOrder,
   TechnicianLocation,
   TrackingSession,

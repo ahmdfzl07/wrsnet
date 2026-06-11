@@ -36,6 +36,7 @@ const demoRoutes = require("./demo");
 const AuthController = require("../controllers/AuthController");
 const PembayaranController = require("../controllers/PembayaranController");
 const AgenController = require('../controllers/AgenController'); 
+const TopupController = require('../controllers/TopupController'); 
 const authAgen = require('../middleware/authAgen');
 const UserController = require("../controllers/UserController");
 const CustomerController = require("../controllers/CustomerController");
@@ -3345,5 +3346,37 @@ router.get(
   '/agen/customers',
   authAgen,
   CustomerController.index
+);
+router.get("/form-topup", TopupController.form);
+
+router.get("/topup", TopupController.form);
+
+router.post(
+    "/topup",
+    upload.single("proof"),
+    TopupController.store
+);
+
+router.post(
+    "/api/topup",
+    upload.single("proof"),
+    TopupController.store
+);
+
+router.get("/form-topup", TopupController.form);
+router.post(
+    "/api/topup",
+    upload.single("proof"),
+    TopupController.store
+);
+
+router.post(
+    "/topup/:id/approve",
+    TopupController.approve
+);
+
+router.post(
+    "/topup/:id/reject",
+    TopupController.reject
 );
 module.exports = router;

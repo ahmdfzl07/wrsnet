@@ -9,142 +9,142 @@ const {
 const { getCompanyName } = require("../utils/companyInfo");
 
 class CustomerController {
-  async index(req, res) {
-    try {
-      const { page = 1, limit = 20, search, status, package_id } = req.query;
-      const where = {};
+    async index(req, res) {
+      try {
+        const { page = 1, limit = 20, search, status, package_id } = req.query;
+        const where = {};
 
-      if (search) {
-        where[Op.or] = [
-          { name: { [Op.like]: `%${search}%` } },
-          { customer_id: { [Op.like]: `%${search}%` } },
-          { phone: { [Op.like]: `%${search}%` } },
-          { address: { [Op.like]: `%${search}%` } },
+        if (search) {
+          where[Op.or] = [
+            { name: { [Op.like]: `%${search}%` } },
+            { customer_id: { [Op.like]: `%${search}%` } },
+            { phone: { [Op.like]: `%${search}%` } },
+            { address: { [Op.like]: `%${search}%` } },
 
-          {
-            "$package.name$": {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          Sequelize.where(
-            Sequelize.cast(Sequelize.col("package.price"), "CHAR"),
             {
-              [Op.like]: `%${search}%`,
+              "$package.name$": {
+                [Op.like]: `%${search}%`,
+              },
             },
-          ),
-        ];
-      }
-      // overdue & due_soon adalah filter virtual — tidak set where.status
-      if (status && status !== "overdue" && status !== "due_soon") {
-        where.status = status;
-      }
-      if (package_id) where.package_id = package_id;
+            Sequelize.where(
+              Sequelize.cast(Sequelize.col("package.price"), "CHAR"),
+              {
+                [Op.like]: `%${search}%`,
+              },
+            ),
+          ];
+        }
+        // overdue & due_soon adalah filter virtual — tidak set where.status
+        if (status && status !== "overdue" && status !== "due_soon") {
+          where.status = status;
+        }
+        if (package_id) where.package_id = package_id;
 
-      const offset = (page - 1) * limit;
-      const { Invoice } = require("../models");
-      const { count, rows } = await Customer.findAndCountAll({
-        where,
-        include: [
-          { model: Package, as: "package" },
-          {
-            model: Invoice,
-            as: "invoices",
-            attributes: [
-              "id",
-              "due_date",
-              "status",
-              "paid_date",
-              "period_month",
-              "period_year",
-            ],
-            required: false,
-            order: [["due_date", "DESC"]],
-            separate: true,
-            limit: 1,
-          },
-        ],
-        offset,
-        limit:
-          status === "overdue" || status === "due_soon" ? 999 : parseInt(limit),
-        order: [["created_at", "DESC"]],
-      });
+        const offset = (page - 1) * limit;
+        const { Invoice } = require("../models");
+        const { count, rows } = await Customer.findAndCountAll({
+          where,
+          include: [
+            { model: Package, as: "package" },
+            {
+              model: Invoice,
+              as: "invoices",
+              attributes: [
+                "id",
+                "due_date",
+                "status",
+                "paid_date",
+                "period_month",
+                "period_year",
+              ],
+              required: false,
+              order: [["due_date", "DESC"]],
+              separate: true,
+              limit: 1,
+            },
+          ],
+          offset,
+          limit:
+            status === "overdue" || status === "due_soon" ? 999 : parseInt(limit),
+          order: [["created_at", "DESC"]],
+        });
 
-      // Logic PHP: due_date dari kolom customers.due_date
-      // latest_invoice_status dari invoice AKTUAL (unpaid/paid/overdue)
-      const todayDate = new Date();
-      todayDate.setHours(0, 0, 0, 0);
-      const data = rows.map((c) => {
-        const json = c.toJSON();
-        const invoices = json.invoices || [];
+        // Logic PHP: due_date dari kolom customers.due_date
+        // latest_invoice_status dari invoice AKTUAL (unpaid/paid/overdue)
+        const todayDate = new Date();
+        todayDate.setHours(0, 0, 0, 0);
+        const data = rows.map((c) => {
+          const json = c.toJSON();
+          const invoices = json.invoices || [];
 
-        // Cari invoice yang relevan
-        const unpaidInv = invoices.find((i) =>
-          ["unpaid", "overdue"].includes(i.status),
-        );
-        const latestInv = invoices[0] || null;
+          // Cari invoice yang relevan
+          const unpaidInv = invoices.find((i) =>
+            ["unpaid", "overdue"].includes(i.status),
+          );
+          const latestInv = invoices[0] || null;
 
-        // due_date: dari kolom customers.due_date (diset manual/otomatis)
-        const dueDate = json.due_date || null;
+          // due_date: dari kolom customers.due_date (diset manual/otomatis)
+          const dueDate = json.due_date || null;
 
-        // latest_invoice_status: cerminkan status invoice aktual
-        // Ini dipakai di frontend untuk menentukan badge overdue/due_soon/paid
-        let dueStatus = null;
-        if (unpaidInv) {
-          // Ada invoice belum lunas → status berdasarkan due_date customer
-          const dd = dueDate ? new Date(dueDate + "T00:00:00") : null;
-          if (dd && dd < todayDate) dueStatus = "overdue";
-          else dueStatus = "unpaid";
-        } else if (latestInv && latestInv.status === "paid") {
-          dueStatus = "paid";
-        } else if (!latestInv && dueDate) {
-          // Belum ada invoice — cek due_date langsung
-          const dd = new Date(dueDate + "T00:00:00");
-          if (dd < todayDate) dueStatus = "overdue";
-          else dueStatus = "active";
+          // latest_invoice_status: cerminkan status invoice aktual
+          // Ini dipakai di frontend untuk menentukan badge overdue/due_soon/paid
+          let dueStatus = null;
+          if (unpaidInv) {
+            // Ada invoice belum lunas → status berdasarkan due_date customer
+            const dd = dueDate ? new Date(dueDate + "T00:00:00") : null;
+            if (dd && dd < todayDate) dueStatus = "overdue";
+            else dueStatus = "unpaid";
+          } else if (latestInv && latestInv.status === "paid") {
+            dueStatus = "paid";
+          } else if (!latestInv && dueDate) {
+            // Belum ada invoice — cek due_date langsung
+            const dd = new Date(dueDate + "T00:00:00");
+            if (dd < todayDate) dueStatus = "overdue";
+            else dueStatus = "active";
+          }
+
+          json.latest_invoice = unpaidInv || latestInv;
+          json.latest_due_date = dueDate;
+          json.latest_invoice_status = dueStatus;
+          return json;
+        });
+
+        // Post-process filter overdue / due_soon berdasarkan latest_due_date
+        let filtered = data;
+        const todayStr = new Date().toISOString().split("T")[0];
+        const in3days = new Date(Date.now() + 3 * 86400000)
+          .toISOString()
+          .split("T")[0];
+
+        if (status === "overdue") {
+          // Sama dengan stats: due_date < today + status active + ada invoice unpaid/overdue
+          filtered = data.filter(
+            (c) =>
+              c.latest_invoice_status === "overdue" &&
+              ["active", "isolated"].includes(c.status),
+          );
+        } else if (status === "due_soon") {
+          filtered = data.filter(
+            (c) =>
+              c.latest_invoice_status === "unpaid" &&
+              c.status === "active" &&
+              c.latest_due_date &&
+              c.latest_due_date >= todayStr &&
+              c.latest_due_date <= in3days,
+          );
         }
 
-        json.latest_invoice = unpaidInv || latestInv;
-        json.latest_due_date = dueDate;
-        json.latest_invoice_status = dueStatus;
-        return json;
-      });
-
-      // Post-process filter overdue / due_soon berdasarkan latest_due_date
-      let filtered = data;
-      const todayStr = new Date().toISOString().split("T")[0];
-      const in3days = new Date(Date.now() + 3 * 86400000)
-        .toISOString()
-        .split("T")[0];
-
-      if (status === "overdue") {
-        // Sama dengan stats: due_date < today + status active + ada invoice unpaid/overdue
-        filtered = data.filter(
-          (c) =>
-            c.latest_invoice_status === "overdue" &&
-            ["active", "isolated"].includes(c.status),
-        );
-      } else if (status === "due_soon") {
-        filtered = data.filter(
-          (c) =>
-            c.latest_invoice_status === "unpaid" &&
-            c.status === "active" &&
-            c.latest_due_date &&
-            c.latest_due_date >= todayStr &&
-            c.latest_due_date <= in3days,
-        );
+        // Hitung total yang benar untuk pagination
+        const filteredCount =
+          status === "overdue" || status === "due_soon" ? filtered.length : count;
+        res.json({
+          success: true,
+          ...paginateResponse(filtered, filteredCount, page, limit),
+        });
+      } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
       }
-
-      // Hitung total yang benar untuk pagination
-      const filteredCount =
-        status === "overdue" || status === "due_soon" ? filtered.length : count;
-      res.json({
-        success: true,
-        ...paginateResponse(filtered, filteredCount, page, limit),
-      });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
     }
-  }
 
   async create(req, res) {
     try {
