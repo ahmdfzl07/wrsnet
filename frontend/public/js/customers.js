@@ -694,16 +694,34 @@ function _setPct(id, text) {
 async function loadCustomers() {
   const search = document.getElementById("searchCustomer")?.value || "";
   const status = document.getElementById("filterStatus")?.value || "";
+  const odp = odpSelect?.getValue() || "";
+
   const data = await App.api(
     "/customers?page=" +
       _custPage +
       "&limit=20&search=" +
       encodeURIComponent(search) +
       "&status=" +
-      status,
+      status +
+      "&odp_id=" +
+      odp,
   );
+
   const tbody = document.getElementById("customerTable");
   const countEl = document.getElementById("customerCount");
+
+  if (!data?.success) {
+    tbody.innerHTML = `<tr><td colspan="9">Gagal load</td></tr>`;
+    return;
+  }
+
+  if (countEl)
+    countEl.textContent = (data.pagination?.total || 0) + " pelanggan";
+
+  if (!data.data?.length) {
+    tbody.innerHTML = `<tr><td colspan="9">Tidak ada data</td></tr>`;
+    return;
+  }
 
   if (!data?.success) {
     if (tbody)

@@ -332,6 +332,8 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--d-blue1)" stroke-width="2.5" style="animation:spin .6s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
             </div>
           </div>
+          <select id="filterOdp" class="filter-select">
+          </select>
           <select id="filterStatus" class="filter-select">
             <option value="">Semua Status</option>
             <option value="active">Aktif</option>
@@ -873,12 +875,84 @@ window.saveCustomerBtn = async function () {
   const s  = document.getElementById('searchCustomer');
   const fs = document.getElementById('filterStatus');
   const fd = document.getElementById('filterDue');
+  const fo = document.getElementById('filterOdp');
+
   let t = null;
-  function reload() { window._custPage = 1; if(typeof loadCustomers==='function') loadCustomers(); }
-  if(s)  s.addEventListener('input', function(){ clearTimeout(t); document.getElementById('srchSpin').style.display='block'; t=setTimeout(()=>{ document.getElementById('srchSpin').style.display='none'; reload(); }, 450); });
+
+  function reload() {
+    window._custPage = 1;
+    if(typeof loadCustomers==='function') loadCustomers();
+  }
+
+  if(s)  s.addEventListener('input', function(){
+    clearTimeout(t);
+    document.getElementById('srchSpin').style.display='block';
+    t=setTimeout(()=>{
+      document.getElementById('srchSpin').style.display='none';
+      reload();
+    }, 450);
+  });
+
   if(fs) fs.addEventListener('change', reload);
   if(fd) fd.addEventListener('change', reload);
+  if(fo) fo.addEventListener('change', reload);
 })();
+
+document.addEventListener("DOMContentLoaded", function() {
+  initOdpSelect();
+  loadOdp();
+  loadCustomers();
+});
+
+let odpSelect;
+
+function initOdpSelect() {
+  odpSelect = new TomSelect("#filterOdp", {
+    valueField: "id",
+    labelField: "name",
+    searchField: "name",
+    placeholder: "Pilih ODP...",
+    allowEmptyOption: true,
+    create: false,
+    maxOptions: 200,
+  });
+
+  odpSelect.on("change", function(value) {
+    window._custPage = 1;
+    loadCustomers();
+  });
+}
+function loadOdp() {
+  fetch('/api/infrastructure?type=odp')
+    .then(res => res.json())
+    .then(res => {
+      console.log("RAW RESPONSE:", res);
+
+      if (!res || !res.data) {
+        console.log("DATA KOSONG");
+        return;
+      }
+
+      const data = res.data.map(item => ({
+        id: item.id,
+        name: item.name
+      }));
+
+      console.log("ODP FINAL:", data);
+
+      if (!odpSelect) {
+        console.log("TomSelect belum init");
+        return;
+      }
+
+      odpSelect.clearOptions();
+      odpSelect.addOptions(data);
+
+      odpSelect.refreshOptions(false);
+    })
+    .catch(err => console.error("ERROR ODP:", err));
+}
+
 </script>
 
 <script>
