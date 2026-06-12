@@ -1881,6 +1881,7 @@ document.getElementById('pkgSearch').addEventListener('input', e => {
   filteredData = allData.filter(x => {
     return (
       x.name?.toLowerCase().includes(val) ||
+      x.address?.toLowerCase().includes(val) ||
       x.parent?.name?.toLowerCase().includes(val) ||
       (x.parent_id && x.parent_id.toString().includes(val))
     );
