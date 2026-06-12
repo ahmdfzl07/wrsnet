@@ -1878,11 +1878,15 @@ function renderPagination() {
 document.getElementById('pkgSearch').addEventListener('input', e => {
   const val = e.target.value.toLowerCase();
 
-  filteredData = allData.filter(x =>
-    x.name.toLowerCase().includes(val)
-  );
+  filteredData = allData.filter(x => {
+    return (
+      x.name?.toLowerCase().includes(val) ||
+      x.parent?.name?.toLowerCase().includes(val) ||
+      (x.parent_id && x.parent_id.toString().includes(val))
+    );
+  });
 
-  updateStats(allData);
+  updateStats(filteredData);
   renderPage(1);
 });
 

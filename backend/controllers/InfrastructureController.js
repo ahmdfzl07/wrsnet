@@ -26,11 +26,20 @@ class InfrastructureController {
   async index_infrastructur(req, res) {
     try {
       const { type, status, search } = req.query;
+
       const where = {};
 
       if (type) where.type = type;
       if (status) where.status = status;
-      if (search) where.name = { [Op.like]: `%${search}%` };
+
+      if (search) {
+        where[Op.or] = [
+          { name: { [Op.like]: `%${search}%` } },
+          { address: { [Op.like]: `%${search}%` } },
+          { "$parent.name$": { [Op.like]: `%${search}%` } },
+          { parent_id: { [Op.like]: `%${search}%` } },
+        ];
+      }
 
       const points = await InfrastructurePoint.findAll({
         where,
@@ -39,12 +48,12 @@ class InfrastructureController {
             model: InfrastructurePoint,
             as: "parent",
             attributes: ["id", "name", "type"],
+            required: false,
           },
         ],
         order: [["created_at", "DESC"]],
       });
 
-      // === AMBIL SEMUA customer_id DARI METADATA ===
       const customerIds = [];
 
       points.forEach((p) => {
@@ -78,7 +87,6 @@ class InfrastructureController {
         customerMap[c.id] = c;
       });
 
-      // === INJECT KE RESPONSE ===
       const result = points.map((p) => {
         let customer = null;
 
