@@ -35,9 +35,9 @@ const demoRoutes = require("./demo");
 // Controllers (existing)
 const AuthController = require("../controllers/AuthController");
 const PembayaranController = require("../controllers/PembayaranController");
-const AgenController = require('../controllers/AgenController'); 
-const TopupController = require('../controllers/TopupController'); 
-const authAgen = require('../middleware/authAgen');
+const AgenController = require("../controllers/AgenController");
+const TopupController = require("../controllers/TopupController");
+const authAgen = require("../middleware/authAgen");
 const UserController = require("../controllers/UserController");
 const CustomerController = require("../controllers/CustomerController");
 const PackageController = require("../controllers/PackageController");
@@ -2582,7 +2582,7 @@ try {
   router.use("/tickets", authenticate, demoGuard, ticketRoutes);
   console.log("[api.js] ✓ Ticket routes loaded");
 } catch (e) {
-  console.error("[api.js] ✗ Ticket routes FAILED:", e.message);
+  console.error("[api.js] ✗ Ticket routes cancelled:", e.message);
   router.use("/tickets", (req, res) =>
     res.status(503).json({
       success: false,
@@ -3058,7 +3058,7 @@ router.post("/payment/create", async (req, res) => {
         phoneNumber: invoice.customer?.phone || "",
 
         callbackUrl: process.env.APP_URL + "/api/payment/duitku/callback",
-        returnUrl: process.env.APP_URL + "/payment-success",
+        returnUrl: process.env.APP_URL,
 
         signature,
         expiryPeriod: 1440,
@@ -3120,7 +3120,7 @@ router.post("/payment/create", async (req, res) => {
         ],
 
         callback_url: process.env.APP_URL + "/api/payment/tripay/callback",
-        return_url: process.env.APP_URL + "/payment-success",
+        return_url: process.env.APP_URL,
         expired_time: Math.floor(Date.now() / 1000) + 86400,
 
         signature,
@@ -3196,7 +3196,7 @@ router.post("/payment/create", async (req, res) => {
         },
 
         callbacks: {
-          finish: process.env.APP_URL + "/payment-success",
+          finish: process.env.APP_URL,
         },
       };
 
@@ -3359,45 +3359,193 @@ router.post("/payment/create", async (req, res) => {
   }
 });
 
-router.post("/payment/tripay/callback", async (req, res) => {
-  try {
-    const data = req.body;
-
-    if (data.status === "PAID") {
-      const parts = data.merchant_ref.split("-");
-      const invoiceId = parts[1];
-
-      await Invoice.update(
-        { status: "paid", paid_at: new Date() },
-        { where: { id: invoiceId } },
-      );
-    }
-
-    return res.json({ success: true });
-  } catch (err) {
-    console.log(err);
-    return res.status(500).json({ success: false });
-  }
-});
-
 router.post("/payment/duitku/callback", async (req, res) => {
   try {
-    const data = req.body;
+    const {
+      merchantCode,
+      amount,
+      merchantOrderId,
+      signature,
+      resultCode,
+      reference,
+    } = req.body;
 
-    if (data.resultCode === "00") {
-      const parts = data.merchantOrderId.split("-");
-      const invoiceId = parts[1];
+    const apiKey = process.env.DUITKU_API_KEY;
 
-      await Invoice.update(
-        { status: "paid", paid_at: new Date() },
-        { where: { id: invoiceId } },
-      );
+    const localSignature = crypto
+      .createHash("md5")
+      .update(merchantCode + amount + merchantOrderId + apiKey)
+      .digest("hex");
+
+    if (signature !== localSignature) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid signature",
+      });
     }
 
-    return res.json({ success: true });
-  } catch (err) {
-    console.log(err);
-    return res.status(500).json({ success: false });
+    const invoiceId = merchantOrderId.split("-")[1];
+
+    const invoice = await Invoice.findByPk(invoiceId);
+
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        message: "Invoice tidak ditemukan",
+      });
+    }
+
+    if (resultCode === "00") {
+      await invoice.update({
+        status: "paid",
+        paid_date: new Date(),
+        payment_reference: reference,
+        payment_gateway: "duitku",
+      });
+    } else {
+      await invoice.update({
+        status: "cancelled",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+    });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+    });
+  }
+});
+router.post("/payment/tripay/callback", async (req, res) => {
+  try {
+    const callbackSignature = req.headers["x-callback-signature"];
+    const callbackEvent = req.headers["x-callback-event"];
+
+    const privateKey = process.env.TRIPAY_PRIVATE_KEY;
+
+    const validSignature = crypto
+      .createHmac("sha256", privateKey)
+      .update(JSON.stringify(req.body))
+      .digest("hex");
+
+    if (callbackSignature !== validSignature) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid signature",
+      });
+    }
+
+    if (callbackEvent !== "payment_status") {
+      return res.status(400).json({
+        success: false,
+      });
+    }
+
+    const { merchant_ref, status, reference, paid_at } = req.body;
+
+    const invoiceId = merchant_ref.split("-")[1];
+
+    const invoice = await Invoice.findByPk(invoiceId);
+
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        message: "Invoice tidak ditemukan",
+      });
+    }
+
+    if (status === "PAID") {
+      await invoice.update({
+        status: "paid",
+        paid_date: paid_at ? new Date(paid_at * 1000) : new Date(),
+        payment_reference: reference,
+        payment_gateway: "tripay",
+      });
+    }
+
+    if (["EXPIRED", "cancelled", "REFUND"].includes(status)) {
+      await invoice.update({
+        status: status,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+    });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+    });
+  }
+});
+router.post("/payment/midtrans/callback", async (req, res) => {
+  try {
+    const {
+      order_id,
+      transaction_status,
+      status_code,
+      gross_amount,
+      signature_key,
+      transaction_id,
+    } = req.body;
+
+    const serverKey = process.env.MIDTRANS_SERVER_KEY;
+
+    const localSignature = crypto
+      .createHash("sha512")
+      .update(order_id + status_code + gross_amount + serverKey)
+      .digest("hex");
+
+    if (signature_key !== localSignature) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid signature",
+      });
+    }
+
+    const invoiceId = order_id.split("-")[1];
+
+    const invoice = await Invoice.findByPk(invoiceId);
+
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        message: "Invoice tidak ditemukan",
+      });
+    }
+
+    if (
+      transaction_status === "settlement" ||
+      transaction_status === "capture"
+    ) {
+      await invoice.update({
+        status: "paid",
+        paid_date: new Date(),
+        payment_reference: transaction_id,
+        payment_gateway: "midtrans",
+      });
+    }
+
+    if (["expire", "cancel", "deny"].includes(transaction_status)) {
+      await invoice.update({
+        status: "cancelled",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+    });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+    });
   }
 });
 
@@ -3438,42 +3586,20 @@ router.get("/dashboard-stat", authenticate, PembayaranController.dashboardStat);
 router.get("/user/profile", authenticate, AuthController.profile);
 router.put("/user/profile", authenticate, AuthController.updateProfile);
 router.put("/user/password", authenticate, AuthController.changePassword);
-router.get('/agen/profile', authAgen, AgenController.profile);
-router.get(
-  '/agen/customers',
-  authAgen,
-  CustomerController.index
-);
+router.get("/agen/profile", authAgen, AgenController.profile);
+router.get("/agen/customers", authAgen, CustomerController.index);
 router.get("/form-topup", TopupController.form);
 
 router.get("/topup", TopupController.form);
 
-router.post(
-    "/topup",
-    upload.single("proof"),
-    TopupController.store
-);
+router.post("/topup", upload.single("proof"), TopupController.store);
 
-router.post(
-    "/api/topup",
-    upload.single("proof"),
-    TopupController.store
-);
+router.post("/api/topup", upload.single("proof"), TopupController.store);
 
 router.get("/form-topup", TopupController.form);
-router.post(
-    "/api/topup",
-    upload.single("proof"),
-    TopupController.store
-);
+router.post("/api/topup", upload.single("proof"), TopupController.store);
 
-router.post(
-    "/topup/:id/approve",
-    TopupController.approve
-);
+router.post("/topup/:id/approve", TopupController.approve);
 
-router.post(
-    "/topup/:id/reject",
-    TopupController.reject
-);
+router.post("/topup/:id/reject", TopupController.reject);
 module.exports = router;

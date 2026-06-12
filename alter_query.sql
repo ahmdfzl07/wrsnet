@@ -65,3 +65,4 @@ ALTER TABLE `customers` ADD `diskon` VARCHAR(50) NULL DEFAULT NULL AFTER `addon_
 ALTER TABLE `customers` ADD `rt` VARCHAR(50) NULL DEFAULT NULL AFTER `kelurahan`, ADD `rw` VARCHAR(50) NULL DEFAULT NULL AFTER `rt`;
 ALTER TABLE `infrastructure_points` ADD `ticket_id` INT NULL DEFAULT NULL AFTER `notes`;
 ALTER TABLE `customer_registration` ADD `customer_id` VARCHAR(20) NULL DEFAULT NULL AFTER `id`;
+ALTER TABLE `invoices` ADD `payment_reference` VARCHAR(50) NULL DEFAULT NULL AFTER `paid_date`, ADD `payment_gateway` VARCHAR(50) NULL DEFAULT NULL AFTER `payment_reference`;
