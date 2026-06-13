@@ -1149,11 +1149,30 @@
           </div>
 
         </div>
-        <div class="map-hint">
-          Klik pada peta untuk memilih titik lokasi
+        <div style="
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+          margin-top:10px;
+          gap:6px;
+        ">
+
+          <div class="map-hint">
+            Klik pada peta untuk memilih titik lokasi
+          </div>
+
+          <button
+            type="button"
+            class="btn-outline"
+            onclick="getMyLocation()">
+            📍 Gunakan Lokasi Saya
+          </button>
+
         </div>
+
         <div id="mapPick"
-          style="height:300px;border-radius:12px;margin-top:10px"></div>
+          style="height:300px;border-radius:12px;margin-top:10px">
+        </div>
 
       </div>
 
@@ -1469,6 +1488,70 @@ function showToast(msg,type='info'){
   t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3000);
 }
 
+function getMyLocation() {
+
+  if (!navigator.geolocation) {
+    showToast('Browser tidak support GPS', 'error');
+    return;
+  }
+
+  showToast('Mengambil lokasi...', 'info');
+
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      try {
+
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+        );
+
+        const data = await res.json();
+
+        setLocation(
+          lat,
+          lng,
+          data.display_name || ''
+        );
+
+        if (map) {
+          map.setView([lat, lng], 18);
+        }
+
+        showToast('Lokasi berhasil diambil', 'success');
+
+      } catch (err) {
+
+        console.error(err);
+
+        setLocation(lat, lng);
+
+        showToast('Lokasi diambil tanpa alamat', 'warn');
+      }
+
+    },
+    (err) => {
+
+      console.error(err);
+
+      if (err.code === 1) {
+        showToast('Izin lokasi ditolak', 'error');
+      } else {
+        showToast('Gagal mengambil lokasi', 'error');
+      }
+
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    }
+  );
+}
+
 function setImagePreview(url, imgId, btnId) {
   const img = document.getElementById(imgId);
   const btn = document.getElementById(btnId);
@@ -1727,8 +1810,8 @@ function fillFormByType(data) {
 
     case 'odc':
       document.getElementById('odc-name').value = data.name || '';
-      document.getElementById('odc-capacity').value = data.capacity || '';
-      document.getElementById('odc-used').value = data.used_ports || '';
+      document.getElementById('odc-capacity').value = data.capacity || 0;
+      document.getElementById('odc-used').value = data.used_ports || 0;
       document.getElementById('odc-address').value = data.address || '';
       document.getElementById('odc-status').value = data.status || 'active';
       document.getElementById('odc-notes').value = data.notes || '';
@@ -1741,8 +1824,8 @@ function fillFormByType(data) {
 
     case 'odp':
       document.getElementById('odp-name').value = data.name || '';
-      document.getElementById('odp-capacity').value = data.capacity || '';
-      document.getElementById('odp-used').value = data.used_ports || '';
+      document.getElementById('odp-capacity').value = data.capacity || 0;
+      document.getElementById('odp-used').value = data.used_ports || 0;
       document.getElementById('odp-parent').value = data.parent_id || '';
       document.getElementById('odp-address').value = data.address || '';
       document.getElementById('odp-status').value = data.status || 'active';
@@ -1763,8 +1846,8 @@ function fillFormByType(data) {
 
     case 'pop':
       document.getElementById('pop-name').value = data.name || '';
-      document.getElementById('pop-capacity').value = data.capacity || '';
-      document.getElementById('pop-used').value = data.used_ports || '';
+      document.getElementById('pop-capacity').value = data.capacity || 0;
+      document.getElementById('pop-used').value = data.used_ports || 0;
       document.getElementById('pop-address').value = data.address || '';
       document.getElementById('pop-status').value = data.status || 'active';
       document.getElementById('pop-notes').value = data.notes || '';
@@ -2097,6 +2180,8 @@ function openModal() {
   setTimeout(() => {
     initMapPicker();
     map.invalidateSize(); 
+
+    // getMyLocation();
   }, 200);
 }
 
@@ -2379,6 +2464,79 @@ function validateRequired(fields) {
   return true;
 }
 
+async function uploadOdcPhoto(file) {
+  const btn = document.getElementById('odc-upload-btn');
+  if (btn) btn.innerHTML = 'Mengupload...';
+  const form = new FormData();
+  form.append('photo', file);
+  const tok = localStorage.getItem('token');
+  const hdr = {};
+  if (tok && tok !== 'null') hdr['Authorization'] = 'Bearer ' + tok;
+  try {
+    const res  = await fetch('/api/upload/infra-photo', { method:'POST', headers:hdr, credentials:'include', body:form });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Upload gagal');
+    const urlEl = document.getElementById('odc-photo-url');
+    if (urlEl) urlEl.value = data.url;
+    const prev = document.getElementById('odc-photo-preview');
+    if (prev) prev.src = data.url;
+    if (btn) btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> Terupload';
+    return data.url;
+  } catch(e) {
+    if (btn) btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload Foto';
+    throw e;
+  }
+}
+async function uploadOdpPhoto(file) {
+  const btn = document.getElementById('odp-upload-btn');
+  if (btn) btn.innerHTML = '⏳ Mengupload...';
+  const form = new FormData();
+  form.append('photo', file);
+  const tok = localStorage.getItem('token');
+  const hdr = {};
+  if (tok && tok !== 'null') hdr['Authorization'] = 'Bearer ' + tok;
+  try {
+    const res  = await fetch('/api/upload/infra-photo', { method:'POST', headers:hdr, credentials:'include', body:form });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Upload gagal');
+    const urlEl = document.getElementById('odp-photo-url');
+    if (urlEl) urlEl.value = data.url;
+    // Update preview ke URL server
+    const prev = document.getElementById('odp-photo-preview');
+    if (prev) prev.src = data.url;
+    if (btn) btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> Terupload';
+    return data.url;
+  } catch(e) {
+    if (btn) btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload Foto';
+    throw e;
+  }
+}
+async function uploadPopPhoto(file) {
+  const btn = document.getElementById('pop-upload-btn');
+  if (btn) btn.innerHTML = 'Mengupload...';
+  const form = new FormData();
+  form.append('photo', file);
+  const tok = localStorage.getItem('token');
+  const hdr = {};
+  if (tok && tok !== 'null') hdr['Authorization'] = 'Bearer ' + tok;
+  try {
+    const res  = await fetch('/api/upload/infra-photo', { method:'POST', headers:hdr, credentials:'include', body:form });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Upload gagal');
+    const urlEl = document.getElementById('pop-photo-url');
+    if (urlEl) urlEl.value = data.url;
+    const prev = document.getElementById('pop-photo-preview');
+    if (prev) { prev.src = data.url; prev.style.display = ''; }
+    const remBtn = document.getElementById('pop-photo-remove');
+    if (remBtn) remBtn.style.display = '';
+    if (btn) btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> Terupload';
+    return data.url;
+  } catch(e) {
+    if (btn) btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload Foto';
+    throw e;
+  }
+}
+
 async function savePoint() {
 
   if (selectedLat === null || selectedLng === null) {
@@ -2398,49 +2556,107 @@ async function savePoint() {
     case 'odc':
 
       if (!validateRequired([
-        {id:'odc-name', label:'Nama ODC'},
-        {id:'odc-capacity', label:'Capacity'},
-        {id:'odc-used', label:'Used Port'},
-        {id:'odc-address', label:'Alamat'}
+        { id: 'odc-name', label: 'Nama ODC' },
+        { id: 'odc-capacity', label: 'Capacity' },
+        { id: 'odc-used', label: 'Used Port' },
+        { id: 'odc-address', label: 'Alamat' }
       ])) return;
+
+      const name = document.getElementById('odc-name').value.trim();
+      const capacity = parseInt(document.getElementById('odc-capacity').value) || null;
+      const used_ports = parseInt(document.getElementById('odc-used').value) || 0;
+      const address = document.getElementById('odc-address').value;
+      const status = document.getElementById('odc-status').value;
+      const notes = document.getElementById('odc-notes').value;
+
+      const photoUrlInput = document.getElementById('odc-photo-url')?.value || '';
+      const photoFile = document.getElementById('odc-photo-input')?.files[0];
+
+      let finalPhotoUrl = photoUrlInput;
+
+      if (photoFile) {
+        try {
+          finalPhotoUrl = await uploadOdcPhoto(photoFile);
+        } catch (err) {
+          console.error(err);
+          showToast('Upload foto gagal', 'error');
+          return;
+        }
+      }
+
+      let metadata = null;
+
+      if (finalPhotoUrl) {
+        metadata = {
+          photo_url: finalPhotoUrl
+        };
+      }
 
       payload = {
         ...payload,
-        name: document.getElementById('odc-name').value,
-        capacity: parseInt(document.getElementById('odc-capacity').value),
-        used_ports: parseInt(document.getElementById('odc-used').value),
-        address: document.getElementById('odc-address').value,
-        status: document.getElementById('odc-status').value,
-        notes: document.getElementById('odc-notes').value,
-        metadata: {
-          photo_url: document.getElementById('odc-photo-url').value
-        }
+        name,
+        capacity,
+        used_ports,
+        address,
+        status,
+        notes,
+        metadata
       };
     break;
 
     case 'odp':
 
       if (!validateRequired([
-        {id:'odp-name', label:'Nama ODP'},
-        {id:'odp-capacity', label:'Capacity'},
-        {id:'odp-used', label:'Used Port'},
-        {id:'odp-parent', label:'Parent ODC'},
-        {id:'odp-address', label:'Alamat'}
+        { id: 'odp-name', label: 'Nama ODP' },
+        { id: 'odp-capacity', label: 'Capacity' },
+        { id: 'odp-used', label: 'Used Port' },
+        { id: 'odp-parent', label: 'Parent ODC' },
+        { id: 'odp-address', label: 'Alamat' }
       ])) return;
+
+      const odpName = document.getElementById('odp-name').value.trim();
+      const odpCapacity = parseInt(document.getElementById('odp-capacity').value) || null;
+      const odpUsed = parseInt(document.getElementById('odp-used').value) || 0;
+      const odpParent = document.getElementById('odp-parent').value;
+      const odpAddress = document.getElementById('odp-address').value;
+      const odpStatus = document.getElementById('odp-status').value;
+      const odpNotes = document.getElementById('odp-notes').value;
+
+      const odpPhotoUrlInput = document.getElementById('odp-photo-url')?.value || '';
+      const odpPhotoFile = document.getElementById('odp-photo-input')?.files[0];
+
+      let finalOdpPhotoUrl = odpPhotoUrlInput;
+
+      if (odpPhotoFile) {
+        try {
+          finalOdpPhotoUrl = await uploadOdpPhoto(odpPhotoFile);
+        } catch (err) {
+          console.error(err);
+          showToast('Upload foto gagal', 'error');
+          return;
+        }
+      }
+
+      let odpMetadata = null;
+
+      if (finalOdpPhotoUrl) {
+        odpMetadata = {
+          photo_url: finalOdpPhotoUrl
+        };
+      }
 
       payload = {
         ...payload,
-        name: document.getElementById('odp-name').value,
-        capacity: parseInt(document.getElementById('odp-capacity').value),
-        used_ports: parseInt(document.getElementById('odp-used').value),
-        parent_id: document.getElementById('odp-parent').value,
-        address: document.getElementById('odp-address').value,
-        status: document.getElementById('odp-status').value,
-        notes: document.getElementById('odp-notes').value,
-        metadata: {
-          photo_url: document.getElementById('odp-photo-url').value
-        }
+        name: odpName,
+        capacity: odpCapacity,
+        used_ports: odpUsed,
+        parent_id: odpParent,
+        address: odpAddress,
+        status: odpStatus,
+        notes: odpNotes,
+        metadata: odpMetadata
       };
+
     break;
 
     case 'tower':
@@ -2462,25 +2678,55 @@ async function savePoint() {
     case 'pop':
 
       if (!validateRequired([
-        {id:'pop-name', label:'Nama POP'},
-        {id:'pop-capacity', label:'Capacity'},
-        {id:'pop-used', label:'Used Port'},
-        {id:'pop-address', label:'Alamat'}
+        { id: 'pop-name', label: 'Nama POP' },
+        { id: 'pop-capacity', label: 'Capacity' },
+        { id: 'pop-used', label: 'Used Port' },
+        { id: 'pop-address', label: 'Alamat' }
       ])) return;
+
+      const popName = document.getElementById('pop-name').value.trim();
+      const popCapacity = parseInt(document.getElementById('pop-capacity').value) || null;
+      const popUsed = parseInt(document.getElementById('pop-used').value) || 0;
+      const popAddress = document.getElementById('pop-address').value;
+      const popStatus = document.getElementById('pop-status').value;
+      const popNotes = document.getElementById('pop-notes').value;
+      const popType = document.getElementById('pop-pop-type').value;
+
+      const popPhotoUrlInput = document.getElementById('pop-photo-url')?.value || '';
+      const popPhotoFile = document.getElementById('pop-photo-input')?.files[0];
+
+      let finalPopPhotoUrl = popPhotoUrlInput;
+
+      if (popPhotoFile) {
+        try {
+          finalPopPhotoUrl = await uploadPopPhoto(popPhotoFile);
+        } catch (err) {
+          console.error(err);
+          showToast('Upload foto gagal', 'error');
+          return;
+        }
+      }
+
+      let popMetadata = null;
+
+      if (finalPopPhotoUrl || popType) {
+        popMetadata = {
+          ...(popType && { pop_type: popType }),
+          ...(finalPopPhotoUrl && { photo_url: finalPopPhotoUrl })
+        };
+      }
 
       payload = {
         ...payload,
-        name: document.getElementById('pop-name').value,
-        capacity: parseInt(document.getElementById('pop-capacity').value),
-        used_ports: parseInt(document.getElementById('pop-used').value),
-        address: document.getElementById('pop-address').value,
-        status: document.getElementById('pop-status').value,
-        notes: document.getElementById('pop-notes').value,
-        metadata: {
-          pop_type: document.getElementById('pop-pop-type').value,
-          photo_url: document.getElementById('pop-photo-url').value
-        }
+        name: popName,
+        capacity: popCapacity,
+        used_ports: popUsed,
+        address: popAddress,
+        status: popStatus,
+        notes: popNotes,
+        metadata: popMetadata
       };
+
     break;
 
     case 'customer':
