@@ -2464,6 +2464,29 @@ function validateRequired(fields) {
   return true;
 }
 
+async function compressImage(file, maxSize = 1024) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      const scale = Math.min(maxSize / img.width, maxSize / img.height);
+
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(blob => {
+        resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+      }, 'image/jpeg', 0.7);
+    };
+
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 async function uploadOdcPhoto(file) {
   const btn = document.getElementById('odc-upload-btn');
   if (btn) btn.innerHTML = 'Mengupload...';
@@ -2576,7 +2599,14 @@ async function savePoint() {
 
       if (photoFile) {
         try {
-          finalPhotoUrl = await uploadOdcPhoto(photoFile);
+          let fileToUpload = photoFile;
+
+          if (fileToUpload.size > 1 * 1024 * 1024) {
+            fileToUpload = await compressImage(fileToUpload, 1280, 0.7);
+          }
+
+          finalPhotoUrl = await uploadOdcPhoto(fileToUpload);
+
         } catch (err) {
           console.error(err);
           showToast('Upload foto gagal', 'error');
@@ -2602,6 +2632,7 @@ async function savePoint() {
         notes,
         metadata
       };
+
     break;
 
     case 'odp':
@@ -2629,7 +2660,14 @@ async function savePoint() {
 
       if (odpPhotoFile) {
         try {
-          finalOdpPhotoUrl = await uploadOdpPhoto(odpPhotoFile);
+          let fileToUpload = odpPhotoFile;
+
+          if (fileToUpload.size > 1 * 1024 * 1024) {
+            fileToUpload = await compressImage(fileToUpload, 1280, 0.7);
+          }
+
+          finalOdpPhotoUrl = await uploadOdpPhoto(fileToUpload);
+
         } catch (err) {
           console.error(err);
           showToast('Upload foto gagal', 'error');
@@ -2647,10 +2685,11 @@ async function savePoint() {
 
       payload = {
         ...payload,
+        type: 'odp',
         name: odpName,
         capacity: odpCapacity,
         used_ports: odpUsed,
-        parent_id: odpParent,
+        parent_id: odpParent ? parseInt(odpParent) : null,
         address: odpAddress,
         status: odpStatus,
         notes: odpNotes,
@@ -2699,7 +2738,16 @@ async function savePoint() {
 
       if (popPhotoFile) {
         try {
-          finalPopPhotoUrl = await uploadPopPhoto(popPhotoFile);
+          let fileToUpload = popPhotoFile;
+
+          if (fileToUpload.size > 1 * 1024 * 1024) {
+            fileToUpload = await compressImage(fileToUpload, 1280, 0.7);
+          }
+
+          console.log("POP UPLOAD SIZE:", fileToUpload.size);
+
+          finalPopPhotoUrl = await uploadPopPhoto(fileToUpload);
+
         } catch (err) {
           console.error(err);
           showToast('Upload foto gagal', 'error');
@@ -2707,17 +2755,21 @@ async function savePoint() {
         }
       }
 
-      let popMetadata = null;
+      let popMetadata = {
+        ...(popType ? { pop_type: popType } : {})
+      };
 
-      if (finalPopPhotoUrl || popType) {
-        popMetadata = {
-          ...(popType && { pop_type: popType }),
-          ...(finalPopPhotoUrl && { photo_url: finalPopPhotoUrl })
-        };
+      if (finalPopPhotoUrl) {
+        popMetadata.photo_url = finalPopPhotoUrl;
+      }
+
+      if (!Object.keys(popMetadata).length) {
+        popMetadata = null;
       }
 
       payload = {
         ...payload,
+        type: 'pop',
         name: popName,
         capacity: popCapacity,
         used_ports: popUsed,
